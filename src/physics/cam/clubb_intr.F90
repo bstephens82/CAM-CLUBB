@@ -2505,7 +2505,7 @@ end subroutine clubb_init_cnst
            thlm_zm_in = zt2zm_api( thlm_in )
 
            call integrate_mf( pverp,     dzt,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
-                                                                  p_in_Pa,    invrs_exner_zt, & ! input
+                                                      rho_zt,     p_in_Pa,    invrs_exner_zt, & ! input
                               um_in,     vm_in,       thlm_in,    rtm_in,     thv_ds_zt,      & ! input
                                                       thlm_zm_in, rtm_zm_in,                  & ! input
                                                       wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input

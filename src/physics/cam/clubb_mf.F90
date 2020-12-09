@@ -76,7 +76,7 @@ module clubb_mf
   end subroutine clubb_mf_readnl
 
   subroutine integrate_mf( nz,      dzt,     zm,      p_zm,      iexner_zm,         & ! input
-                                                      p_zt,      iexner_zt,         & ! input
+                                             rho_zt,  p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
                                              thl_zm,  qt_zm,                        & ! input
                                              wthl,    wqt,       pblh,              & ! input
@@ -129,7 +129,7 @@ module clubb_mf
      real(r8), dimension(nz), intent(in) :: u,      v,            & ! thermodynamic grid
                                             thl,    thv,          & ! thermodynamic grid
                                             qt,                   & ! thermodynamic grid
-                                            dzt,                  & ! thermodynamic grid
+                                            dzt,    rho_zt,       & ! thermodynamic grid
                                             p_zt,   iexner_zt,    & ! thermodynamic grid
                                             thl_zm,               & ! momentum grid
                                             qt_zm,                & ! momentum grid
@@ -166,7 +166,12 @@ module clubb_mf
                                              upql,     upqi,           & ! momentum grid
                                              upth,     upthv,          & ! momentum grid
                                                        upthl,          & ! momentum grid
-                                             upu,      upv               ! momentum grid 
+                                             upu,      upv,            & ! momentum grid 
+                                             uplmix                      ! momentum grid
+     !
+     ! microphyiscs terms
+     real(r8), dimension(nz,clubb_mf_nup) :: supqt,    supthl,         & ! thermodynamic grid 
+                                             uprr                        ! thermodynamic grid
      !
      ! entrainment profiles
      real(r8), dimension(nz,clubb_mf_nup) :: ent,      entf              ! thermodynamic grid
@@ -183,12 +188,13 @@ module clubb_mf
                                              wlv,    wtv,     wp,      & 
                                              B,                        & ! thermodynamic grid
                                              entexp, entexpu, entw,    & ! thermodynamic grid
+                                             lmixt,                    & ! thermodynamic grid
+                                             qtovqs, sevap,            & ! thermodynamic grid
                                              thln,   thvn,    thn,     & ! momentum grid
                                              qtn,    qsn,              & ! momentum grid
                                              qcn,    qln,     qin,     & ! momentum grid
                                              un,     vn,      wn2,     & ! momentum grid
-                                             lmixn,                    & ! momentum grid
-                                             supqt,  supthl              ! thermodynamic grid
+                                             lmixn                       ! momentum grid
      !
      ! parameters defining initial conditions for updrafts
      real(r8),parameter                   :: pwmin = 1.5_r8,           &
@@ -216,10 +222,18 @@ module clubb_mf
      logical                              :: do_condensation = .true.
      !
      ! to precip or not to precip
-     logical                              :: do_precip = .false.
+     logical                              :: do_precip = .true.
      !
-     ! to debug flag (overides stochastic entrainment)
+     ! evaporation efficiency after Suselj etal 2019
+     real(r8),parameter                   :: ke = 2.5e-4_r8
+     !
+     ! fraction of rain detrained into downdrafts
+     real(r8),parameter                   :: fdd = 0._r8
+     !
+     ! to debug flag
      logical                              :: debug  = .false.
+     !
+     ! fixed entrainment rate (debug only)
      real(r8),parameter                   :: fixent = 0.004_r8
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -274,6 +288,10 @@ module clubb_mf
      upqi  = 0._r8
      upqv  = 0._r8
      upqs  = 0._r8
+     uplmix= 0._r8
+     uprr  = 0._r8
+     supqt = 0._r8
+     supthl= 0._r8
 
      ! unique identifier
      zcb_unset = 9999999._r8
@@ -360,20 +378,20 @@ module clubb_mf
 
            ! get microphysics, autoconversion
            if (do_precip .and. upqc(k,i) > 0._r8) then
-             call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt)
+             call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt(k+1,i))
 
-             supthl = -1._r8*lmixn*supqt*iexner_zt(k+1)/cpair
+             supthl(k+1,i) = -1._r8*lmixn*supqt(k+1,i)*iexner_zt(k+1)/cpair
            else
-             supqt  = 0._r8
-             supthl = 0._r8
+             supqt(k+1,i)  = 0._r8
+             supthl(k+1,i) = 0._r8
            end if
 
            ! integrate updraft
            entexp  = exp(-ent(k+1,i)*dzt(k+1))
            entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
-           
-           qtn  = qt(k+1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt
-           thln = thl(k+1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl
+
+           qtn  = qt(k+1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt(k+1,i)
+           thln = thl(k+1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl(k+1,i)           
            un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
            vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
 
@@ -416,11 +434,43 @@ module clubb_mf
              upql(k+1,i)  = qln
              upqi(k+1,i)  = qin
              upqv(k+1,i)  = qtn - qcn
+             uplmix(k+1,i)= lmixn
            else
              exit
            end if
          enddo
        enddo
+
+       ! downward sweep for rain evaporation, snow melting 
+       if (do_precip) then
+         do i=1,clubb_mf_nup
+           do k=nz-1,1,-1
+             ! get rain evaporation
+             if ((upqs(k,i) + upqs(k-1,i)).le.0._r8) then
+               qtovqs = 0._r8
+             else
+               qtovqs = (upqt(k,i) + upqt(k-1,i))/(upqs(k,i) + upqs(k-1,i))
+             end if
+             qtovqs = min(1._r8,qtovqs)
+             sevap = ke*(1._r8 - qtovqs)*sqrt(max(uprr(k+1,i),0._r8))
+
+             ! get rain rate
+             uprr(k,i) = uprr(k+1,i) &
+                         - rho_zt(k)*dzt(k)*( supqt(k,i)*(1._r8-fdd) + sevap )
+
+             if (debug) then
+               !if ( masterproc ) then
+               !  write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
+               !end if
+             end if
+
+             ! update source terms
+             lmixt = 0.5_r8*(uplmix(k,i)+uplmix(k-1,i))
+             supqt(k,i) = supqt(k,i) + sevap
+             supthl(k,i) = supthl(k,i) - lmixt*sevap*iexner_zt(k)/cpair
+           end do
+         end do
+       end if
 
        ! writing updraft properties for output
        do k=1,nz
