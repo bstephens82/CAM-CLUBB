@@ -99,12 +99,6 @@ module clubb_mf
   ! Provides rtm and thl fluxes due to mass flux ensemble,                            !
   ! which are fed into the mixed explicit/implicit clubb solver as explicit terms     !
   !                                                                                   !
-  ! Variables needed for solver                                                       !
-  ! ae = sum_i (1-a_i)                                                                !
-  ! aw3 = sum (a_i w_i)                                                               ! 
-  ! aws3 = sum (a_i w_i*s_i); s=thl*cp                                                !
-  ! aws3,awqv3,awql3,awqi3,awu3,awv3 similar as above except for different variables  !
-  !                                                                                   !
   ! Mass flux variables are computed on edges (i.e. momentum grid):                   !
   ! upa,upw,upqt,...                                                                  !
   ! dry_a,moist_a,dry_w,moist_w, ...                                                  !
@@ -190,6 +184,7 @@ module clubb_mf
                                              entexp, entexpu, entw,    & ! thermodynamic grid
                                              lmixt,                    & ! thermodynamic grid
                                              qtovqs, sevap,            & ! thermodynamic grid
+                                             betathl,betaqt,           & ! thermodynamic grid        
                                              thln,   thvn,    thn,     & ! momentum grid
                                              qtn,    qsn,              & ! momentum grid
                                              qcn,    qln,     qin,     & ! momentum grid
@@ -222,7 +217,7 @@ module clubb_mf
      logical                              :: do_condensation = .true.
      !
      ! to precip or not to precip
-     logical                              :: do_precip = .true.
+     logical                              :: do_precip = .false.
      !
      ! evaporation efficiency after Suselj etal 2019
      real(r8),parameter                   :: ke = 2.5e-4_r8
@@ -235,6 +230,9 @@ module clubb_mf
      !
      ! fixed entrainment rate (debug only)
      real(r8),parameter                   :: fixent = 0.004_r8
+     !
+     ! to kludge (stagger environ values)
+     logical                              :: kludge  = .true.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -541,10 +539,25 @@ module clubb_mf
          enddo
        enddo
 
-       do k=1,nz
-         thlflx(k)= awthl(k) - aw(k)*thl_zm(k)
-         qtflx(k)= awqt(k) - aw(k)*qt_zm(k)
-       enddo
+       if (kludge) then
+         ! staggered environment values
+         betathl = (thl(4)-thl(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+
+         ! extrapolate to ghost point         
+         thlflx(1)= awthl(1) - aw(1)*(thl(2)-betathl*0.5_r8*(dzt(2)+dzt(1)))
+         qtflx(1)= awqt(1) - aw(1)*(qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1)))
+         do k=2,nz
+           thlflx(k)= awthl(k) - aw(k)*thl(k)
+           qtflx(k)= awqt(k) - aw(k)*qt(k)
+         enddo
+       else
+         ! collocated environment values
+         do k=1,nz
+           thlflx(k)= awthl(k) - aw(k)*thl_zm(k)
+           qtflx(k) = awqt(k) - aw(k)*qt_zm(k)
+         end do
+       endif
 
      end if  ! ( wthv > 0.0 )
 
