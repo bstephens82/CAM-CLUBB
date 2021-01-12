@@ -232,7 +232,7 @@ module clubb_mf
      real(r8),parameter                   :: fixent = 0.004_r8
      !
      ! to kludge (stagger environ values)
-     logical                              :: kludge  = .true.
+     logical                              :: kludge  = .false.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
