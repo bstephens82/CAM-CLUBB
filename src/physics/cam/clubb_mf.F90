@@ -78,7 +78,9 @@ module clubb_mf
   subroutine integrate_mf( nz,      dzt,     zm,      p_zm,      iexner_zm,         & ! input
                                              rho_zt,  p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
+                                             th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,                        & ! input
+                                             th_zm,   qv_zm,     qc_zm,             & ! input
                                              wthl,    wqt,       pblh,              & ! input
                            dry_a,   moist_a,                                        & ! output - plume diagnostics
                            dry_w,   moist_w,                                        & ! output - plume diagnostics
@@ -90,7 +92,10 @@ module clubb_mf
                            ae,      aw,                                             & ! output - diagnosed fluxes BEFORE mean field update
                            awthl,   awqt,                                           & ! output - diagnosed fluxes BEFORE mean field update
                            awql,    awqi,                                           & ! output - diagnosed fluxes BEFORE mean field update
+                           awth,    awqv,                                           & ! output - diagnosed fluxes BEFORE mean field update
                            awu,     awv,                                            & ! output - diagnosed fluxes BEFORE mean field update
+                           thflx,   qvflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
+                                    qcflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
                            thlflx,  qtflx )                                           ! output - variables needed for solver
 
   ! ================================================================================= !
@@ -122,11 +127,13 @@ module clubb_mf
      integer,  intent(in)                :: nz
      real(r8), dimension(nz), intent(in) :: u,      v,            & ! thermodynamic grid
                                             thl,    thv,          & ! thermodynamic grid
-                                            qt,                   & ! thermodynamic grid
+                                            th,     qv,           & ! thermodynamic grid
+                                            qt,     qc,           & ! thermodynamic grid
                                             dzt,    rho_zt,       & ! thermodynamic grid
                                             p_zt,   iexner_zt,    & ! thermodynamic grid
                                             thl_zm,               & ! momentum grid
-                                            qt_zm,                & ! momentum grid
+                                            th_zm,  qv_zm,        &
+                                            qt_zm,  qc_zm,        & ! momentum grid
                                             zm,                   & ! momentum grid
                                             p_zm,   iexner_zm       ! momentum grid
 
@@ -143,15 +150,21 @@ module clubb_mf
                                             ae,      aw,          & ! momentum grid
                                             awthl,   awqt,        & ! momentum grid
                                             awql,    awqi,        & ! momentum grid
+                                            awth,    awqv,        & ! momentum grid
                                             awu,     awv,         & ! momentum grid
+                                            thflx,   qvflx,       & ! momentum grid 
+                                            qcflx,                & ! momentum grid
                                             thlflx,  qtflx          ! momentum grid
 
      ! =============================================================================== !
      ! INTERNAL VARIABLES
      !
      ! sums over all plumes
-     real(r8), dimension(nz)              :: moist_th, dry_th,         & ! momentum grid
-                                             awqv,     awth              ! momentum grid
+     real(r8), dimension(nz)              :: moist_th,   dry_th,      & ! momentum grid
+                                             awqc,                    & ! momentum grid                     
+                                             awthl_conv, awqt_conv,   & ! momentum grid
+                                             thl_env_zm, qt_env_zm,   & ! momentum grid
+                                             thl_env,    qt_env         ! thermodynamic grid
      !
      ! updraft properties
      real(r8), dimension(nz,clubb_mf_nup) :: upw,      upa,            & ! momentum grid
@@ -189,8 +202,10 @@ module clubb_mf
                                              qtn,    qsn,              & ! momentum grid
                                              qcn,    qln,     qin,     & ! momentum grid
                                              un,     vn,      wn2,     & ! momentum grid
-                                             lmixn                       ! momentum grid
-     !
+                                             lmixn,   srfarea,         & ! momentum grid
+                                             srfwqtu, srfwthvu,        &
+                                             facqtu,  facthvu
+     
      ! parameters defining initial conditions for updrafts
      real(r8),parameter                   :: pwmin = 1.5_r8,           &
                                              pwmax = 3._r8
@@ -225,14 +240,20 @@ module clubb_mf
      ! fraction of rain detrained into downdrafts
      real(r8),parameter                   :: fdd = 0._r8
      !
-     ! to debug flag
-     logical                              :: debug  = .false.
-     !
      ! fixed entrainment rate (debug only)
      real(r8),parameter                   :: fixent = 0.004_r8
      !
-     ! to kludge (stagger environ values)
-     logical                              :: kludge  = .false.
+     ! to upwind (stagger environ values)
+     logical                              :: upwind = .false.
+     !
+     ! to scale surface fluxes
+     logical                              :: scalesrf = .false. 
+     !
+     ! to dry flux
+     logical                              :: dryflux = .false.
+     !
+     ! to debug flag
+     logical                              :: debug  = .false.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -255,15 +276,19 @@ module clubb_mf
      moist_qc  = 0._r8
      ! outputs - variables needed for solver
      aw        = 0._r8
+     awth      = 0._r8
      awthl     = 0._r8
      awqt      = 0._r8
      awqv      = 0._r8
+     awqc      = 0._r8
      awql      = 0._r8
      awqi      = 0._r8
      awu       = 0._r8
      awv       = 0._r8
      thlflx    = 0._r8
      qtflx     = 0._r8
+     thflx     = 0._r8
+     qvflx     = 0._r8
 
      ent       = 0._r8
      entf      = 0._r8
@@ -274,6 +299,7 @@ module clubb_mf
 
      ! START MAIN COMPUTATION
      upw   = 0._r8
+     upth  = 0._r8
      upthl = 0._r8
      upthv = 0._r8
      upqt  = 0._r8
@@ -338,7 +364,6 @@ module clubb_mf
        wmax = sigmaw * pwmax
 
        do i=1,clubb_mf_nup
-
          wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
          wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
 
@@ -349,9 +374,51 @@ module clubb_mf
          upu(1,i) = u(1)
          upv(1,i) = v(1)
 
-         upqt(1,i)  = qt(1)  + cwqt * upw(1,i) * sigmaqt/sigmaw
-         upthv(1,i) = thv(1) + cwthv * upw(1,i) * sigmathv/sigmaw
+         upqt(1,i)  = cwqt * upw(1,i) * sigmaqt/sigmaw
+         upthv(1,i) = cwthv * upw(1,i) * sigmathv/sigmaw
+       enddo
+
+       facqtu=1._r8
+       facthvu=1._r8
+       if (scalesrf) then 
+         ! scale surface fluxes
+         srfwqtu = 0._r8
+         srfwthvu = 0._r8
+         srfarea = 0._r8
+         do i=1,clubb_mf_nup
+             srfwqtu=srfwqtu+upqt(1,i)*upw(1,i)*upa(1,i)
+             srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
+             srfarea = srfarea+upa(1,i)
+         end do
+
+         if ( (srfwqtu .gt. srfarea*wqt) .and. (wqt .gt. 0._r8)) then
+             facqtu=srfarea*wqt/srfwqtu
+         endif
+
+         if ( srfwthvu .gt. srfarea*wthv) then
+             facthvu=srfarea*wthv/srfwthvu
+         endif
+
+         if (debug) then
+           if ( masterproc ) then
+             write(iulog,*) "facqtu, facthvu ", facqtu, facthvu
+           end if
+         end if
+       end if
+
+       do i=1,clubb_mf_nup
+
+         if (upwind) then
+           betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+           betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+           upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
+           upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
+         else
+           upqt(1,i)=qt(1)+facqtu*upqt(1,i)
+           upthv(1,i)=thv(1)+facthvu*upthv(1,i)
+         end if
          upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
+         upth(1,i)  = upthl(1,i)
 
          ! get cloud, lowest momentum level 
          if (do_condensation) then
@@ -362,13 +429,13 @@ module clubb_mf
            upql(1,i)  = qln
            upqi(1,i)  = qin
            upqs(1,i)  = qsn
+           upth(1,i)  = thn
            if (qcn > 0._r8) zcb(i) = zm(1)
          else
            ! assume no cldliq
            upqc(1,i)  = 0._r8
          end if
-
-       enddo
+       end do
 
        ! get updraft properties
        do i=1,clubb_mf_nup
@@ -433,6 +500,7 @@ module clubb_mf
              upqi(k+1,i)  = qin
              upqv(k+1,i)  = qtn - qcn
              uplmix(k+1,i)= lmixn
+             upth(k+1,i)  = thn
            else
              exit
            end if
@@ -457,9 +525,9 @@ module clubb_mf
                          - rho_zt(k)*dzt(k)*( supqt(k,i)*(1._r8-fdd) + sevap )
 
              if (debug) then
-               !if ( masterproc ) then
-               !  write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
-               !end if
+               if ( masterproc ) then
+                 write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
+               end if
              end if
 
              ! update source terms
@@ -532,30 +600,83 @@ module clubb_mf
            awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
            awthl(k)= awthl(k)+ upa(k,i)*upw(k,i)*upthl(k,i) 
+           awth(k) = awth(k) + upa(k,i)*upw(k,i)*upth(k,i)
            awqt(k) = awqt(k) + upa(k,i)*upw(k,i)*upqt(k,i)
            awqv(k) = awqv(k) + upa(k,i)*upw(k,i)*upqv(k,i)
            awql(k) = awql(k) + upa(k,i)*upw(k,i)*upql(k,i)
            awqi(k) = awqi(k) + upa(k,i)*upw(k,i)*upqi(k,i)
+           awqc(k) = awqc(k) + upa(k,i)*upw(k,i)*upqc(k,i)
          enddo
        enddo
 
-       if (kludge) then
-         ! staggered environment values
-         betathl = (thl(4)-thl(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
-         betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+       if (dryflux) then
+         awthl_conv = awth
+         awqt_conv = awqv
+         thl_env = th
+         thl_env_zm = th_zm
+         qt_env = qv
+         qt_env_zm = qv_zm
+       else
+         awthl_conv = awthl       
+         awqt_conv = awqt
+         thl_env = thl
+         thl_env_zm = thl_zm
+         qt_env = qt
+         qt_env_zm = qt_zm
+       end if
 
-         ! extrapolate to ghost point         
-         thlflx(1)= awthl(1) - aw(1)*(thl(2)-betathl*0.5_r8*(dzt(2)+dzt(1)))
-         qtflx(1)= awqt(1) - aw(1)*(qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1)))
-         do k=2,nz
-           thlflx(k)= awthl(k) - aw(k)*thl(k)
-           qtflx(k)= awqt(k) - aw(k)*qt(k)
+       if (upwind) then
+         ! staggered environment values
+
+         ! get thl & qt fluxes
+         betathl = (thl_env(4)-thl_env(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         betaqt = (qt_env(4)-qt_env(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         thl_env(1) = thl_env(2)-betathl*0.5_r8*(dzt(2)+dzt(1))
+         qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
+
+         if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
+         do k=1,nz
+           thlflx(k)= awthl_conv(k) - aw(k)*thl_env(k)
+           qtflx(k)= awqt_conv(k) - aw(k)*qt_env(k)
          enddo
+
+         ! get th & qv fluxes
+         thl_env = th
+         qt_env = qv
+         betathl = (th(4)-th(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         betaqt = (qv(4)-qv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         thl_env(1) = thl_env(2)-betathl*0.5_r8*(dzt(2)+dzt(1))
+         qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
+
+         if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
+         do k=1,nz
+           thflx(k)= awth(k) - aw(k)*thl_env(k)
+           qvflx(k)= awqv(k) - aw(k)*qt_env(k)
+         enddo
+
+         ! get qc fluxes
+         qt_env = qc
+         betaqt = (qc(4)-qc(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
+
+         if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
+         do k=1,nz
+           qcflx(k)= awqc(k) - aw(k)*qt_env(k)
+         enddo
+
        else
          ! collocated environment values
          do k=1,nz
-           thlflx(k)= awthl(k) - aw(k)*thl_zm(k)
-           qtflx(k) = awqt(k) - aw(k)*qt_zm(k)
+           ! get thl & qt fluxes
+           thlflx(k)= awthl_conv(k) - aw(k)*thl_env_zm(k)
+           qtflx(k) = awqt_conv(k) - aw(k)*qt_env_zm(k)
+
+           ! get th & qv fluxes
+           thflx(k) = awth(k) - aw(k)*th_zm(k)
+           qvflx(k) = awqv(k) - aw(k)*qv_zm(k)
+
+           ! get qc fluxes
+           qcflx(k) = awqc(k) - aw(k)*qc_zm(k)
          end do
        endif
 
@@ -594,6 +715,7 @@ module clubb_mf
      !     = Thl*Exner + L/cp*ql
      do i=1,niter
        wf = get_watf(t)
+       !wf = 1._r8
        t = thl/iex+get_alhl(wf)/cpair*qc   !as in (4)
 
        ! qsat, p is in pascal (check!)
@@ -604,6 +726,7 @@ module clubb_mf
      enddo
 
      wf = get_watf(t)
+     !wf = 1._r8 
      t = thl/iex+get_alhl(wf)/cpair*qc
 
      call qsat(t,p,es,qs)
