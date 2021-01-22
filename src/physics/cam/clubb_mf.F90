@@ -244,7 +244,7 @@ module clubb_mf
      real(r8),parameter                   :: fixent = 0.004_r8
      !
      ! to upwind (stagger environ values)
-     logical                              :: upwind = .false.
+     logical                              :: pupwind = .true.
      !
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 
@@ -408,7 +408,7 @@ module clubb_mf
 
        do i=1,clubb_mf_nup
 
-         if (upwind) then
+         if (pupwind) then
            betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
            betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
            upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
@@ -625,7 +625,7 @@ module clubb_mf
          qt_env_zm = qt_zm
        end if
 
-       if (upwind) then
+       if (pupwind) then
          ! staggered environment values
 
          ! get thl & qt fluxes
