@@ -666,7 +666,7 @@ module clubb_mf
 
        else
          ! collocated environment values
-         do k=2,nz
+         do k=2,nz-1
            ! get thl & qt fluxes
            thlflx(k)= awthl_conv(k) - aw(k)*thl_env_zm(k)
            qtflx(k) = awqt_conv(k) - aw(k)*qt_env_zm(k)
