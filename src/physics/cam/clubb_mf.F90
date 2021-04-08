@@ -635,9 +635,9 @@ module clubb_mf
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
 
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
-         do k=1,nz
-           thlflx(k)= awthl_conv(k) - aw(k)*thl_env(k)
-           qtflx(k)= awqt_conv(k) - aw(k)*qt_env(k)
+         do k=2,nz-1
+           thlflx(k)= awthl_conv(k) - aw(k)*thl_env(k+1)
+           qtflx(k)= awqt_conv(k) - aw(k)*qt_env(k+1)
          enddo
 
          ! get th & qv fluxes
@@ -649,9 +649,9 @@ module clubb_mf
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
 
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
-         do k=1,nz
-           thflx(k)= awth(k) - aw(k)*thl_env(k)
-           qvflx(k)= awqv(k) - aw(k)*qt_env(k)
+         do k=2,nz-1
+           thflx(k)= awth(k) - aw(k)*thl_env(k+1)
+           qvflx(k)= awqv(k) - aw(k)*qt_env(k+1)
          enddo
 
          ! get qc fluxes
@@ -660,13 +660,13 @@ module clubb_mf
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
 
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
-         do k=1,nz
-           qcflx(k)= awqc(k) - aw(k)*qt_env(k)
+         do k=2,nz-1
+           qcflx(k)= awqc(k) - aw(k)*qt_env(k+1)
          enddo
 
        else
          ! collocated environment values
-         do k=1,nz
+         do k=2,nz
            ! get thl & qt fluxes
            thlflx(k)= awthl_conv(k) - aw(k)*thl_env_zm(k)
            qtflx(k) = awqt_conv(k) - aw(k)*qt_env_zm(k)
