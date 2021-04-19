@@ -185,7 +185,7 @@ module clubb_mf
      integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
-     integer                              :: k,i,ih
+     integer                              :: k,i,kstart
      real(r8), dimension(clubb_mf_nup)    :: zcb
      real(r8)                             :: zcb_unset,                &
                                              wthv,                     &
