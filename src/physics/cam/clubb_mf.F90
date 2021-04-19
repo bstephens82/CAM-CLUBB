@@ -241,10 +241,10 @@ module clubb_mf
      real(r8),parameter                   :: fdd = 0._r8
      !
      ! fixed entrainment rate (debug only)
-     real(r8),parameter                   :: fixent = 0.004_r8
+     real(r8),parameter                   :: fixent = 1.e-3_r8
      !
      ! to upwind (stagger environ values)
-     logical                              :: pupwind = .true.
+     logical                              :: pupwind = .false.
      !
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 
@@ -390,20 +390,14 @@ module clubb_mf
              srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
              srfarea = srfarea+upa(1,i)
          end do
+         facqtu=srfarea*wqt/srfwqtu
+         facthvu=srfarea*wthv/srfwthvu
 
-         if ( (srfwqtu .gt. srfarea*wqt) .and. (wqt .gt. 0._r8)) then
-             facqtu=srfarea*wqt/srfwqtu
-         endif
-
-         if ( srfwthvu .gt. srfarea*wthv) then
-             facthvu=srfarea*wthv/srfwthvu
-         endif
-
-         if (debug) then
-           if ( masterproc ) then
-             write(iulog,*) "facqtu, facthvu ", facqtu, facthvu
-           end if
-         end if
+         !if (debug) then
+         !  if ( masterproc ) then
+         !    write(iulog,*) "facqtu, facthvu ", facqtu, facthvu
+         !  end if
+         !end if
        end if
 
        do i=1,clubb_mf_nup
@@ -471,11 +465,11 @@ module clubb_mf
 
            ! get buoyancy
            B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
-           if (debug) then
-             if ( masterproc ) then
-               write(iulog,*) "B(k,i), k, i ", B, k, i
-             end if
-           end if
+           !if (debug) then
+           !  if ( masterproc ) then
+           !    write(iulog,*) "B(k,i), k, i ", B, k, i
+           !  end if
+           !end if
 
            ! get wn^2
            wp = wb*ent(k+1,i)
@@ -524,11 +518,11 @@ module clubb_mf
              uprr(k,i) = uprr(k+1,i) &
                          - rho_zt(k)*dzt(k)*( supqt(k,i)*(1._r8-fdd) + sevap )
 
-             if (debug) then
-               if ( masterproc ) then
-                 write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
-               end if
-             end if
+             !if (debug) then
+             !  if ( masterproc ) then
+             !    write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
+             !  end if
+             !end if
 
              ! update source terms
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(k-1,i))
@@ -625,6 +619,11 @@ module clubb_mf
          qt_env_zm = qt_zm
        end if
 
+       kstart = 2
+       if (scalesrf) then
+         kstart = 1
+       end if
+
        if (pupwind) then
          ! staggered environment values
 
@@ -635,7 +634,7 @@ module clubb_mf
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
 
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
-         do k=2,nz-1
+         do k=kstart,nz-1
            thlflx(k)= awthl_conv(k) - aw(k)*thl_env(k+1)
            qtflx(k)= awqt_conv(k) - aw(k)*qt_env(k+1)
          enddo
@@ -649,7 +648,7 @@ module clubb_mf
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
 
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
-         do k=2,nz-1
+         do k=kstart,nz-1
            thflx(k)= awth(k) - aw(k)*thl_env(k+1)
            qvflx(k)= awqv(k) - aw(k)*qt_env(k+1)
          enddo
@@ -660,13 +659,13 @@ module clubb_mf
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
 
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
-         do k=2,nz-1
+         do k=kstart,nz-1
            qcflx(k)= awqc(k) - aw(k)*qt_env(k+1)
          enddo
 
        else
          ! collocated environment values
-         do k=2,nz-1
+         do k=kstart,nz-1
            ! get thl & qt fluxes
            thlflx(k)= awthl_conv(k) - aw(k)*thl_env_zm(k)
            qtflx(k) = awqt_conv(k) - aw(k)*qt_env_zm(k)

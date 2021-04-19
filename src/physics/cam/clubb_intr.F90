@@ -1830,6 +1830,12 @@ end subroutine clubb_init_cnst
                                            mf_qcflx,                  &
                                            mf_thforc,  mf_qvforc,     &
                                            mf_qcforc,  mf_rcm 
+!+++ARH
+   !
+   real(r8), dimension(pcols)           :: max_cfl
+   real(r8)                             :: cflval,            cflfac
+   logical                              :: cfllim
+!---ARH
    ! MF local vars
    real(r8), dimension(pverp)           :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
                                            dzt,        invrs_dzt,     & ! thermodynamic grid
@@ -2578,6 +2584,18 @@ end subroutine clubb_init_cnst
                                          mf_qcflx,                                            & ! output - plume diagnostics
                               mf_thlflx, mf_qtflx )                                             ! output - variables needed for solver
 
+!+++ARH
+           ! CFL limiter
+           s_aw(0)   = 0._r8
+           max_cfl(i)= 0._r8
+           do k=2,pverp
+             max_cfl(i) = max(max_cfl(i),dtime*invrs_dzt(k)*max(s_aw(k-1),s_aw(k)))
+           end do
+           cflval = 1._r8
+           cflfac = 1._r8
+           cfllim = .true.
+           if (max_cfl(i).gt.cflval.and.cfllim) cflfac = cflval/max_cfl(i)
+!---ARH
            ! pass MF turbulent advection term as CLUBB explicit forcing term
            rtm_forcing  = 0._r8
            thlm_forcing = 0._r8
@@ -2586,19 +2604,19 @@ end subroutine clubb_init_cnst
            mf_qcforc = 0._r8
            mf_rcm    = 0._r8
            do k=2,pverp
-             rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
+             rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1)))
            
-             thlm_forcing(k) = thlm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
+             thlm_forcing(k) = thlm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                                ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1)))
 
-             mf_thforc(k)   = mf_thforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
+             mf_thforc(k)   = mf_thforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_thflx(k)) - (rho_ds_zm(k-1) * mf_thflx(k-1)))
 
-             mf_qvforc(k)   = mf_qvforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
+             mf_qvforc(k)   = mf_qvforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_qvflx(k)) - (rho_ds_zm(k-1) * mf_qvflx(k-1)))           
 
-             mf_qcforc(k)   = mf_qcforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
+             mf_qcforc(k)   = mf_qcforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_qcflx(k)) - (rho_ds_zm(k-1) * mf_qcflx(k-1)))
 
              !mf_rcm(k)      = dtime * mf_qcforc(k)
