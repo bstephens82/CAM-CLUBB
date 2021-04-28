@@ -79,7 +79,7 @@ module clubb_mf
                                              rho_zt,  p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
                                              th,      qv,        qc,                & ! input
-                                             thl_zm,  qt_zm,                        & ! input
+                                             thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                                              wthl,    wqt,       pblh,              & ! input
                            dry_a,   moist_a,                                        & ! output - plume diagnostics
@@ -95,7 +95,7 @@ module clubb_mf
                            awth,    awqv,                                           & ! output - diagnosed fluxes BEFORE mean field update
                            awu,     awv,                                            & ! output - diagnosed fluxes BEFORE mean field update
                            thflx,   qvflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
-                                    qcflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
+                           thvflx,  qcflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
                            thlflx,  qtflx )                                           ! output - variables needed for solver
 
   ! ================================================================================= !
@@ -131,7 +131,7 @@ module clubb_mf
                                             qt,     qc,           & ! thermodynamic grid
                                             dzt,    rho_zt,       & ! thermodynamic grid
                                             p_zt,   iexner_zt,    & ! thermodynamic grid
-                                            thl_zm,               & ! momentum grid
+                                            thl_zm, thv_zm,       & ! momentum grid
                                             th_zm,  qv_zm,        &
                                             qt_zm,  qc_zm,        & ! momentum grid
                                             zm,                   & ! momentum grid
@@ -153,7 +153,7 @@ module clubb_mf
                                             awth,    awqv,        & ! momentum grid
                                             awu,     awv,         & ! momentum grid
                                             thflx,   qvflx,       & ! momentum grid 
-                                            qcflx,                & ! momentum grid
+                                            thvflx,  qcflx,       & ! momentum grid
                                             thlflx,  qtflx          ! momentum grid
 
      ! =============================================================================== !
@@ -161,10 +161,12 @@ module clubb_mf
      !
      ! sums over all plumes
      real(r8), dimension(nz)              :: moist_th,   dry_th,      & ! momentum grid
-                                             awqc,                    & ! momentum grid                     
+                                             awthv,      awqc,        & ! momentum grid                     
                                              awthl_conv, awqt_conv,   & ! momentum grid
+                                             thv_env_zm, awthv_conv,  & ! MKW
                                              thl_env_zm, qt_env_zm,   & ! momentum grid
-                                             thl_env,    qt_env         ! thermodynamic grid
+                                             thl_env,    qt_env,      & ! thermodynamic grid
+                                             thv_env
      !
      ! updraft properties
      real(r8), dimension(nz,clubb_mf_nup) :: upw,      upa,            & ! momentum grid
@@ -278,6 +280,7 @@ module clubb_mf
      aw        = 0._r8
      awth      = 0._r8
      awthl     = 0._r8
+     awthv     = 0._r8
      awqt      = 0._r8
      awqv      = 0._r8
      awqc      = 0._r8
@@ -286,6 +289,7 @@ module clubb_mf
      awu       = 0._r8
      awv       = 0._r8
      thlflx    = 0._r8
+     thvflx    = 0._r8
      qtflx     = 0._r8
      thflx     = 0._r8
      qvflx     = 0._r8
@@ -618,6 +622,9 @@ module clubb_mf
          qt_env = qt
          qt_env_zm = qt_zm
        end if
+       awthv_conv = awthv
+       thv_env = thv
+       thv_env_zm = thv_zm
 
        kstart = 2
        if (scalesrf) then
@@ -676,6 +683,9 @@ module clubb_mf
 
            ! get qc fluxes
            qcflx(k) = awqc(k) - aw(k)*qc_zm(k)
+
+           ! get thv flux
+           thvflx(k)= awthv_conv(k) - aw(k)*thv_env_zm(k)
          end do
        endif
 

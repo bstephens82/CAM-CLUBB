@@ -1206,6 +1206,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_S_AWU'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*u_i (EDMF)' )
       call addfld ( 'edmf_S_AWV'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*v_i (EDMF)' )
       call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux (EDMF)' )
+      call addfld ( 'edmf_thvflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thv flux (EDMF)' )
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux (EDMF)' )
       call addfld ( 'edmf_thlforc'  , (/ 'lev' /),  'A', 'K/s'     , 'thl forcing (EDMF)' )
       call addfld ( 'edmf_qtforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qt forcing (EDMF)' )
@@ -1333,6 +1334,7 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_S_AWU'    , 1, ' ')
          call add_default( 'edmf_S_AWV'    , 1, ' ')
          call add_default( 'edmf_thlflx'   , 1, ' ')
+         call add_default( 'edmf_thvflx'   , 1, ' ')
          call add_default( 'edmf_qtflx'    , 1, ' ')
          call add_default( 'edmf_thlforc'  , 1, ' ')
          call add_default( 'edmf_qtforc'   , 1, ' ')
@@ -1806,7 +1808,8 @@ end subroutine clubb_init_cnst
                                            s_awth_output,     s_awqv_output,       &
                                            s_awu_output,      s_awv_output,        &
                                            mf_thflx_output,   mf_qvflx_output,     &
-                                           mf_thlflx_output,  mf_qtflx_output
+                                           mf_thlflx_output,  mf_qtflx_output,     &
+                                           mf_thvflx_output
 
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
@@ -1827,7 +1830,7 @@ end subroutine clubb_init_cnst
                                            s_awu,      s_awv,         &
                                            mf_thflx,   mf_qvflx,      &
                                            mf_thlflx,  mf_qtflx,      &
-                                           mf_qcflx,                  &
+                                           mf_thvflx,  mf_qcflx,      &
                                            mf_thforc,  mf_qvforc,     &
                                            mf_qcforc,  mf_rcm 
 !+++ARH
@@ -2212,6 +2215,7 @@ end subroutine clubb_init_cnst
    s_awu_output(:,:)        = 0._r8
    s_awv_output(:,:)        = 0._r8
    mf_thlflx_output(:,:)    = 0._r8
+   mf_thvflx_output(:,:)    = 0._r8
    mf_qtflx_output(:,:)     = 0._r8
    mf_thflx_output(:,:)     = 0._r8
    mf_qvflx_output(:,:)     = 0._r8
@@ -2565,7 +2569,7 @@ end subroutine clubb_init_cnst
                                                       rho_zt,     p_in_Pa,    invrs_exner_zt, & ! input
                               um_in,     vm_in,       thlm_in,    rtm_in,     thv_ds_zt,      & ! input
                                                       th_zt,      qv_zt,      qc_zt,          & ! input
-                                                      thlm_zm_in, rtm_zm_in,                  & ! input
+                                                      thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
                                                       wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                               mf_dry_a,  mf_moist_a,                                          & ! output - plume diagnostics
@@ -2581,7 +2585,7 @@ end subroutine clubb_init_cnst
                               s_awth,    s_awqv,                                              & ! output - plume diagnostics
                               s_awu,     s_awv,                                               & ! output - plume diagnostics
                               mf_thflx,  mf_qvflx,                                            & ! output - plume diagnostics
-                                         mf_qcflx,                                            & ! output - plume diagnostics
+                              mf_thvflx, mf_qcflx,                                            & ! output - plume diagnostics
                               mf_thlflx, mf_qtflx )                                             ! output - variables needed for solver
 
 !+++ARH
@@ -2798,6 +2802,7 @@ end subroutine clubb_init_cnst
            mf_moist_v_output(i,pverp-k+1)   = mf_moist_v(k)
            mf_moist_qc_output(i,pverp-k+1)  = mf_moist_qc(k)
            mf_thlflx_output(i,pverp-k+1)    = mf_thlflx(k)
+           mf_thvflx_output(i,pverp-k+1)    = mf_thvflx(k)
            mf_qtflx_output(i,pverp-k+1)     = mf_qtflx(k)
            s_ae_output(i,pverp-k+1)         = s_ae(k)
            s_aw_output(i,pverp-k+1)         = s_aw(k)
@@ -3303,6 +3308,7 @@ end subroutine clubb_init_cnst
          tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
          if (do_clubb_mf) then
            mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair
+           mf_thvflx_output(i,k) = mf_thvflx_output(i,k)*rho(i,k)*cpair
            mf_qtflx_output(i,k)  = mf_qtflx_output(i,k)*rho(i,k)*latvap
          end if
       enddo
@@ -3561,6 +3567,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_S_AWU'    , s_awu_output,              pcols, lchnk )
      call outfld( 'edmf_S_AWV'    , s_awv_output,              pcols, lchnk )
      call outfld( 'edmf_thlflx'   , mf_thlflx_output,          pcols, lchnk )
+     call outfld( 'edmf_thvflx'   , mf_thvflx_output,          pcols, lchnk )
      call outfld( 'edmf_qtflx'    , mf_qtflx_output,           pcols, lchnk )
      call outfld( 'edmf_thlforc'  , mf_thlforc_output,         pcols, lchnk )
      call outfld( 'edmf_qtforc'   , mf_qtforc_output,          pcols, lchnk )
