@@ -16,7 +16,8 @@ module clubb_mf
   public :: integrate_mf, &
             clubb_mf_readnl, &
             do_clubb_mf, &
-            do_clubb_mf_diag
+            do_clubb_mf_diag, &
+            clubb_mf_nup
 
   real(r8) :: clubb_mf_L0   = 0._r8
   real(r8) :: clubb_mf_ent0 = 0._r8
@@ -75,13 +76,23 @@ module clubb_mf
 
   end subroutine clubb_mf_readnl
 
-  subroutine integrate_mf( nz,      dzt,     zm,      p_zm,      iexner_zm,         & ! input
-                                             rho_zt,  p_zt,      iexner_zt,         & ! input
+  subroutine integrate_mf( nz,                                                      & ! input
+                           rho_zm,  dzm,     zm,      p_zm,      iexner_zm,         & ! input
+                           rho_zt,  dzt,     zt,      p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
                                              th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,                        & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                                              wthl,    wqt,       pblh,              & ! input
+                           upa,                                                     & ! output - plume diagnostics
+                           upw,                                                     & ! output - plume diagnostics
+                           upqt,                                                    & ! output - plume diagnostics
+                           upthl,                                                   & ! output - plume diagnostics
+                           upthv,                                                   & ! output - plume diagnostics
+                           upth,                                                    & ! output - plume diagnostics
+                           upqc,                                                    & ! output - plume diagnostics
+                           upbuoy,                                                  & ! output - plume diagnostics
+                           ent,                                                     & ! output - plume diagnostics
                            dry_a,   moist_a,                                        & ! output - plume diagnostics
                            dry_w,   moist_w,                                        & ! output - plume diagnostics
                            dry_qt,  moist_qt,                                       & ! output - plume diagnostics
@@ -129,16 +140,28 @@ module clubb_mf
                                             thl,    thv,          & ! thermodynamic grid
                                             th,     qv,           & ! thermodynamic grid
                                             qt,     qc,           & ! thermodynamic grid
-                                            dzt,    rho_zt,       & ! thermodynamic grid
                                             p_zt,   iexner_zt,    & ! thermodynamic grid
+                                            dzt,    rho_zt,       & ! thermodynamic grid
+                                            zt,                   & ! thermodynamic grid
                                             thl_zm,               & ! momentum grid
-                                            th_zm,  qv_zm,        &
+                                            th_zm,  qv_zm,        & ! momentum grid
                                             qt_zm,  qc_zm,        & ! momentum grid
-                                            zm,                   & ! momentum grid
-                                            p_zm,   iexner_zm       ! momentum grid
+                                            p_zm,   iexner_zm,    & ! momentum grid
+                                            dzm,    rho_zm,       & ! momentum grid
+                                            zm                      ! momentum grid
 
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(inout)             :: pblh
+
+     real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
+                                                         upw,     & ! momentum grid
+                                                         upqt,    & ! momentum grid
+                                                         upthl,   & ! momentum grid
+                                                         upthv,   & ! momentum grid
+                                                         upth,    & ! momentum grid
+                                                         upqc,    & ! momentum grid
+                                                         upbuoy,  & ! momentum grid
+                                                         ent
 
      real(r8),dimension(nz), intent(out) :: dry_a,   moist_a,     & ! momentum grid
                                             dry_w,   moist_w,     & ! momentum grid
@@ -167,12 +190,8 @@ module clubb_mf
                                              thl_env,    qt_env         ! thermodynamic grid
      !
      ! updraft properties
-     real(r8), dimension(nz,clubb_mf_nup) :: upw,      upa,            & ! momentum grid
-                                             upqt,     upqc,           & ! momentum grid
-                                             upqv,     upqs,           & ! momentum grid
+     real(r8), dimension(nz,clubb_mf_nup) :: upqv,     upqs,           & ! momentum grid
                                              upql,     upqi,           & ! momentum grid
-                                             upth,     upthv,          & ! momentum grid
-                                                       upthl,          & ! momentum grid
                                              upu,      upv,            & ! momentum grid 
                                              uplmix                      ! momentum grid
      !
@@ -181,7 +200,7 @@ module clubb_mf
                                              uprr                        ! thermodynamic grid
      !
      ! entrainment profiles
-     real(r8), dimension(nz,clubb_mf_nup) :: ent,      entf              ! thermodynamic grid
+     real(r8), dimension(nz,clubb_mf_nup) :: entf                        ! thermodynamic grid
      integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
@@ -312,6 +331,7 @@ module clubb_mf
      upqi  = 0._r8
      upqv  = 0._r8
      upqs  = 0._r8
+     upbuoy= 0._r8
      uplmix= 0._r8
      uprr  = 0._r8
      supqt = 0._r8
@@ -495,6 +515,7 @@ module clubb_mf
              upqv(k+1,i)  = qtn - qcn
              uplmix(k+1,i)= lmixn
              upth(k+1,i)  = thn
+             upbuoy(k+1,i)= B
            else
              exit
            end if
@@ -696,6 +717,7 @@ module clubb_mf
      !local variables
      integer  :: niter,i
      real(r8) :: diff,t,qstmp,qcold,es,wf
+     logical  :: noice = .true.
 
      ! max number of iterations
      niter=50
@@ -713,8 +735,12 @@ module clubb_mf
      ! T   = Th*Exner=(Thl+L/cp*ql/Exner)*Exner    (4)
      !     = Thl*Exner + L/cp*ql
      do i=1,niter
-       wf = get_watf(t)
-       !wf = 1._r8
+
+       if (noice) then
+         wf = 1._r8
+       else    
+         wf = get_watf(t)
+       end if
        t = thl/iex+get_alhl(wf)/cpair*qc   !as in (4)
 
        ! qsat, p is in pascal (check!)
@@ -724,8 +750,11 @@ module clubb_mf
        if (abs(qc-qcold)<diff) exit
      enddo
 
-     wf = get_watf(t)
-     !wf = 1._r8 
+     if (noice) then
+       wf = 1._r8
+     else
+       wf = get_watf(t)
+     end if
      t = thl/iex+get_alhl(wf)/cpair*qc
 
      call qsat(t,p,es,qs)
