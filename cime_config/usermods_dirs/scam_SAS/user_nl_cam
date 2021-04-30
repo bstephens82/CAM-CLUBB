@@ -15,3 +15,4 @@ scm_relax_top_p        = 200.
 scm_relax_linear             = .true.
 scm_relax_tau_bot_sec                = 864000.
 scm_relax_tau_top_sec                = 172800.
+scm_iop_lhflxshflxtg = .true.
