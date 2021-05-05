@@ -619,6 +619,7 @@ module clubb_mf
            awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
            awthl(k)= awthl(k)+ upa(k,i)*upw(k,i)*upthl(k,i) 
+           awthv(k)= awthv(k)+ upa(k,i)*upw(k,i)*upthv(k,i) 
            awth(k) = awth(k) + upa(k,i)*upw(k,i)*upth(k,i)
            awqt(k) = awqt(k) + upa(k,i)*upw(k,i)*upqt(k,i)
            awqv(k) = awqv(k) + upa(k,i)*upw(k,i)*upqv(k,i)
