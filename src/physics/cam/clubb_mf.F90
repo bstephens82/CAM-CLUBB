@@ -270,9 +270,6 @@ module clubb_mf
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 
      !
-     ! to dry flux
-     logical                              :: dryflux = .false.
-     !
      ! to debug flag
      logical                              :: debug  = .false.
 
@@ -629,21 +626,12 @@ module clubb_mf
          enddo
        enddo
 
-       if (dryflux) then
-         awthl_conv = awth
-         awqt_conv = awqv
-         thl_env = th
-         thl_env_zm = th_zm
-         qt_env = qv
-         qt_env_zm = qv_zm
-       else
-         awthl_conv = awthl       
-         awqt_conv = awqt
-         thl_env = thl
-         thl_env_zm = thl_zm
-         qt_env = qt
-         qt_env_zm = qt_zm
-       end if
+       awthl_conv = awthl       
+       awqt_conv = awqt
+       thl_env = thl
+       thl_env_zm = thl_zm
+       qt_env = qt
+       qt_env_zm = qt_zm
        awthv_conv = awthv
        thv_env = thv
        thv_env_zm = thv_zm
