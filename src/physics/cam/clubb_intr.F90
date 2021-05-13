@@ -2703,8 +2703,8 @@ end subroutine clubb_init_cnst
            ! compute ensemble cloud
            mf_rcm       = 0._r8
            mf_cloudfrac = 0._r8
-           mf_rcm(:pverp)      = s_aw(:pverp)*mf_moist_qc(:pverp)
-           mf_cloudfrac(:pverp)= s_aw(:pverp)
+           mf_rcm(:pverp)      = (1._r8 - s_ae(:pverp))*mf_moist_qc(:pverp)
+           mf_cloudfrac(:pverp)= 1._r8 - s_ae(:pverp)
 
          end if
 
@@ -3407,6 +3407,7 @@ end subroutine clubb_init_cnst
    
    do k=1,pverp
       do i=1,ncol
+         wpthvp(i,k)         = wpthvp(i,k)*rho(i,k)*cpair
          wpthlp_output(i,k)  = (wpthlp(i,k)-(apply_const*wpthlp_const))*rho(i,k)*cpair !  liquid water potential temperature flux
          wprtp_output(i,k)   = (wprtp(i,k)-(apply_const*wprtp_const))*rho(i,k)*latvap  !  total water mixig ratio flux
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
@@ -3613,7 +3614,7 @@ end subroutine clubb_init_cnst
      temp2dp(:ncol,:) = rcm_in_layer(:ncol,:) * 1000._r8
      call outfld( 'RCMINLAYER_CLUBB', temp2dp,                 pcols, lchnk )
 
-     temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
+     temp2dp(:ncol,:) = wpthvp(:ncol,:)
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out,           pcols, lchnk )
