@@ -1249,8 +1249,8 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_thforc'   , (/ 'lev' /),  'A', 'K/s'     , 'th forcing (EDMF)' )
       call addfld ( 'edmf_qvforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qv forcing (EDMF)' )
       call addfld ( 'edmf_qcforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qc forcing (EDMF)' )
-      call addfld ( 'edmf_rcm'      , (/ 'lev' /),  'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
-      call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
+      call addfld ( 'edmf_rcm'      , (/ 'ilev' /),  'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
+      call addfld ( 'edmf_cloudfrac', (/ 'ilev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
 
       call add_hist_coord('clubb_mf_nup', clubb_mf_nup, 'plume ensemble size')
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
@@ -1894,13 +1894,13 @@ end subroutine clubb_init_cnst
                                            s_awu_output,      s_awv_output,        &
                                            mf_thflx_output,   mf_qvflx_output,     &
                                            mf_thlflx_output,  mf_qtflx_output,     &
-                                           mf_thvflx_output
+                                           mf_thvflx_output,                       &
+                                           mf_rcm_output,     mf_cloudfrac_output 
 
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
                                            mf_thforc_output,  mf_qvforc_output,    & ! thermodynamic grid
-                                           mf_qcforc_output,                       & ! thermodynamic grid
-                                           mf_rcm_output,     mf_cloudfrac_output    ! momentum grid     
+                                           mf_qcforc_output                          ! thermodynamic grid
    ! MF plume level outputs
    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_upa_flip,         &
                                                               mf_upw_flip,         &
@@ -2787,8 +2787,8 @@ end subroutine clubb_init_cnst
            ! compute ensemble cloud
            mf_rcm       = 0._r8
            mf_cloudfrac = 0._r8
-           mf_rcm(:pverp)      = s_aw(:pverp)*mf_moist_qc(:pverp)
-           mf_cloudfrac(:pverp)= s_aw(:pverp)
+           mf_rcm(:pverp)      = mf_moist_a(:pverp)*mf_moist_qc(:pverp)
+           mf_cloudfrac(:pverp)= mf_moist_a(:pverp)
 
          end if
 
