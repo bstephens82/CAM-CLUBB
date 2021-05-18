@@ -265,7 +265,7 @@ module clubb_mf
      real(r8),parameter                   :: fixent = 1.e-3_r8
      !
      ! to upwind (stagger environ values)
-     logical                              :: pupwind = .false.
+     logical                              :: pupwind = .true.
      !
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 

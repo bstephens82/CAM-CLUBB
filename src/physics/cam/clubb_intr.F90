@@ -255,6 +255,18 @@ module clubb_intr
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
     dnifzm_idx = -1       ! ZM detrained convective cloud ice num concen.
 
+  integer :: &
+    qt_macmic_idx, &
+    thl_macmic_idx, &
+    rcm_macmic_idx, &
+    cldfrac_macmic_idx, &
+    wpthlp_macmic_idx, &
+    wprtp_macmic_idx, &
+    wpthvp_macmic_idx, &
+    mf_wpthlp_macmic_idx, &
+    mf_wprtp_macmic_idx, &
+    mf_wpthvp_macmic_idx  
+
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
 
@@ -296,11 +308,15 @@ module clubb_intr
     !  Add CLUBB fields to pbuf 
     use physics_buffer,  only: pbuf_add_field, dtype_r8, dyn_time_lvls
     use subcol_utils,    only: subcol_get_scheme
+
+    integer :: cld_macmic_num_steps
     
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
                        deep_scheme_out                 = deep_scheme, & 
                        history_budget_out              = history_budget, &
-                       history_budget_histfile_num_out = history_budget_histfile_num )
+                       history_budget_histfile_num_out = history_budget_histfile_num, &
+                       cld_macmic_num_steps_out        = cld_macmic_num_steps)
+
     subcol_scheme = subcol_get_scheme()
 
     if (trim(subcol_scheme) == 'SILHS') then
@@ -381,6 +397,19 @@ module clubb_intr
     call pbuf_add_field('wprtp_mc_zt','global', dtype_r8, (/pcols,pverp/), wprtp_mc_zt_idx)
     call pbuf_add_field('wpthlp_mc_zt','global',dtype_r8, (/pcols,pverp/), wpthlp_mc_zt_idx)
     call pbuf_add_field('rtpthlp_mc_zt','global',dtype_r8,(/pcols,pverp/), rtpthlp_mc_zt_idx)
+
+    call pbuf_add_field('QT_macmic'           ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), qt_macmic_idx)
+    call pbuf_add_field('THETAL_macmic'       ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), thl_macmic_idx)
+    call pbuf_add_field('RCM_CLUBB_macmic'    ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), rcm_macmic_idx)
+    call pbuf_add_field('CLDFRAC_CLUBB_macmic','global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
+    call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
+    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
+    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    if (do_clubb_mf) then
+      call pbuf_add_field('edmf_thlflx_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
+      call pbuf_add_field('edmf_qtflx_macmic'  ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wprtp_macmic_idx)
+      call pbuf_add_field('edmf_thvflx_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
+    end if
 
 #endif 
 
@@ -845,6 +874,8 @@ end subroutine clubb_init_cnst
     ! The similar name to clubb_history is unfortunate...
     logical :: history_amwg, history_clubb
 
+    integer :: cld_macmic_num_steps
+
     integer :: err_code                   ! Code for when CLUBB fails
     integer :: j, k, l                    ! Indices
     integer :: ntop_eddy                        ! Top    interface level to which eddy vertical diffusion is applied ( = 1 )
@@ -897,7 +928,8 @@ end subroutine clubb_init_cnst
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
                       history_amwg_out=history_amwg, &
-                      history_clubb_out=history_clubb)
+                      history_clubb_out=history_clubb, &
+                      cld_macmic_num_steps_out    = cld_macmic_num_steps)
 
     !  Select variables to apply tendencies back to CAM
  
@@ -1184,6 +1216,7 @@ end subroutine clubb_init_cnst
     ! ---------------------------------------------------------------------------- !
     ! Below are for detailed analysis of EDMF Scheme                               !
     ! ---------------------------------------------------------------------------- !
+
     if (do_clubb_mf) then
       call addfld ( 'edmf_DRY_A'    , (/ 'ilev' /), 'A', 'fraction', 'Dry updraft area fraction (EDMF)' )
       call addfld ( 'edmf_MOIST_A'  , (/ 'ilev' /), 'A', 'fraction', 'Moist updraft area fraction (EDMF)' )
@@ -1230,6 +1263,20 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_upent'    , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'k1/m'    , 'Plume updraft entrainment rate (EDMF)' )
       call addfld ( 'edmf_upbuoy'   , (/  'lev', 'clubb_mf_nup' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
     end if 
+
+    call add_hist_coord('macmic_num_steps', cld_macmic_num_steps, 'macro/micro cycle index')
+    call addfld ('QT_macmic'           , (/ 'ilev', 'macmic_num_steps' /), 'A', 'kg/kg'   , 'QT at macro/micro substep')
+    call addfld ('THETAL_macmic'       , (/ 'ilev', 'macmic_num_steps' /), 'A', 'K'       , 'THETAL at macro/micro substep')
+    call addfld ('RCM_CLUBB_macmic'    , (/ 'ilev', 'macmic_num_steps' /), 'A', 'kg/kg'   , 'RCM CLUBB at macro/micro substep')
+    call addfld ('CLDFRAC_CLUBB_macmic', (/ 'ilev', 'macmic_num_steps' /), 'A', 'fraction', 'CLDFRAC CLUBB at macro/micro substep')
+    call addfld ('WPTHLP_CLUBB_macmic' , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'Heat Flux at macro/micro substep')
+    call addfld ('WPRTP_CLUBB_macmic'  , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'Moisture Flux at macro/micro substep')
+    call addfld ('WPTHVP_CLUBB_macmic' , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'Buoyancy Flux at macro/micro substep')
+    if (do_clubb_mf) then
+      call addfld ( 'edmf_thlflx_macmic', (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'thl flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_thvflx_macmic', (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'thv flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_qtflx_macmic' , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'qt flux (EDMF) at macro/micro substep' )
+    end if
 
     !  Initialize statistics, below are dummy variables
     dum1 = 300._r8
@@ -1358,6 +1405,19 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_qcforc'   , 1, ' ')
          call add_default( 'edmf_rcm'      , 1, ' ')
          call add_default( 'edmf_cloudfrac', 1, ' ')
+       end if
+
+       call add_default( 'QT_macmic'           , 1, ' ')
+       call add_default( 'THETAL_macmic'       , 1, ' ')
+       call add_default( 'RCM_CLUBB_macmic'    , 1, ' ')
+       call add_default( 'CLDFRAC_CLUBB_macmic', 1, ' ')
+       call add_default( 'WPTHLP_CLUBB_macmic' , 1, ' ')
+       call add_default( 'WPRTP_CLUBB_macmic'  , 1, ' ')
+       call add_default( 'WPTHVP_CLUBB_macmic' , 1, ' ')
+       if (do_clubb_mf_diag) then
+         call add_default( 'edmf_thlflx_macmic' , 1, ' ')
+         call add_default( 'edmf_qtflx_macmic'  , 1, ' ')
+         call add_default( 'edmf_thvflx_macmic' , 1, ' ')
        end if
 
     end if
@@ -1797,6 +1857,17 @@ end subroutine clubb_init_cnst
    real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
    real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
+   real(r8), pointer :: qt_macmic(:,:)
+   real(r8), pointer :: thl_macmic(:,:)
+   real(r8), pointer :: rcm_macmic(:,:)
+   real(r8), pointer :: cldfrac_macmic(:,:)
+   real(r8), pointer :: wpthlp_macmic(:,:)
+   real(r8), pointer :: wprtp_macmic(:,:)
+   real(r8), pointer :: wpthvp_macmic(:,:)
+   real(r8), pointer :: mf_thlflx_macmic(:,:)
+   real(r8), pointer :: mf_qtflx_macmic(:,:)
+   real(r8), pointer :: mf_thvflx_macmic(:,:)
+
    real(r8)                          :: stend(pcols,pver)
    real(r8)                          :: qvtend(pcols,pver)
    real(r8)                          :: qctend(pcols,pver)
@@ -2032,6 +2103,19 @@ end subroutine clubb_init_cnst
    call pbuf_get_field(pbuf, wprtp_mc_zt_idx,   wprtp_mc_zt)
    call pbuf_get_field(pbuf, wpthlp_mc_zt_idx,  wpthlp_mc_zt)
    call pbuf_get_field(pbuf, rtpthlp_mc_zt_idx, rtpthlp_mc_zt)
+
+   call pbuf_get_field(pbuf, qt_macmic_idx, qt_macmic)
+   call pbuf_get_field(pbuf, thl_macmic_idx, thl_macmic)
+   call pbuf_get_field(pbuf, rcm_macmic_idx, rcm_macmic)
+   call pbuf_get_field(pbuf, cldfrac_macmic_idx, cldfrac_macmic)
+   call pbuf_get_field(pbuf, wpthlp_macmic_idx, wpthlp_macmic)
+   call pbuf_get_field(pbuf, wprtp_macmic_idx, wprtp_macmic)
+   call pbuf_get_field(pbuf, wpthvp_macmic_idx, wpthvp_macmic)
+   if (do_clubb_mf) then
+     call pbuf_get_field(pbuf, mf_wpthlp_macmic_idx, mf_thlflx_macmic)
+     call pbuf_get_field(pbuf, mf_wprtp_macmic_idx, mf_qtflx_macmic)
+     call pbuf_get_field(pbuf, mf_wpthvp_macmic_idx, mf_thvflx_macmic)
+   end if
 
    ! Initialize the apply_const variable (note special logic is due to eularian backstepping)
    if (clubb_do_adv .and. (is_first_step() .or. all(wpthlp(1:ncol,1:pver)  ==  0._r8))) then
@@ -2703,8 +2787,8 @@ end subroutine clubb_init_cnst
            ! compute ensemble cloud
            mf_rcm       = 0._r8
            mf_cloudfrac = 0._r8
-           mf_rcm(:pverp)      = (1._r8 - s_ae(:pverp))*mf_moist_qc(:pverp)
-           mf_cloudfrac(:pverp)= 1._r8 - s_ae(:pverp)
+           mf_rcm(:pverp)      = s_aw(:pverp)*mf_moist_qc(:pverp)
+           mf_cloudfrac(:pverp)= s_aw(:pverp)
 
          end if
 
@@ -3407,17 +3491,34 @@ end subroutine clubb_init_cnst
    
    do k=1,pverp
       do i=1,ncol
-         wpthvp(i,k)         = wpthvp(i,k)*rho(i,k)*cpair
          wpthlp_output(i,k)  = (wpthlp(i,k)-(apply_const*wpthlp_const))*rho(i,k)*cpair !  liquid water potential temperature flux
          wprtp_output(i,k)   = (wprtp(i,k)-(apply_const*wprtp_const))*rho(i,k)*latvap  !  total water mixig ratio flux
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
          tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
+         wpthvp(i,k)         = wpthvp(i,k)*rho(i,k)*cpair 
          if (do_clubb_mf) then
            mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair
            mf_thvflx_output(i,k) = mf_thvflx_output(i,k)*rho(i,k)*cpair
            mf_qtflx_output(i,k)  = mf_qtflx_output(i,k)*rho(i,k)*latvap
          end if
+      enddo
+   enddo
+
+   do k=1,pverp
+      do i=1,ncol
+        qt_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = rtm(:ncol,:pverp)
+        thl_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = thlm(:ncol,:pverp)
+        rcm_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = rcm(:ncol,:pverp)
+        cldfrac_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = cloud_frac(:ncol,:pverp)
+        wpthlp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wpthlp_output(:ncol,:pverp)
+        wprtp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wprtp_output(:ncol,:pverp)
+        wpthvp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wpthvp(:ncol,:pverp)
+        if (do_clubb_mf) then
+          mf_thlflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_thlflx_output(:ncol,:pverp)
+          mf_qtflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_qtflx_output(:ncol,:pverp)
+          mf_thvflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_thvflx_output(:ncol,:pverp)
+        end if
       enddo
    enddo
    
@@ -3647,7 +3748,6 @@ end subroutine clubb_init_cnst
    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                 pcols, lchnk )
    call outfld( 'QSATFAC',          qsatfac,                 pcols, lchnk)
 
-   
    ! --------------------------------------------------------------- !
    ! Writing state variables after EDMF scheme for detailed analysis !
    ! --------------------------------------------------------------- !
@@ -3696,6 +3796,22 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_upent'    , mf_upent_output,           pcols, lchnk )
    end if
 
+   if (macmic_it==cld_macmic_num_steps) then
+     call outfld( 'QT_macmic'            , qt_macmic,            pcols, lchnk )
+     call outfld( 'THETAL_macmic'        , thl_macmic,           pcols, lchnk )
+     call outfld( 'RCM_CLUBB_macmic'     , rcm_macmic,           pcols, lchnk )
+     call outfld( 'CLDFRAC_CLUBB_macmic' , cldfrac_macmic,       pcols, lchnk )
+
+     call outfld( 'WPTHLP_CLUBB_macmic'  , wpthlp_macmic,        pcols, lchnk )    
+     call outfld( 'WPRTP_CLUBB_macmic'   , wprtp_macmic,         pcols, lchnk )
+     call outfld( 'WPTHVP_CLUBB_macmic'  , wpthvp_macmic,        pcols, lchnk )
+     if (do_clubb_mf) then
+       call outfld( 'edmf_thlflx_macmic'   , mf_thlflx_macmic,     pcols, lchnk )
+       call outfld( 'edmf_qtflx_macmic'    , mf_qtflx_macmic,      pcols, lchnk )
+       call outfld( 'edmf_thvflx_macmic'   , mf_thvflx_macmic,     pcols, lchnk )
+     end if
+   end if
+   
    !  Output CLUBB history here
    if (l_stats) then 
       
