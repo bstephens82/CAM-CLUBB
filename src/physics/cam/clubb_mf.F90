@@ -255,7 +255,7 @@ module clubb_mf
      logical                              :: do_condensation = .true.
      !
      ! to precip or not to precip
-     logical                              :: do_precip = .true.
+     logical                              :: do_precip = .false.
      !
      ! evaporation efficiency after Suselj etal 2019
      real(r8),parameter                   :: ke = 2.5e-4_r8
