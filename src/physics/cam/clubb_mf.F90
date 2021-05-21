@@ -100,6 +100,7 @@ module clubb_mf
                            dry_u,   moist_u,                                        & ! output - plume diagnostics
                            dry_v,   moist_v,                                        & ! output - plume diagnostics
                                     moist_qc,                                       & ! output - plume diagnostics
+                                    precc,                                          & ! output - plume diagnostics                      
                            ae,      aw,                                             & ! output - diagnosed fluxes BEFORE mean field update
                            awthl,   awqt,                                           & ! output - diagnosed fluxes BEFORE mean field update
                            awql,    awqi,                                           & ! output - diagnosed fluxes BEFORE mean field update
@@ -170,6 +171,7 @@ module clubb_mf
                                             dry_u,   moist_u,     & ! momentum grid
                                             dry_v,   moist_v,     & ! momentum grid
                                                      moist_qc,    & ! momentum grid
+                                                     precc,       & ! thermodynamic grid
                                             ae,      aw,          & ! momentum grid
                                             awthl,   awqt,        & ! momentum grid
                                             awql,    awqi,        & ! momentum grid
@@ -253,7 +255,7 @@ module clubb_mf
      logical                              :: do_condensation = .true.
      !
      ! to precip or not to precip
-     logical                              :: do_precip = .false.
+     logical                              :: do_precip = .true.
      !
      ! evaporation efficiency after Suselj etal 2019
      real(r8),parameter                   :: ke = 2.5e-4_r8
@@ -292,6 +294,7 @@ module clubb_mf
      dry_v     = 0._r8
      moist_v   = 0._r8
      moist_qc  = 0._r8
+     precc     = 0._r8
      ! outputs - variables needed for solver
      aw        = 0._r8
      awth      = 0._r8
@@ -623,6 +626,7 @@ module clubb_mf
            awql(k) = awql(k) + upa(k,i)*upw(k,i)*upql(k,i)
            awqi(k) = awqi(k) + upa(k,i)*upw(k,i)*upqi(k,i)
            awqc(k) = awqc(k) + upa(k,i)*upw(k,i)*upqc(k,i)
+           precc(k)= precc(k)+ upa(k,i)*uprr(k,i)
          enddo
        enddo
 
