@@ -171,7 +171,7 @@ module clubb_mf
                                             dry_u,   moist_u,     & ! momentum grid
                                             dry_v,   moist_v,     & ! momentum grid
                                                      moist_qc,    & ! momentum grid
-                                                     precc,       & ! thermodynamic grid
+                                                     precc,       & ! momentum grid
                                             ae,      aw,          & ! momentum grid
                                             awthl,   awqt,        & ! momentum grid
                                             awql,    awqi,        & ! momentum grid

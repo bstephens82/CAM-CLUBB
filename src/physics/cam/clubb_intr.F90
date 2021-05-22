@@ -1231,7 +1231,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_DRY_V'    , (/ 'ilev' /), 'A', 'm/s'     , 'Dry updraft meridional velocity (EDMF)' )
       call addfld ( 'edmf_MOIST_V'  , (/ 'ilev' /), 'A', 'm/s'     , 'Moist updraft meridional velocity (EDMF)' )
       call addfld ( 'edmf_MOIST_QC' , (/ 'ilev' /), 'A', 'kg/kg'   , 'Moist updraft condensate mixing ratio (EDMF)' )
-      call addfld ( 'edmf_precc'    ,  (/ 'lev' /), 'A', 'm/s'     , 'Moist updraft precipitation rate (EDMF)' )
+      call addfld ( 'edmf_precc'    , (/ 'ilev' /), 'A', 'm/s'     , 'Moist updraft precipitation rate (EDMF)' )
       call addfld ( 'edmf_S_AE'     , (/ 'ilev' /), 'A', 'fraction', '1 minus sum of a_i*w_i (EDMF)' )
       call addfld ( 'edmf_S_AW'     , (/ 'ilev' /), 'A', 'm/s'     , 'Sum of a_i*w_i (EDMF)' )
       call addfld ( 'edmf_S_AWTHL'  , (/ 'ilev' /), 'A', 'K m/s'   , 'Sum of a_i*w_i*thl_i (EDMF)' )
@@ -1897,12 +1897,13 @@ end subroutine clubb_init_cnst
                                            mf_thflx_output,   mf_qvflx_output,     &
                                            mf_thlflx_output,  mf_qtflx_output,     &
                                            mf_thvflx_output,                       &
-                                           mf_rcm_output,     mf_cloudfrac_output 
+                                           mf_rcm_output,     mf_cloudfrac_output, &
+                                           mf_precc_output 
 
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
                                            mf_thforc_output,  mf_qvforc_output,    & ! thermodynamic grid
-                                           mf_qcforc_output,  mf_precc_output        ! thermodynamic grid
+                                           mf_qcforc_output                          ! thermodynamic grid
    ! MF plume level outputs
    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_upa_flip,         &
                                                               mf_upw_flip,         &
@@ -2989,13 +2990,13 @@ end subroutine clubb_init_cnst
            mf_qvflx_output(i,pverp-k+1)     = mf_qvflx(k)
            mf_rcm_output(i,pverp-k+1)       = mf_rcm(k)
            mf_cloudfrac_output(i,pverp-k+1) = mf_cloudfrac(k)
+           mf_precc_output(i,pverp-k+1)     = mf_precc(k)
            if (k.ne.1) then
              mf_thlforc_output(i,pverp-k+1)            = thlm_forcing(k)
              mf_qtforc_output(i,pverp-k+1)             = rtm_forcing(k)
              mf_thforc_output(i,pverp-k+1)             = mf_thforc(k)
              mf_qvforc_output(i,pverp-k+1)             = mf_qvforc(k)
              mf_qcforc_output(i,pverp-k+1)             = mf_qcforc(k)
-             mf_precc_output(i,pverp-k+1)              = mf_precc(k)
              mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup) = mf_upbuoy(k,:clubb_mf_nup)
            end if
 
@@ -3507,9 +3508,7 @@ end subroutine clubb_init_cnst
            mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair
            mf_thvflx_output(i,k) = mf_thvflx_output(i,k)*rho(i,k)*cpair
            mf_qtflx_output(i,k)  = mf_qtflx_output(i,k)*rho(i,k)*latvap
-           if (k.ne.pverp) then
-             mf_precc_output(i,k)     = mf_precc_output(i,k)/rhoh2o
-           end if
+           mf_precc_output(i,k)  = mf_precc_output(i,k)/rhoh2o
          end if
       enddo
    enddo
