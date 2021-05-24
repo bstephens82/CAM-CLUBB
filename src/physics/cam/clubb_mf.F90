@@ -632,11 +632,11 @@ module clubb_mf
 
        awthl_conv = awthl       
        awqt_conv = awqt
+       awthv_conv = awthv
        thl_env = thl
        thl_env_zm = thl_zm
        qt_env = qt
        qt_env_zm = qt_zm
-       awthv_conv = awthv
        thv_env = thv
        thv_env_zm = thv_zm
 
@@ -660,6 +660,13 @@ module clubb_mf
            qtflx(k)= awqt_conv(k) - aw(k)*qt_env(k+1)
          enddo
 
+         ! get thv fluxes
+         betathl = (thv_env(4)-thv_env(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         thv_env(1) = thv_env(2)-betathl*0.5_r8*(dzt(2)+dzt(1))
+         do k=kstart,nz-1
+           thvflx(k)= awthv_conv(k) - aw(k)*thv_env(k+1)
+         enddo
+
          ! get th & qv fluxes
          thl_env = th
          qt_env = qv
@@ -667,7 +674,6 @@ module clubb_mf
          betaqt = (qv(4)-qv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
          thl_env(1) = thl_env(2)-betathl*0.5_r8*(dzt(2)+dzt(1))
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
-
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
          do k=kstart,nz-1
            thflx(k)= awth(k) - aw(k)*thl_env(k+1)
@@ -678,7 +684,6 @@ module clubb_mf
          qt_env = qc
          betaqt = (qc(4)-qc(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
          qt_env(1) = qt_env(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))
-
          if (qt_env(1).lt.0._r8) qt_env(1) = 0._r8
          do k=kstart,nz-1
            qcflx(k)= awqc(k) - aw(k)*qt_env(k+1)
@@ -691,15 +696,15 @@ module clubb_mf
            thlflx(k)= awthl_conv(k) - aw(k)*thl_env_zm(k)
            qtflx(k) = awqt_conv(k) - aw(k)*qt_env_zm(k)
 
+           ! get thv flux
+           thvflx(k)= awthv_conv(k) - aw(k)*thv_env_zm(k)
+
            ! get th & qv fluxes
            thflx(k) = awth(k) - aw(k)*th_zm(k)
            qvflx(k) = awqv(k) - aw(k)*qv_zm(k)
 
            ! get qc fluxes
            qcflx(k) = awqc(k) - aw(k)*qc_zm(k)
-
-           ! get thv flux
-           thvflx(k)= awthv_conv(k) - aw(k)*thv_env_zm(k)
          end do
        endif
 
