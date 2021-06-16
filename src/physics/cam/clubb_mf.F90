@@ -252,7 +252,7 @@ module clubb_mf
                                              pblhmin  = 100._r8
      !
      ! to condensate or not to condensate
-     logical                              :: do_condensation = .true.
+     logical                              :: do_condensation = .false.
      !
      ! to precip or not to precip
      logical                              :: do_precip = .false.
