@@ -253,7 +253,7 @@ module clubb_intr
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
     difzm_idx  = -1,    & ! ZM detrained convective cloud ice mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
-    dnifzm_idx = -1       ! ZM detrained convective cloud ice num concen.
+    dnifzm_idx = -1      ! ZM detrained convective cloud ice num concen.
 
   integer :: &
     qt_macmic_idx, &
@@ -265,7 +265,7 @@ module clubb_intr
     wpthvp_macmic_idx, &
     mf_wpthlp_macmic_idx, &
     mf_wprtp_macmic_idx, &
-    mf_wpthvp_macmic_idx  
+    mf_wpthvp_macmic_idx
 
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
@@ -1005,7 +1005,6 @@ end subroutine clubb_init_cnst
     naai_idx        = pbuf_get_index('NAAI')
     npccn_idx       = pbuf_get_index('NPCCN')
 
-
     iisclr_rt  = -1
     iisclr_thl = -1
     iisclr_CO2 = -1
@@ -1212,7 +1211,7 @@ end subroutine clubb_init_cnst
 
     call addfld ('QSATFAC',          (/ 'lev' /),  'A', '-', 'Subgrid cloud water saturation scaling factor')
     call addfld ('KVH_CLUBB',        (/ 'ilev' /), 'A', 'm2/s', 'CLUBB vertical diffusivity of heat/moisture on interface levels')
-
+    call addfld ('TKE_CLUBB',        (/ 'ilev' /), 'A', 'm2/s2', 'CLUBB tke on interface levels')
     ! ---------------------------------------------------------------------------- !
     ! Below are for detailed analysis of EDMF Scheme                               !
     ! ---------------------------------------------------------------------------- !
@@ -1252,6 +1251,9 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_qcforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qc forcing (EDMF)' )
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /),  'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
       call addfld ( 'edmf_cloudfrac', (/ 'ilev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
+      call addfld ( 'edmf_ztop'     ,  horiz_only,   'A', 'm'      , 'edmf ztop')
+      call addfld ( 'edmf_L0'       ,  horiz_only,   'A', 'm'      , 'edmf dynamic L0')
+      call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
 
       call add_hist_coord('clubb_mf_nup', clubb_mf_nup, 'plume ensemble size')
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
@@ -1341,6 +1343,7 @@ end subroutine clubb_init_cnst
        call add_default('QT',               1, ' ')
        call add_default('THETAL',           1, ' ')
        call add_default('CONCLD',           1, ' ')
+       call add_default('TKE_CLUBB',        1, ' ')
     end if
       
      if (history_amwg) then
@@ -1407,6 +1410,9 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_qcforc'   , 1, ' ')
          call add_default( 'edmf_rcm'      , 1, ' ')
          call add_default( 'edmf_cloudfrac', 1, ' ')
+         call add_default( 'edmf_ztop'     , 1, ' ')
+         call add_default( 'edmf_L0'       , 1, ' ')
+         call add_default( 'edmf_cape'     , 1, ' ')
        end if
 
        call add_default( 'QT_macmic'           , 1, ' ')
@@ -1519,7 +1525,6 @@ end subroutine clubb_init_cnst
    use physics_types,  only: physics_state, physics_ptend, &
                              physics_state_copy, physics_ptend_init, &
                              physics_ptend_sum, physics_update, set_dry_to_wet
-
    use physics_buffer, only: pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
 
    use constituents,   only: cnst_get_ind, cnst_type
@@ -1627,6 +1632,7 @@ end subroutine clubb_init_cnst
    real(r8) :: wp2_in(pverp+1-top_lev)			! vertical velocity variance (CLUBB)		[m^2/s^2]
    real(r8) :: wp3_in(pverp+1-top_lev)			! third moment vertical velocity		[m^3/s^3]
    real(r8) :: wpthlp_in(pverp+1-top_lev)		! turbulent flux of thetal			[K m/s]
+   real(r8) :: tke_in(pverp+1-top_lev)          !  TKE
    real(r8) :: wprtp_in(pverp+1-top_lev)		! turbulent flux of total water			[kg/kg m/s]
    real(r8) :: rtpthlp_in(pverp+1-top_lev)		! covariance of thetal and qt			[kg/kg K]
    real(r8) :: rtp2_in(pverp+1-top_lev)			! total water variance				[kg^2/kg^2]
@@ -1899,7 +1905,10 @@ end subroutine clubb_init_cnst
                                            mf_thvflx_output,                       &
                                            mf_rcm_output,     mf_cloudfrac_output, &
                                            mf_precc_output 
-
+   !
+   real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
+                                           mf_cape_output
+   !
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
                                            mf_thforc_output,  mf_qvforc_output,    & ! thermodynamic grid
@@ -1927,6 +1936,7 @@ end subroutine clubb_init_cnst
    real(r8), dimension(pcols,pver*clubb_mf_nup) ::            mf_upbuoy_output     
 
    ! MF Plume
+   real(r8), pointer                    :: tpert(:)
    real(r8), dimension(pverp)           :: mf_dry_a,   mf_moist_a,    &
                                            mf_dry_w,   mf_moist_w,    &
                                            mf_dry_qt,  mf_moist_qt,   &
@@ -2119,6 +2129,7 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, mf_wpthlp_macmic_idx, mf_thlflx_macmic)
      call pbuf_get_field(pbuf, mf_wprtp_macmic_idx, mf_qtflx_macmic)
      call pbuf_get_field(pbuf, mf_wpthvp_macmic_idx, mf_thvflx_macmic)
+     call pbuf_get_field(pbuf, tpert_idx, tpert)
    end if
 
    ! Initialize the apply_const variable (note special logic is due to eularian backstepping)
@@ -2380,6 +2391,9 @@ end subroutine clubb_init_cnst
    mf_qcforc_output(:,:)    = 0._r8
    mf_rcm_output(:,:)       = 0._r8
    mf_cloudfrac_output(:,:) = 0._r8
+   mf_ztop_output(:)        = 0._r8
+   mf_L0_output(:)          = 0._r8
+   mf_cape_output(:)        = 0._r8
 
    !  Loop over all columns in lchnk to advance CLUBB core
    do i=1,ncol   ! loop over columns
@@ -2598,6 +2612,7 @@ end subroutine clubb_init_cnst
          rvm_in(k)     = rvm(i,pverp-k+1)
          wprtp_in(k)   = wprtp(i,pverp-k+1)
          wpthlp_in(k)  = wpthlp(i,pverp-k+1)
+         tke_in(k)     = tke(i,pverp-k+1)
          rtpthlp_in(k) = rtpthlp(i,pverp-k+1)
          rcm_inout(k)  = rcm(i,pverp-k+1)
          cloud_frac_inout(k) = cloud_frac(i,pverp-k+1)
@@ -2730,6 +2745,8 @@ end subroutine clubb_init_cnst
                                                       thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
                                                       wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+                              wpthlp_in, tke_in,      tpert(i),                               & ! input
+                              mf_cape_output(i),                                              & ! output - plume diagnostics
                               mf_upa,                                                         & ! output - plume diagnostics
                               mf_upw,                                                         & ! output - plume diagnostics
                               mf_upqt,                                                        & ! output - plume diagnostics
@@ -2754,7 +2771,12 @@ end subroutine clubb_init_cnst
                               s_awu,     s_awv,                                               & ! output - plume diagnostics
                               mf_thflx,  mf_qvflx,                                            & ! output - plume diagnostics
                               mf_thvflx, mf_qcflx,                                            & ! output - plume diagnostics
-                              mf_thlflx, mf_qtflx )                                             ! output - variables needed for solver
+                              mf_thlflx, mf_qtflx,                                            & ! output - variables needed for solver
+                              mf_ztop_output(i),   mf_L0_output(i) )
+
+           !if ( masterproc ) then
+           !  write(iulog,*) "mf cape ", mf_cape_output(i)
+           !endif
 
            ! CFL limiter
            s_aw(0)   = 0._r8
@@ -3726,6 +3748,7 @@ end subroutine clubb_init_cnst
      temp2dp(:ncol,:) = wpthvp(:ncol,:)
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
+   call outfld( 'TKE_CLUBB',        tke,                   pcols, lchnk )
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out,           pcols, lchnk )
    call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out,           pcols, lchnk )
    call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out,            pcols, lchnk )
@@ -3803,6 +3826,9 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_upqc'     , mf_upqc_output,            pcols, lchnk )
      call outfld( 'edmf_upbuoy'   , mf_upbuoy_output,          pcols, lchnk )
      call outfld( 'edmf_upent'    , mf_upent_output,           pcols, lchnk )
+     call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
+     call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
+     call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
    end if
 
    if (macmic_it==cld_macmic_num_steps) then
