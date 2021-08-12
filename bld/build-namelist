@@ -316,6 +316,12 @@ if ($print>=2) { print "Using namelist defaults file $nl_defaults_file$eol"; }
 
 my $defaults = Build::NamelistDefaults->new($nl_defaults_file, $cfg);
 
+# CAMDEV
+my $phys_check = $cfg->get('phys');
+if ($phys_check eq 'cam64') {
+    $cfg->set('phys', 'cam6');
+    }
+
 #-----------------------------------------------------------------------------------------------
 # Similarly to the namelist definition and defaults files, the use case file
 # may also come from the usr_src directories.  Determine the location of the
@@ -2731,7 +2737,7 @@ if (defined $cam_physpkg) {
         "This variable is set by build-namelist based on information\n".
         "from the configure cache file.\n";
 }
-$cam_physpkg = "'" . "$phys" . "'";  # add quotes to this string value
+$cam_physpkg = "'" . "$phys_check" . "'";  # add quotes to this string value
 $nl->set_variable_value('phys_ctl_nl', 'cam_physpkg', $cam_physpkg);
 
 my $use_simple_phys = $nl->get_value('use_simple_phys');
