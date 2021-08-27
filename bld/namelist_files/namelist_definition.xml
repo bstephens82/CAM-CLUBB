@@ -5189,6 +5189,12 @@ templatefull path for analysis forcing dataset.
 Default: set by build-namelist.
 </entry>
 
+<entry id="scm_use_ana_iop" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Force scam to compute large-scale forcing from renalysis or 3D model output
+Default: FALSE
+</entry>
+
 <!-- Solar Parameters -->
 
 <entry id="solar_const" type="real" category="solar"
