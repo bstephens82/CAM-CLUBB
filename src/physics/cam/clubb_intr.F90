@@ -398,17 +398,20 @@ module clubb_intr
     call pbuf_add_field('wpthlp_mc_zt','global',dtype_r8, (/pcols,pverp/), wpthlp_mc_zt_idx)
     call pbuf_add_field('rtpthlp_mc_zt','global',dtype_r8,(/pcols,pverp/), rtpthlp_mc_zt_idx)
 
-    call pbuf_add_field('QT_macmic'           ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), qt_macmic_idx)
-    call pbuf_add_field('THETAL_macmic'       ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), thl_macmic_idx)
-    call pbuf_add_field('RCM_CLUBB_macmic'    ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), rcm_macmic_idx)
-    call pbuf_add_field('CLDFRAC_CLUBB_macmic','global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
-    call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
-    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
-    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    call add_hist_coord('macmic_num_steps', cld_macmic_num_steps, 'macro/micro cycle index')
+    call add_hist_coord('clubb_mf_nup', clubb_mf_nup, 'plume ensemble size')
+
+    call pbuf_add_field('QT_macmic'           ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), qt_macmic_idx)
+    call pbuf_add_field('THETAL_macmic'       ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), thl_macmic_idx)
+    call pbuf_add_field('RCM_CLUBB_macmic'    ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), rcm_macmic_idx)
+    call pbuf_add_field('CLDFRAC_CLUBB_macmic','physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
+    call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
+    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
+    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
     if (do_clubb_mf) then
-      call pbuf_add_field('edmf_thlflx_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
-      call pbuf_add_field('edmf_qtflx_macmic'  ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wprtp_macmic_idx)
-      call pbuf_add_field('edmf_thvflx_macmic' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
+      call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
+      call pbuf_add_field('edmf_qtflx_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wprtp_macmic_idx)
+      call pbuf_add_field('edmf_thvflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
     end if
 
 #endif 
@@ -1254,8 +1257,6 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_ztop'     ,  horiz_only,   'A', 'm'      , 'edmf ztop')
       call addfld ( 'edmf_L0'       ,  horiz_only,   'A', 'm'      , 'edmf dynamic L0')
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
-
-      call add_hist_coord('clubb_mf_nup', clubb_mf_nup, 'plume ensemble size')
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
       call addfld ( 'edmf_upw'      , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'm/s'     , 'Plume updraft vertical velocity (EDMF)' )
       call addfld ( 'edmf_upqt'     , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'kg/kg'   , 'Plume updraft total water mixing ratio (EDMF)' )
@@ -1267,7 +1268,6 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_upbuoy'   , (/  'lev', 'clubb_mf_nup' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
     end if 
 
-    call add_hist_coord('macmic_num_steps', cld_macmic_num_steps, 'macro/micro cycle index')
     call addfld ('QT_macmic'           , (/ 'ilev', 'macmic_num_steps' /), 'A', 'kg/kg'   , 'QT at macro/micro substep')
     call addfld ('THETAL_macmic'       , (/ 'ilev', 'macmic_num_steps' /), 'A', 'K'       , 'THETAL at macro/micro substep')
     call addfld ('RCM_CLUBB_macmic'    , (/ 'ilev', 'macmic_num_steps' /), 'A', 'kg/kg'   , 'RCM CLUBB at macro/micro substep')
@@ -1414,7 +1414,6 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_L0'       , 1, ' ')
          call add_default( 'edmf_cape'     , 1, ' ')
        end if
-
        call add_default( 'QT_macmic'           , 1, ' ')
        call add_default( 'THETAL_macmic'       , 1, ' ')
        call add_default( 'RCM_CLUBB_macmic'    , 1, ' ')
@@ -1427,7 +1426,6 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_qtflx_macmic'  , 1, ' ')
          call add_default( 'edmf_thvflx_macmic' , 1, ' ')
        end if
-
     end if
 
     if (history_amwg) then
