@@ -439,8 +439,15 @@ module clubb_mf
          call oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                         wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
                         wa, do_condensation, do_precip, ztop )
+!+++ARH
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-
+         !ztop = ztop - 1600._r8
+         !if (ztop < 1._r8) then
+         !  dynamic_L0 = clubb_mf_a0
+         !else
+         !  dynamic_L0 = min(35._r8,clubb_mf_a0*(ztop**clubb_mf_b0))
+         !end if
+!---ARH
        else if (clubb_mf_Lopt==4 .or. clubb_mf_Lopt==5) then
          !dilute cape calculation
          !dmpdz = -1._r8*ent_zt(2:nz,:)
