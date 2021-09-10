@@ -1858,6 +1858,7 @@
 <do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
 <clubb_mf_L0                       > 50.0    </clubb_mf_L0>
 <clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
+<clubb_mf_alphturb                 > 0.0     </clubb_mf_alphturb>
 <clubb_mf_Lopt                     > 0       </clubb_mf_Lopt>
 <clubb_mf_a0                       > 2.0     </clubb_mf_a0>
 <clubb_mf_b0                       > 0.5     </clubb_mf_b0>

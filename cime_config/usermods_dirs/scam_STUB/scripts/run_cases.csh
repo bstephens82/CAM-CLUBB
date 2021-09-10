@@ -1,9 +1,9 @@
 #!/bin/csh -f
 
-set lat = 23.08900523560209
-set lon = 205
-set casenam = st10
-source make_basecase.auto.csh $lat $lon $casenam
+#set lat = 23.08900523560209
+#set lon = 205
+#set casenam = st10
+#source make_basecase.auto.csh $lat $lon $casenam
 
 #cd /home/aherring/src/cam6_3_006.dev/cime_config/usermods_dirs
 
@@ -49,12 +49,12 @@ source make_basecase.auto.csh $lat $lon $casenam
 
 #cd /home/aherring/src/cam6_3_006.dev/cime_config/usermods_dirs
 
-#set lat = 32.5130890052356
-#set lon = 231.25
-#set casenam = st3
-#source make_basecase.auto.csh $lat $lon $casenam
+set lat = 32.5130890052356
+set lon = 231.25
+set casenam = st3
+source make_basecase.auto.csh $lat $lon $casenam
 
-#cd /home/aherring/src/cam6_3_006.dev/cime_config/usermods_dirs
+#cd /home/aherring/src/cam6_3_006.dev/cime_config/usermods_dirs/scam_STUB/scripts/
 
 #set lat = 33.45549738219896
 #set lon = 233.75

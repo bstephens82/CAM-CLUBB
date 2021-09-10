@@ -41,7 +41,7 @@ set loo = `echo $case_lon | cut -d '.' -f 1`
 echo $loo
 
 # set basecase name
-set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64"
+set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64_0Lopt_3alphturb-nl"
 
 # create new basecase
 ${srcpath}/${src}/cime/scripts/create_newcase --case ${scratchdir}/${CASE} --compset ${COMPSET} --res T42_T42 --user-mods-dir ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach izumi --pecount 1 --compiler intel --queue short --run-unsupported
@@ -71,7 +71,7 @@ sed -i 's/intel\/mvapich2-2.3rc2-intel-18.0.3/intel\/mvapich2-2.1-qlc/' ./env_ma
 
 echo "scm_use_ana_iop = .true.">>user_nl_cam
 
-echo "cld_macmic_num_steps=3">>user_nl_cam
+echo "cld_macmic_num_steps=6">>user_nl_cam
 #echo "deep_scheme = 'off'">>user_nl_cam
 
 #echo "clubb_timestep=150.D0">>user_nl_cam
@@ -81,10 +81,11 @@ echo "cld_macmic_num_steps=3">>user_nl_cam
 #echo "clubb_l_trapezoidal_rule_zt = .false.">>user_nl_cam
 
 echo "clubb_mf_nup = 100">>user_nl_cam
-echo "clubb_mf_L0 = 15.D0">>user_nl_cam
+echo "clubb_mf_L0 = 50.D0">>user_nl_cam
 echo "clubb_mf_Lopt = 0">>user_nl_cam
 #echo "clubb_mf_a0 = 1.D0">>user_nl_cam
 #echo "clubb_mf_b0 = 0.5D0">>user_nl_cam
+echo "clubb_mf_aturb = 3.D0">>user_nl_cam
 
 echo "do_clubb_mf = .true.">>user_nl_cam
 echo "do_clubb_mf_diag = .true.">>user_nl_cam
@@ -102,6 +103,8 @@ cp ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB/scripts/STUB_iop.nc ./
 ncap2 --overwrite -s "bdate=${case_date}" STUB_iop.nc STUB_iop.nc
 ncap2 --overwrite -s "lat[lat]=${case_lat}" STUB_iop.nc STUB_iop.nc
 ncap2 --overwrite -s "lon[lon]=${case_lon}" STUB_iop.nc STUB_iop.nc
+
+#cp /home/aherring/src/cam6_3_006.dev/usr_src/tke/clubb_mf.F90 SourceMods/src.cam/
 
 pwd
 

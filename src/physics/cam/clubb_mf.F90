@@ -29,12 +29,13 @@ module clubb_mf
   !      3 = test plume L0
   !      4 = lel
   !      5 = cape
-  integer  :: clubb_mf_Lopt = 0
-  real(r8) :: clubb_mf_a0   = 0._r8
-  real(r8) :: clubb_mf_b0   = 0._r8
-  real(r8) :: clubb_mf_L0   = 0._r8
-  real(r8) :: clubb_mf_ent0 = 0._r8
-  integer  :: clubb_mf_nup  = 0
+  integer  :: clubb_mf_Lopt    = 0
+  real(r8) :: clubb_mf_a0      = 0._r8
+  real(r8) :: clubb_mf_b0      = 0._r8
+  real(r8) :: clubb_mf_L0      = 0._r8
+  real(r8) :: clubb_mf_ent0    = 0._r8
+  real(r8) :: clubb_mf_alphturb= 0._r8
+  integer  :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
   logical, protected :: tht_tweaks = .true.
@@ -57,8 +58,8 @@ module clubb_mf
     integer :: iunit, read_status, ierr
 
 
-    namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_nup, &
-                           do_clubb_mf, do_clubb_mf_diag
+    namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
+                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -82,6 +83,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_L0")
     call mpi_bcast(clubb_mf_ent0, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ent0")
+    call mpi_bcast(clubb_mf_alphturb,1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_alphturb")
     call mpi_bcast(clubb_mf_nup,  1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
     call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
@@ -244,7 +247,7 @@ module clubb_mf
                                              wlv,    wtv,     wp,      & 
                                              B,                        & ! thermodynamic grid
                                              entexp, entexpu, entw,    & ! thermodynamic grid
-                                             lmixt,                    & ! thermodynamic grid
+                                             eturb,  lmixt,            & ! thermodynamic grid
                                              qtovqs, sevap,            & ! thermodynamic grid
                                              betathl,betaqt,           & ! thermodynamic grid        
                                              thln,   thvn,    thn,     & ! momentum grid
@@ -586,7 +589,8 @@ module clubb_mf
            end if
 
            ! integrate updraft
-           entexp  = exp(-ent(k+1,i)*dzt(k+1))
+           eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           entexp  = exp(-ent(k+1,i)*eturb*dzt(k+1))
            entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
 
            qtn  = qt(k+1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt(k+1,i)
@@ -612,12 +616,12 @@ module clubb_mf
            end if
 
            ! get wn^2
-           wp = wb*ent(k+1,i)
+           wp = wb*ent(k+1,i)*eturb
            if (wp==0._r8) then
              wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k+1)
            else
              entw = exp(-2._r8*wp*dzt(k+1))
-             wn2 = entw*upw(k,i)**2._r8+wa*B/(wb*ent(k+1,i))*(1._r8-entw)
+             wn2 = entw*upw(k,i)**2._r8+(1._r8-entw)*wa*B/wp
            end if
 
            if (wn2>0._r8) then
