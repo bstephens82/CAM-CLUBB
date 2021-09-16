@@ -297,6 +297,9 @@ module clubb_mf
      real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
                                              pblhmin  = 100._r8
      !
+     ! min values to avoid singularities
+     real(r8),parameter                   :: min_L0 = 2._r8
+     !
      ! to condensate or not to condensate
      logical                              :: do_condensation = .true.
      !
@@ -489,6 +492,9 @@ module clubb_mf
          end if
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
        end if
+
+       ! impose limiter on entrainment length scale
+       dynamic_L0 = max(min_L0,dynamic_L0)
 
        if (debug) then
          ! overide stochastic entrainment with fixent
