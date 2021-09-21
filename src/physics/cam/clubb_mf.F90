@@ -1124,7 +1124,6 @@ module clubb_mf
         upqi(k+1)  = qin
         upth(k+1)  = thn
       else
-        print*, 'L0 HEIGHT ', zm(k)
         plumeheight = zm(k)
         exit
       end if
