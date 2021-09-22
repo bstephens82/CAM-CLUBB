@@ -444,7 +444,7 @@ module clubb_mf
          !Test plume
          call oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                         wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
-                        wa, do_condensation, do_precip, ztop )
+                        wa, wb, tke, do_condensation, do_precip, ztop )
 !+++ARH
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
          !ztop = ztop - 1600._r8
@@ -1029,9 +1029,9 @@ module clubb_mf
 
   subroutine oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                        wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
-                       wa, do_condensation, do_precip, plumeheight )
+                       wa, wb, tke, do_condensation, do_precip, plumeheight )
   !**********************************************************************
-  ! Calculate a single plume with zero entrainment
+  ! Calculate a single plume with fixed entrainment
   ! to be used for a dynamic mixing length calculation
   ! By Rachel Storer
   !**********************************************************************
@@ -1039,20 +1039,24 @@ module clubb_mf
 
     integer,  intent(in)                :: nz
     real(r8), dimension(nz), intent(in) :: zm, dzt, iexner_zm, iexner_zt,  &
-                                           p_zm, qt, thv, thl
+                                           p_zm, qt, thv, thl, tke
     real(r8), intent(in)                :: wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, &
-                                           cwthv, zcb_unset, wa
+                                           cwthv, zcb_unset, wa, wb
     logical, intent(in)               :: do_condensation, do_precip
 
     real(r8), intent(inout)             :: plumeheight
 
     !local variables
     integer                     :: k
-    real(r8), parameter         :: pent = 1.E-3_r8
-    real(r8)                    :: thvn, qtn, thln, qcn, thn, qln, qin, qsn, lmixn, zcb, B, wn2, pentexp
+    real(r8)                    :: thvn, qtn, thln, qcn, thn, qln, qin, qsn, lmixn, zcb, B, wn2, pentexp, pturb, pentw, wp
     real(r8), dimension(nz)     :: upw, upa, upqt, upthv, upthl, upth, upqs, &
                                    upqc, upql, upqi, supqt, supthl
-
+    !
+    ! fractional entrainment rate
+    real(r8), parameter         :: pent = 1.E-3_r8
+    !
+    ! use tke enhanced entrainment
+    logical                     :: do_tptke = .false.
 
     upw(1) = 0.5_r8 * wmax
     upa(1) = 0.5_r8 * erf( wmax/(sqrt(2._r8)*sigmaw) )
@@ -1091,12 +1095,14 @@ module clubb_mf
         supthl(k+1) = 0._r8
       end if
       ! integrate updraft
-      pentexp  = exp(-pent*dzt(k+1))
+      if (do_tptke) then
+        pturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k))
+      else
+        pturb = 1._r8
+      end if
+      pentexp  = exp(-pent*pturb*dzt(k+1))
       qtn  = qt(k+1) *(1._r8-pentexp ) + upqt (k)*pentexp + supqt(k+1)
       thln = thl(k+1)*(1._r8-pentexp ) + upthl(k)*pentexp + supthl(k+1)
-
-      !qtn  = upqt (k) + supqt(k+1)
-      !thln = upthl(k) + supthl(k+1)
 
       ! get cloud, momentum levels
       if (do_condensation) then
@@ -1110,7 +1116,13 @@ module clubb_mf
       B=gravit*(0.5_r8*(thvn + upthv(k))/thv(k+1)-1._r8)
 
       ! get wn^2
-      wn2 = upw(k)**2._r8+2._r8*wa*B*dzt(k+1)
+      wp = wb*pent*pturb
+      if (wp==0._r8) then
+         wn2 = upw(k)**2._r8+2._r8*wa*B*dzt(k+1)
+      else
+         pentw = exp(-2._r8*wp*dzt(k+1))
+         wn2 = pentw*upw(k)**2._r8+(1._r8-pentw)*wa*B/wp
+      end if
 
       if (wn2>0._r8) then
         upw(k+1)   = sqrt(wn2)
