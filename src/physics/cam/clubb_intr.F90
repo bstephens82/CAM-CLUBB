@@ -2777,7 +2777,7 @@ end subroutine clubb_init_cnst
            !endif
 
            ! CFL limiter
-           s_aw(0)   = 0._r8
+           s_aw(1)   = 0._r8
            max_cfl(i)= 0._r8
            do k=2,pverp
              max_cfl(i) = max(max_cfl(i),dtime*invrs_dzt(k)*max(s_aw(k-1),s_aw(k)))
