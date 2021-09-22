@@ -41,7 +41,7 @@ set loo = `echo $case_lon | cut -d '.' -f 1`
 echo $loo
 
 # set basecase name
-set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64_0Lopt_3alphturb-nl"
+set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64_3Lopt_3alph"
 
 # create new basecase
 ${srcpath}/${src}/cime/scripts/create_newcase --case ${scratchdir}/${CASE} --compset ${COMPSET} --res T42_T42 --user-mods-dir ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach izumi --pecount 1 --compiler intel --queue short --run-unsupported
@@ -82,10 +82,10 @@ echo "cld_macmic_num_steps=6">>user_nl_cam
 
 echo "clubb_mf_nup = 100">>user_nl_cam
 echo "clubb_mf_L0 = 50.D0">>user_nl_cam
-echo "clubb_mf_Lopt = 0">>user_nl_cam
-#echo "clubb_mf_a0 = 1.D0">>user_nl_cam
-#echo "clubb_mf_b0 = 0.5D0">>user_nl_cam
-echo "clubb_mf_aturb = 3.D0">>user_nl_cam
+echo "clubb_mf_Lopt = 3">>user_nl_cam
+echo "clubb_mf_a0 = 1.D0">>user_nl_cam
+echo "clubb_mf_b0 = 0.5D0">>user_nl_cam
+echo "clubb_mf_alphturb = 3.D0">>user_nl_cam
 
 echo "do_clubb_mf = .true.">>user_nl_cam
 echo "do_clubb_mf_diag = .true.">>user_nl_cam
