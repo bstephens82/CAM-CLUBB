@@ -10,7 +10,7 @@ module clubb_mf
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun
   use physconst,     only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
-                           cpwv, cpliq, rh2o, zvir
+                           cpwv, cpliq, rh2o, zvir, pi
 
   implicit none
   private
@@ -297,9 +297,6 @@ module clubb_mf
      real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
                                              pblhmin  = 100._r8
      !
-     ! min values to avoid singularities
-     real(r8),parameter                   :: min_L0 = 2._r8
-     !
      ! to condensate or not to condensate
      logical                              :: do_condensation = .true.
      !
@@ -492,9 +489,6 @@ module clubb_mf
          end if
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
        end if
-
-       ! impose limiter on entrainment length scale
-       dynamic_L0 = max(min_L0,dynamic_L0)
 
        if (debug) then
          ! overide stochastic entrainment with fixent
@@ -992,11 +986,30 @@ module clubb_mf
 
        do i=1,nz
          do j=1,nup
-           call knuth(kiss_gen,lambda(i,j),poi(i,j))
+           call whichRNG(kiss_gen,lambda(i,j),poi(i,j))
          enddo
        enddo
 
   end subroutine poisson
+
+  subroutine whichRNG(kiss_gen,lambda,kout)
+  !**********************************************************************
+  ! Interface for the two poisson rng subroutines
+  ! chooses the appropriate subroutine based on the value of lambda
+  !**********************************************************************
+   use shr_RandNum_mod, only: ShrKissRandGen
+
+       type(ShrKissRandGen), intent(inout) :: kiss_gen
+       real(r8),             intent(in)    :: lambda
+       integer,              intent(out)   :: kout
+
+       if (lambda < 10._r8) then
+          call knuth(kiss_gen,lambda,kout)
+       else
+          call hormann(kiss_gen,lambda,kout)
+       end if
+
+  end subroutine whichRNG
 
   subroutine knuth(kiss_gen,lambda,kout)
   !**********************************************************************
@@ -1026,6 +1039,59 @@ module clubb_mf
        kout = k - 1
 
   end subroutine knuth
+
+  subroutine hormann(kiss_gen,lambda,kout)
+  !**********************************************************************
+  ! Discrete random poisson
+  ! Implements Poisson Transformed Rejection with Squeeze (PTRS) 
+  ! from W. Hormann Insurance: Mathematics and Economics 12, 39-45 (1993) 
+  ! By Jake Reschke
+  !**********************************************************************
+  use shr_RandNum_mod, only: ShrKissRandGen
+
+      type(ShrKissRandGen), intent(inout) :: kiss_gen
+      real(r8),             intent(in)    :: lambda
+      integer,              intent(out)   :: kout
+
+      ! Local variables
+      real(r8), dimension(1,1) :: U,V
+      real(r8)                 :: a,b,vr,alphinv,us,loggam
+      integer                  :: k,i
+
+      b = 0.931_r8 + 2.53_r8*sqrt(lambda)
+      a = -0.059_r8 + 0.02483_r8*b
+      vr = 0.9277_r8 - 3.6224_r8/(b - 2._r8)
+      alphinv = 1.1239_r8 + 1.1328_r8/(b - 3.4_r8)
+
+      do
+         call kiss_gen%random(U)
+         call kiss_gen%random(V)
+         U(1,1) = U(1,1) - 0.5_r8
+         us = 0.5_r8 - abs(U(1,1))
+         k = floor( (2._r8*a/us + b)*U(1,1) + lambda + 0.43_r8 )
+         if (us >= 0.07_r8 .and.  V(1,1) <= vr) then
+            kout = k
+            exit
+         end if
+         if (k <= 0 .or. (us < 0.013_r8 .and. V(1,1) > us)) then
+            cycle
+         end if
+         ! compute log(k!). If k >=10 use stirling's approximation
+         if (k < 10) then
+            loggam = 0._r8
+            do i = 1, k
+               loggam = loggam + log(1._r8*i)
+            end do
+         else
+            loggam = log(sqrt(2._r8*pi)) + (k + 0.5_r8)*log(1._r8*k) - k + (1._r8/12._r8 - 1._r8/(360._r8*k*k))/k
+         end if
+         if (log( V(1,1)*alphinv/(a/(us*us) + b) ) <= -1._r8*lambda + k*log(lambda) - loggam) then
+            kout = k
+            exit
+         end if
+      end do
+
+  end subroutine hormann
 
   subroutine oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                        wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
