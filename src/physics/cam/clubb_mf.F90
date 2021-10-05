@@ -1003,7 +1003,7 @@ module clubb_mf
        real(r8),             intent(in)    :: lambda
        integer,              intent(out)   :: kout
 
-       if (lambda < 10) then
+       if (lambda < 10._r8) then
           call knuth(kiss_gen,lambda,kout)
        else
           call hormann(kiss_gen,lambda,kout)
@@ -1043,8 +1043,8 @@ module clubb_mf
   subroutine hormann(kiss_gen,lambda,kout)
   !**********************************************************************
   ! Discrete random poisson
-  ! Implements PTRS algorithm from W. Hormann
-  ! Insurance: Mathematics and Economics 12, 39-45 (1993) 
+  ! Implements Poisson Transformed Rejection with Squeeze (PTRS) 
+  ! from W. Hormann Insurance: Mathematics and Economics 12, 39-45 (1993) 
   ! By Jake Reschke
   !**********************************************************************
   use shr_RandNum_mod, only: ShrKissRandGen
