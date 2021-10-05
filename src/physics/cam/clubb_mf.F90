@@ -1042,7 +1042,8 @@ module clubb_mf
 
   subroutine hormann(kiss_gen,lambda,kout)
   !**********************************************************************
-  ! Discrete random poisson from W. Hormann
+  ! Discrete random poisson
+  ! Implements PTRS algorithm from W. Hormann
   ! Insurance: Mathematics and Economics 12, 39-45 (1993) 
   ! By Jake Reschke
   !**********************************************************************
@@ -1060,7 +1061,7 @@ module clubb_mf
       b = 0.931_r8 + 2.53_r8*sqrt(lambda)
       a = -0.059_r8 + 0.02483_r8*b
       vr = 0.9277_r8 - 3.6224_r8/(b - 2._r8)
-      alphinv = 1.1239_r8 + 1.328_r8/(b - 3.4_r8)
+      alphinv = 1.1239_r8 + 1.1328_r8/(b - 3.4_r8)
 
       do
          call kiss_gen%random(U)
