@@ -2203,6 +2203,7 @@ contains
     end if
 
     flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
+
     call check_energy_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
 
     call check_tracers_chng(state, tracerint, "convect_shallow", nstep, ztodt, zero_tracers)
@@ -2341,7 +2342,11 @@ contains
 
              ! Since we "added" the reserved liquid back in this routine, we need
              ! to account for it in the energy checker
-             flx_cnd(:ncol) = -1._r8*rliq(:ncol)
+!+++ARH
+             ! add MF precip to flx_cnd [m/s]
+             flx_cnd(:ncol) = -1._r8*rliq(:ncol) + prec_sh(:ncol)
+             !flx_cnd(:ncol) = -1._r8*rliq(:ncol)
+!---ARH
              flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
 
              ! Unfortunately, physics_update does not know what time period

@@ -10,7 +10,7 @@ module clubb_mf
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun
   use physconst,     only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
-                           cpwv, cpliq, rh2o, zvir, pi
+                           cpwv, cpliq, rh2o, zvir
 
   implicit none
   private
@@ -35,11 +35,13 @@ module clubb_mf
   real(r8) :: clubb_mf_L0      = 0._r8
   real(r8) :: clubb_mf_ent0    = 0._r8
   real(r8) :: clubb_mf_alphturb= 0._r8
-  integer  :: clubb_mf_nup     = 0
+  integer, protected :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
-  logical, protected :: tht_tweaks = .true.
-  integer, protected :: mf_num_cin = 5
+  logical :: do_clubb_mf_precip = .false.
+  logical :: tht_tweaks = .true.
+  integer :: mf_num_cin = 5
+
   contains
 
   subroutine clubb_mf_readnl(nlfile)
@@ -59,7 +61,7 @@ module clubb_mf
 
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
-                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag
+                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -91,6 +93,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
     call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
+    call mpi_bcast(do_clubb_mf_precip, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_precip")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -108,31 +112,32 @@ module clubb_mf
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                                              wthl,    wqt,       pblh,              & ! input
                            wpthlp_env, tke,  tpert,                                 & ! input
-                           mcape,                                                   & ! output - plume diagnostics
-                           upa,                                                     & ! output - plume diagnostics
-                           upw,                                                     & ! output - plume diagnostics
-                           upqt,                                                    & ! output - plume diagnostics
-                           upthl,                                                   & ! output - plume diagnostics
-                           upthv,                                                   & ! output - plume diagnostics
-                           upth,                                                    & ! output - plume diagnostics
-                           upqc,                                                    & ! output - plume diagnostics
-                           upbuoy,                                                  & ! output - plume diagnostics
-                           ent,                                                     & ! output - plume diagnostics
-                           dry_a,   moist_a,                                        & ! output - plume diagnostics
-                           dry_w,   moist_w,                                        & ! output - plume diagnostics
-                           dry_qt,  moist_qt,                                       & ! output - plume diagnostics
-                           dry_thl, moist_thl,                                      & ! output - plume diagnostics
-                           dry_u,   moist_u,                                        & ! output - plume diagnostics
-                           dry_v,   moist_v,                                        & ! output - plume diagnostics
-                                    moist_qc,                                       & ! output - plume diagnostics
-                                    precc,                                          & ! output - plume diagnostics                      
-                           ae,      aw,                                             & ! output - diagnosed fluxes BEFORE mean field update
-                           awthl,   awqt,                                           & ! output - diagnosed fluxes BEFORE mean field update
-                           awql,    awqi,                                           & ! output - diagnosed fluxes BEFORE mean field update
-                           awth,    awqv,                                           & ! output - diagnosed fluxes BEFORE mean field update
-                           awu,     awv,                                            & ! output - diagnosed fluxes BEFORE mean field update
-                           thflx,   qvflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
-                           thvflx,  qcflx,                                          & ! output - diagnosed fluxes BEFORE mean field update
+                           mcape,                                                   & ! output
+                           upa,                                                     & ! output
+                           upw,                                                     & ! output
+                           upqt,                                                    & ! output
+                           upthl,                                                   & ! output
+                           upthv,                                                   & ! output
+                           upth,                                                    & ! output
+                           upqc,                                                    & ! output
+                           upbuoy,                                                  & ! output
+                           ent,                                                     & ! output
+                           dry_a,   moist_a,                                        & ! output
+                           dry_w,   moist_w,                                        & ! output
+                           dry_qt,  moist_qt,                                       & ! output
+                           dry_thl, moist_thl,                                      & ! output
+                           dry_u,   moist_u,                                        & ! output
+                           dry_v,   moist_v,                                        & ! output
+                                    moist_qc,                                       & ! output
+                           sqt,     sthl,                                           & ! output - variables needed for solver
+                                    precc,                                          & ! output            
+                           ae,      aw,                                             & ! output
+                           awthl,   awqt,                                           & ! output
+                           awql,    awqi,                                           & ! output
+                           awth,    awqv,                                           & ! output
+                           awu,     awv,                                            & ! output
+                           thflx,   qvflx,                                          & ! output
+                           thvflx,  qcflx,                                          & ! output
                            thlflx,  qtflx,                                          & ! output - variables needed for solver
                            ztop,    dynamic_L0 )
 
@@ -198,6 +203,7 @@ module clubb_mf
                                             dry_u,   moist_u,     & ! momentum grid
                                             dry_v,   moist_v,     & ! momentum grid
                                                      moist_qc,    & ! momentum grid
+                                            sqt,     sthl,        & ! thermodynamic grid 
                                                      precc,       & ! momentum grid
                                             ae,      aw,          & ! momentum grid
                                             awthl,   awqt,        & ! momentum grid
@@ -297,11 +303,11 @@ module clubb_mf
      real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
                                              pblhmin  = 100._r8
      !
+     ! min values to avoid singularities
+     real(r8),parameter                   :: min_L0 = 2._r8
+     !
      ! to condensate or not to condensate
      logical                              :: do_condensation = .true.
-     !
-     ! to precip or not to precip
-     logical                              :: do_precip = .false.
      !
      ! evaporation efficiency after Suselj etal 2019
      real(r8),parameter                   :: ke = 2.5e-4_r8
@@ -326,7 +332,6 @@ module clubb_mf
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
      ! INITIALIZE OUTPUT VARIABLES
-     ! set updraft properties to zero
      dry_a     = 0._r8
      moist_a   = 0._r8
      dry_w     = 0._r8
@@ -340,8 +345,9 @@ module clubb_mf
      dry_v     = 0._r8
      moist_v   = 0._r8
      moist_qc  = 0._r8
+     sqt       = 0._r8
+     sthl      = 0._r8 
      precc     = 0._r8
-     ! outputs - variables needed for solver
      aw        = 0._r8
      awth      = 0._r8
      awthl     = 0._r8
@@ -441,7 +447,7 @@ module clubb_mf
          !Test plume
          call oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                         wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
-                        wa, wb, tke, do_condensation, do_precip, ztop )
+                        wa, wb, tke, do_condensation, do_clubb_mf_precip, ztop )
 !+++ARH
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
          !ztop = ztop - 1600._r8
@@ -489,6 +495,9 @@ module clubb_mf
          end if
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
        end if
+
+       ! impose limiter on entrainment length scale
+       dynamic_L0 = max(min_L0,dynamic_L0)
 
        if (debug) then
          ! overide stochastic entrainment with fixent
@@ -579,7 +588,7 @@ module clubb_mf
          do k=1,nz-1
 
            ! get microphysics, autoconversion
-           if (do_precip .and. upqc(k,i) > 0._r8) then
+           if (do_clubb_mf_precip .and. upqc(k,i) > 0._r8) then
              call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt(k+1,i))
 
              supthl(k+1,i) = -1._r8*lmixn*supqt(k+1,i)*iexner_zt(k+1)/cpair
@@ -597,6 +606,12 @@ module clubb_mf
            thln = thl(k+1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl(k+1,i)           
            un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
            vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
+
+!+++ARH    
+           ! convert source terms to a tendency
+           supqt(k+1,i) = supqt(k+1,i)*upw(k,i)/dzt(k+1)
+           supthl(k+1,i) = supthl(k+1,i)*upw(k,i)/dzt(k+1)
+!---ARH
 
            ! get cloud, momentum levels
            if (do_condensation) then
@@ -647,7 +662,7 @@ module clubb_mf
        enddo
 
        ! downward sweep for rain evaporation, snow melting 
-       if (do_precip) then
+       if (do_clubb_mf_precip) then
          do i=1,clubb_mf_nup
            do k=nz-1,1,-1
              ! get rain evaporation
@@ -658,6 +673,9 @@ module clubb_mf
              end if
              qtovqs = min(1._r8,qtovqs)
              sevap = ke*(1._r8 - qtovqs)*sqrt(max(uprr(k+1,i),0._r8))
+
+             ! limit evaporation to available precip
+             sevap = min(sevap,( uprr(k+1,i)/(rho_zt(k)*dzt(k)) - supqt(k,i)*(1._r8-fdd) ))
 
              ! get rain rate
              uprr(k,i) = uprr(k+1,i) &
@@ -746,6 +764,8 @@ module clubb_mf
            awql(k) = awql(k) + upa(k,i)*upw(k,i)*upql(k,i)
            awqi(k) = awqi(k) + upa(k,i)*upw(k,i)*upqi(k,i)
            awqc(k) = awqc(k) + upa(k,i)*upw(k,i)*upqc(k,i)
+           sqt(k)  = sqt(k)  + upa(k,i)*supqt(k,i)
+           sthl(k) = sthl(k) + upa(k,i)*supthl(k,i)
            precc(k)= precc(k)+ upa(k,i)*uprr(k,i)
          enddo
        enddo
@@ -986,30 +1006,11 @@ module clubb_mf
 
        do i=1,nz
          do j=1,nup
-           call whichRNG(kiss_gen,lambda(i,j),poi(i,j))
+           call knuth(kiss_gen,lambda(i,j),poi(i,j))
          enddo
        enddo
 
   end subroutine poisson
-
-  subroutine whichRNG(kiss_gen,lambda,kout)
-  !**********************************************************************
-  ! Interface for the two poisson rng subroutines
-  ! chooses the appropriate subroutine based on the value of lambda
-  !**********************************************************************
-   use shr_RandNum_mod, only: ShrKissRandGen
-
-       type(ShrKissRandGen), intent(inout) :: kiss_gen
-       real(r8),             intent(in)    :: lambda
-       integer,              intent(out)   :: kout
-
-       if (lambda < 10._r8) then
-          call knuth(kiss_gen,lambda,kout)
-       else
-          call hormann(kiss_gen,lambda,kout)
-       end if
-
-  end subroutine whichRNG
 
   subroutine knuth(kiss_gen,lambda,kout)
   !**********************************************************************
@@ -1039,59 +1040,6 @@ module clubb_mf
        kout = k - 1
 
   end subroutine knuth
-
-  subroutine hormann(kiss_gen,lambda,kout)
-  !**********************************************************************
-  ! Discrete random poisson
-  ! Implements Poisson Transformed Rejection with Squeeze (PTRS) 
-  ! from W. Hormann Insurance: Mathematics and Economics 12, 39-45 (1993) 
-  ! By Jake Reschke
-  !**********************************************************************
-  use shr_RandNum_mod, only: ShrKissRandGen
-
-      type(ShrKissRandGen), intent(inout) :: kiss_gen
-      real(r8),             intent(in)    :: lambda
-      integer,              intent(out)   :: kout
-
-      ! Local variables
-      real(r8), dimension(1,1) :: U,V
-      real(r8)                 :: a,b,vr,alphinv,us,loggam
-      integer                  :: k,i
-
-      b = 0.931_r8 + 2.53_r8*sqrt(lambda)
-      a = -0.059_r8 + 0.02483_r8*b
-      vr = 0.9277_r8 - 3.6224_r8/(b - 2._r8)
-      alphinv = 1.1239_r8 + 1.1328_r8/(b - 3.4_r8)
-
-      do
-         call kiss_gen%random(U)
-         call kiss_gen%random(V)
-         U(1,1) = U(1,1) - 0.5_r8
-         us = 0.5_r8 - abs(U(1,1))
-         k = floor( (2._r8*a/us + b)*U(1,1) + lambda + 0.43_r8 )
-         if (us >= 0.07_r8 .and.  V(1,1) <= vr) then
-            kout = k
-            exit
-         end if
-         if (k <= 0 .or. (us < 0.013_r8 .and. V(1,1) > us)) then
-            cycle
-         end if
-         ! compute log(k!). If k >=10 use stirling's approximation
-         if (k < 10) then
-            loggam = 0._r8
-            do i = 1, k
-               loggam = loggam + log(1._r8*i)
-            end do
-         else
-            loggam = log(sqrt(2._r8*pi)) + (k + 0.5_r8)*log(1._r8*k) - k + (1._r8/12._r8 - 1._r8/(360._r8*k*k))/k
-         end if
-         if (log( V(1,1)*alphinv/(a/(us*us) + b) ) <= -1._r8*lambda + k*log(lambda) - loggam) then
-            kout = k
-            exit
-         end if
-      end do
-
-  end subroutine hormann
 
   subroutine oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                        wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
@@ -1169,6 +1117,12 @@ module clubb_mf
       pentexp  = exp(-pent*pturb*dzt(k+1))
       qtn  = qt(k+1) *(1._r8-pentexp ) + upqt (k)*pentexp + supqt(k+1)
       thln = thl(k+1)*(1._r8-pentexp ) + upthl(k)*pentexp + supthl(k+1)
+
+!+++ARH    
+      ! convert source terms to a tendency
+      supqt(k+1) = supqt(k+1)*upw(k)/dzt(k+1)
+      supthl(k+1) = supthl(k+1)*upw(k)/dzt(k+1)
+!---ARH
 
       ! get cloud, momentum levels
       if (do_condensation) then

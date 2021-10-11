@@ -3706,6 +3706,12 @@ If .true. add detailed budget terms to output by default.  Note that do_clubb_mf
 Default: .false.
 </entry>
 
+<entry id="do_clubb_mf_precip" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. turn on Suselj et al 2019 microphysics.
+Default: .false.
+</entry>
+
 <entry id="clubb_mf_L0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Entrainment length scale in meters for individual plumes. Not used if

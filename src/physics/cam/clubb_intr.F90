@@ -267,6 +267,12 @@ module clubb_intr
     mf_wprtp_macmic_idx, &
     mf_wpthvp_macmic_idx
 
+!+++ARH
+  integer :: &
+    prec_sh_idx, &
+    snow_sh_idx
+!---ARH
+
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
 
@@ -1008,6 +1014,11 @@ end subroutine clubb_init_cnst
     naai_idx        = pbuf_get_index('NAAI')
     npccn_idx       = pbuf_get_index('NPCCN')
 
+!+++ARH
+    prec_sh_idx  = pbuf_get_index('PREC_SH')
+    snow_sh_idx  = pbuf_get_index('SNOW_SH')
+!---ARH
+
     iisclr_rt  = -1
     iisclr_thl = -1
     iisclr_CO2 = -1
@@ -1215,6 +1226,10 @@ end subroutine clubb_init_cnst
     call addfld ('QSATFAC',          (/ 'lev' /),  'A', '-', 'Subgrid cloud water saturation scaling factor')
     call addfld ('KVH_CLUBB',        (/ 'ilev' /), 'A', 'm2/s', 'CLUBB vertical diffusivity of heat/moisture on interface levels')
     call addfld ('TKE_CLUBB',        (/ 'ilev' /), 'A', 'm2/s2', 'CLUBB tke on interface levels')
+
+    call addfld ('ELEAK_CLUBB',      horiz_only,   'A', 'W/m2',      'CLUBB energy leak')
+    call addfld ('TFIX_CLUBB',       horiz_only,   'A', 'K', 'Temperature increment to conserve energy')
+
     ! ---------------------------------------------------------------------------- !
     ! Below are for detailed analysis of EDMF Scheme                               !
     ! ---------------------------------------------------------------------------- !
@@ -1344,6 +1359,8 @@ end subroutine clubb_init_cnst
        call add_default('THETAL',           1, ' ')
        call add_default('CONCLD',           1, ' ')
        call add_default('TKE_CLUBB',        1, ' ')
+       call add_default('ELEAK_CLUBB',      1, ' ')
+       call add_default('TFIX_CLUBB',       1, ' ')
     end if
       
      if (history_amwg) then
@@ -1735,7 +1752,7 @@ end subroutine clubb_init_cnst
    ! Variables below are needed to compute energy integrals for conservation
    real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
    real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
-   real(r8) :: se_dis, se_a(pcols), se_b(pcols), clubb_s(pver)
+   real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pver)
 
    real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
    real(r8) :: wpthlp_output(pcols,pverp)       ! Heat flux output variable                     [W/m2]
@@ -1863,6 +1880,11 @@ end subroutine clubb_init_cnst
    real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
    real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
+!+++ARH
+   real(r8),pointer :: prec_sh(:)   ! total precipitation from MF
+   real(r8),pointer :: snow_sh(:)   ! snow from MF
+!---ARH
+
    real(r8), pointer :: qt_macmic(:,:)
    real(r8), pointer :: thl_macmic(:,:)
    real(r8), pointer :: rcm_macmic(:,:)
@@ -1942,6 +1964,7 @@ end subroutine clubb_init_cnst
                                            mf_dry_u,   mf_moist_u,    &
                                            mf_dry_v,   mf_moist_v,    &
                                                        mf_moist_qc,   &
+                                           mf_sqt,     mf_sthl,       &
                                                        mf_precc,      &
                                            s_ae,       s_aw,          &
                                            s_awthl,    s_awqt,        &
@@ -2108,6 +2131,11 @@ end subroutine clubb_init_cnst
    call pbuf_get_field(pbuf, pblh_idx,    pblh)
    call pbuf_get_field(pbuf, icwmrdp_idx, dp_icwmr)
    call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmc_sh)
+
+!+++ARH
+   call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
+   call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
+!---ARH
 
    ! SILHS covariance contributions
    call pbuf_get_field(pbuf, rtp2_mc_zt_idx,    rtp2_mc_zt)
@@ -2761,6 +2789,7 @@ end subroutine clubb_init_cnst
                               mf_dry_u,  mf_moist_u,                                          & ! output - plume diagnostics
                               mf_dry_v,  mf_moist_v,                                          & ! output - plume diagnostics
                                          mf_moist_qc,                                         & ! output - plume diagnostics
+                              mf_sqt,    mf_sthl,                                             & ! output - plume diagnostics
                                          mf_precc,                                            & ! output - plume diagnostics
                               s_ae,      s_aw,                                                & ! output - plume diagnostics
                               s_awthl,   s_awqt,                                              & ! output - plume diagnostics
@@ -2795,10 +2824,12 @@ end subroutine clubb_init_cnst
            mf_qcforc = 0._r8
            do k=2,pverp
              rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1)))
+                              ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1))) &
+                               + mf_sqt(k)
            
              thlm_forcing(k) = thlm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                               ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1)))
+                               ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1))) &
+                               + mf_sthl(k)
 
              mf_thforc(k)   = mf_thforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_thflx(k)) - (rho_ds_zm(k-1) * mf_thflx(k-1)))
@@ -2810,11 +2841,17 @@ end subroutine clubb_init_cnst
                               ((rho_ds_zm(k) * mf_qcflx(k)) - (rho_ds_zm(k-1) * mf_qcflx(k-1)))
 
            end do
-           ! compute ensemble cloud
+           ! compute ensemble cloud properties
            mf_rcm       = 0._r8
            mf_cloudfrac = 0._r8
            mf_rcm(:pverp)      = mf_moist_a(:pverp)*mf_moist_qc(:pverp)
            mf_cloudfrac(:pverp)= mf_moist_a(:pverp)
+
+!+++ARH
+           ! [kg/m2/s]->[m/s]
+           prec_sh(i) = mf_precc(1)/1000._r8
+           snow_sh(i) = 0._r8
+!---ARH
 
          end if
 
@@ -3180,9 +3217,13 @@ end subroutine clubb_init_cnst
       ! Take into account the surface fluxes of heat and moisture
       !  Use correct qflux from cam_in, not lhf/latvap as was done previously
       te_b(i) = te_b(i)+(cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice))*hdtime      
+!+++ARH
+      ! subtract enthalpy of falling precip from tb
+      te_b(i) = te_b(i) - prec_sh(i)*1000._r8*latice*hdtime
+!---ARH
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
-      se_dis = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop+1))
+      se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop+1))
 
       ! Fix the total energy coming out of CLUBB so it achieves enery conservation.
       ! Apply this fixer throughout the column evenly, but only at layers where 
@@ -3193,9 +3234,11 @@ end subroutine clubb_init_cnst
       ! variable.
       if (clubb_do_energyfix) then
         do k=clubbtop+1,pver
-           clubb_s(k) = clubb_s(k) - se_dis*gravit
+           clubb_s(k) = clubb_s(k) - se_dis(i)*gravit
         enddo
       endif           
+      ! convert to units of +ve [K] 
+      se_dis(i) = -1._r8*se_dis(i)*gravit/cpairv(i,pver,lchnk)
 
       !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
       !  for all variables and therefore is never called in this loop
@@ -3268,6 +3311,10 @@ end subroutine clubb_init_cnst
       
 
    enddo  ! end column loop
+
+   ! dte / hdtime = [kg/s2]/[s] = W/m2
+   call outfld('ELEAK_CLUBB', (te_a - te_b)/hdtime, pcols, lchnk)
+   call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
 
    call outfld('KVH_CLUBB', khzm, pcols, lchnk)
 
@@ -3745,6 +3792,10 @@ end subroutine clubb_init_cnst
 
      temp2dp(:ncol,:) = wpthvp(:ncol,:)
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
+
+!+++ARH
+     call outfld( 'PRECSH' , prec_sh(:ncol)  , pcols, lchnk )
+!---ARH
 
    call outfld( 'TKE_CLUBB',        tke,                   pcols, lchnk )
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out,           pcols, lchnk )
