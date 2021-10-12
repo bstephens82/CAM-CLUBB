@@ -664,7 +664,7 @@ module clubb_mf
        ! downward sweep for rain evaporation, snow melting 
        if (do_clubb_mf_precip) then
          do i=1,clubb_mf_nup
-           do k=nz-1,1,-1
+           do k=nz,2,-1
              ! get rain evaporation
              if ((upqs(k,i) + upqs(k-1,i)).le.0._r8) then
                qtovqs = 0._r8
@@ -672,13 +672,13 @@ module clubb_mf
                qtovqs = (upqt(k,i) + upqt(k-1,i))/(upqs(k,i) + upqs(k-1,i))
              end if
              qtovqs = min(1._r8,qtovqs)
-             sevap = ke*(1._r8 - qtovqs)*sqrt(max(uprr(k+1,i),0._r8))
+             sevap = ke*(1._r8 - qtovqs)*sqrt(max(uprr(k,i),0._r8))
 
              ! limit evaporation to available precip
-             sevap = min(sevap,( uprr(k+1,i)/(rho_zt(k)*dzt(k)) - supqt(k,i)*(1._r8-fdd) ))
+             sevap = min(sevap,( uprr(k,i)/(rho_zt(k)*dzt(k)) - supqt(k,i)*(1._r8-fdd) ))
 
              ! get rain rate
-             uprr(k,i) = uprr(k+1,i) &
+             uprr(k-1,i) = uprr(k,i) &
                          - rho_zt(k)*dzt(k)*( supqt(k,i)*(1._r8-fdd) + sevap )
 
              if (debug) then

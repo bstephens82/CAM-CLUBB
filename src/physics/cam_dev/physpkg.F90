@@ -1469,6 +1469,11 @@ contains
     real(r8),pointer :: prec_sed(:)     ! total precip from cloud sedimentation
     real(r8),pointer :: snow_sed(:)     ! snow from cloud ice sedimentation
 
+!+++ARH
+    real(r8),pointer :: prec_sh(:)                ! total precipitation from Hack convection
+    real(r8),pointer :: snow_sh(:)                ! snow from Hack convection
+!---ARH
+
     ! Local copies for substepping
     real(r8) :: prec_pcw_macmic(pcols)
     real(r8) :: snow_pcw_macmic(pcols)
@@ -1568,6 +1573,10 @@ contains
     ifld = pbuf_get_index('AST')
     call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
+!+++ARH
+    call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
+    call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
+!---ARH
     !
     ! accumulate fluxes into net flux array for spectral dycores
     ! jrm Include latent heat of fusion for snow
