@@ -267,11 +267,9 @@ module clubb_intr
     mf_wprtp_macmic_idx, &
     mf_wpthvp_macmic_idx
 
-!+++ARH
   integer :: &
     prec_sh_idx, &
     snow_sh_idx
-!---ARH
 
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
@@ -1014,10 +1012,8 @@ end subroutine clubb_init_cnst
     naai_idx        = pbuf_get_index('NAAI')
     npccn_idx       = pbuf_get_index('NPCCN')
 
-!+++ARH
     prec_sh_idx  = pbuf_get_index('PREC_SH')
     snow_sh_idx  = pbuf_get_index('SNOW_SH')
-!---ARH
 
     iisclr_rt  = -1
     iisclr_thl = -1
@@ -1880,10 +1876,9 @@ end subroutine clubb_init_cnst
    real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
    real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
-!+++ARH
-   real(r8),pointer :: prec_sh(:)   ! total precipitation from MF
-   real(r8),pointer :: snow_sh(:)   ! snow from MF
-!---ARH
+   ! MF precip
+   real(r8), pointer :: prec_sh(:)   ! total precipitation from MF
+   real(r8), pointer :: snow_sh(:)   ! snow from MF
 
    real(r8), pointer :: qt_macmic(:,:)
    real(r8), pointer :: thl_macmic(:,:)
@@ -2131,11 +2126,8 @@ end subroutine clubb_init_cnst
    call pbuf_get_field(pbuf, pblh_idx,    pblh)
    call pbuf_get_field(pbuf, icwmrdp_idx, dp_icwmr)
    call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmc_sh)
-
-!+++ARH
    call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
    call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
-!---ARH
 
    ! SILHS covariance contributions
    call pbuf_get_field(pbuf, rtp2_mc_zt_idx,    rtp2_mc_zt)
@@ -2847,11 +2839,9 @@ end subroutine clubb_init_cnst
            mf_rcm(:pverp)      = mf_moist_a(:pverp)*mf_moist_qc(:pverp)
            mf_cloudfrac(:pverp)= mf_moist_a(:pverp)
 
-!+++ARH
            ! [kg/m2/s]->[m/s]
            prec_sh(i) = mf_precc(1)/1000._r8
            snow_sh(i) = 0._r8
-!---ARH
 
          end if
 
@@ -3217,10 +3207,9 @@ end subroutine clubb_init_cnst
       ! Take into account the surface fluxes of heat and moisture
       !  Use correct qflux from cam_in, not lhf/latvap as was done previously
       te_b(i) = te_b(i)+(cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice))*hdtime      
-!+++ARH
+
       ! subtract enthalpy of falling precip from tb
       te_b(i) = te_b(i) - prec_sh(i)*1000._r8*latice*hdtime
-!---ARH
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
       se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop+1))
@@ -3793,9 +3782,7 @@ end subroutine clubb_init_cnst
      temp2dp(:ncol,:) = wpthvp(:ncol,:)
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
-!+++ARH
      call outfld( 'PRECSH' , prec_sh(:ncol)  , pcols, lchnk )
-!---ARH
 
    call outfld( 'TKE_CLUBB',        tke,                   pcols, lchnk )
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out,           pcols, lchnk )

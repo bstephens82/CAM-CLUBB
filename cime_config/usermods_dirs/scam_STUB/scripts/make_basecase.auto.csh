@@ -80,6 +80,17 @@ echo "cld_macmic_num_steps=6">>user_nl_cam
 #echo "clubb_l_trapezoidal_rule_zm = .false.">>user_nl_cam
 #echo "clubb_l_trapezoidal_rule_zt = .false.">>user_nl_cam
 
+# c6 needs to be modified via SoureMods
+#echo "clubb_c1 = 0.5">>user_nl_cam
+#echo "clubb_c1b = 0.5">>user_nl_cam
+#echo "clubb_C2rt = 0.5">>user_nl_cam
+#echo "clubb_C2thl = 0.5">>user_nl_cam
+#echo "clubb_C2rtthl = 0.65">>user_nl_cam
+#echo "clubb_C4 = 2.6">>user_nl_cam
+#echo "clubb_C8 = 2.1">>user_nl_cam
+#echo "clubb_C8b = 0.0">>user_nl_cam
+#echo "clubb_c14 = 1.1">>user_nl_cam
+
 echo "clubb_mf_nup = 100">>user_nl_cam
 echo "clubb_mf_L0 = 50.D0">>user_nl_cam
 echo "clubb_mf_Lopt = 3">>user_nl_cam
@@ -103,8 +114,6 @@ cp ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB/scripts/STUB_iop.nc ./
 ncap2 --overwrite -s "bdate=${case_date}" STUB_iop.nc STUB_iop.nc
 ncap2 --overwrite -s "lat[lat]=${case_lat}" STUB_iop.nc STUB_iop.nc
 ncap2 --overwrite -s "lon[lon]=${case_lon}" STUB_iop.nc STUB_iop.nc
-
-#cp /home/aherring/src/cam6_3_006.dev/usr_src/tke/clubb_mf.F90 SourceMods/src.cam/
 
 pwd
 

@@ -607,11 +607,9 @@ module clubb_mf
            un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
            vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
 
-!+++ARH    
            ! convert source terms to a tendency
            supqt(k+1,i) = supqt(k+1,i)*upw(k,i)/dzt(k+1)
            supthl(k+1,i) = supthl(k+1,i)*upw(k,i)/dzt(k+1)
-!---ARH
 
            ! get cloud, momentum levels
            if (do_condensation) then
@@ -689,6 +687,7 @@ module clubb_mf
 
              ! update source terms
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(k-1,i))
+             ! scale autoconv by factor (1-fdd)? 
              supqt(k,i) = supqt(k,i) + sevap
              supthl(k,i) = supthl(k,i) - lmixt*sevap*iexner_zt(k)/cpair
            end do
@@ -764,11 +763,18 @@ module clubb_mf
            awql(k) = awql(k) + upa(k,i)*upw(k,i)*upql(k,i)
            awqi(k) = awqi(k) + upa(k,i)*upw(k,i)*upqi(k,i)
            awqc(k) = awqc(k) + upa(k,i)*upw(k,i)*upqc(k,i)
-           sqt(k)  = sqt(k)  + upa(k,i)*supqt(k,i)
-           sthl(k) = sthl(k) + upa(k,i)*supthl(k,i)
-           precc(k)= precc(k)+ upa(k,i)*uprr(k,i)
+           if (k > 1) then
+             ! scale autoconv by factor (1-fdd)? 
+             sqt(k)  = sqt(k)  + 0.5_r8*(upa(k,i)+upa(k-1,i))*supqt(k,i)
+             sthl(k) = sthl(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i)
+           end if
          enddo
        enddo
+
+       ! downward sweep to get ensemble mean precip
+       do k = nz,2,-1
+         precc(k-1) = precc(k) - rho_zt(k)*dzt(k)*sqt(k)
+       end do
 
        awthl_conv = awthl       
        awqt_conv = awqt
@@ -1118,11 +1124,9 @@ module clubb_mf
       qtn  = qt(k+1) *(1._r8-pentexp ) + upqt (k)*pentexp + supqt(k+1)
       thln = thl(k+1)*(1._r8-pentexp ) + upthl(k)*pentexp + supthl(k+1)
 
-!+++ARH    
       ! convert source terms to a tendency
       supqt(k+1) = supqt(k+1)*upw(k)/dzt(k+1)
       supthl(k+1) = supthl(k+1)*upw(k)/dzt(k+1)
-!---ARH
 
       ! get cloud, momentum levels
       if (do_condensation) then
