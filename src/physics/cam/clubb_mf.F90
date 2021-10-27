@@ -633,8 +633,9 @@ module clubb_mf
            end if
 
            if (do_implicit) then
-             wp = clubb_mf_alphturb*wb*ent(k+1,i)*sqrt(tke(k+1))*dzt(k+1)
-             wn = (-wp + sqrt(wp**2._r8 + (1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))*(upw(k,i)**2._r8 + 2._r8*wa*B*dzt(k+1))) )/(1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))
+             wp = clubb_mf_alphturb*wb*ent(k+1,i)*sqrt(0.5_r8*(tke(k+1)+tke(k)))*dzt(k+1)
+             wn = (-wp + sqrt(wp**2._r8 + (1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))* &
+                   (upw(k,i)**2._r8 + 2._r8*wa*B*dzt(k+1))) )/(1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))
            else
              ! get wn2
              wp = wb*ent(k+1,i)*eturb
