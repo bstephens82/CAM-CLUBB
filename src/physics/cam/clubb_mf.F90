@@ -260,6 +260,7 @@ module clubb_mf
                                              qtn,    qsn,              & ! momentum grid
                                              qcn,    qln,     qin,     & ! momentum grid
                                              un,     vn,      wn2,     & ! momentum grid
+                                             wn,                       & ! momentum grid
                                              lmixn,   srfarea,         & ! momentum grid
                                              srfwqtu, srfwthvu,        &
                                              facqtu,  facthvu
@@ -308,6 +309,9 @@ module clubb_mf
      !
      ! to condensate or not to condensate
      logical                              :: do_condensation = .true.
+     !
+     ! use implicit method for plume updraft velocity
+     logical                              :: do_implicit = .false.
      !
      ! evaporation efficiency after Suselj etal 2019
      real(r8),parameter                   :: ke = 2.5e-4_r8
@@ -628,17 +632,24 @@ module clubb_mf
              end if
            end if
 
-           ! get wn^2
-           wp = wb*ent(k+1,i)*eturb
-           if (wp==0._r8) then
-             wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k+1)
+           if (do_implicit) then
+             wp = clubb_mf_alphturb*wb*ent(k+1,i)*sqrt(0.5_r8*(tke(k+1)+tke(k)))*dzt(k+1)
+             wn = (-wp + sqrt(wp**2._r8 + (1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))* &
+                   (upw(k,i)**2._r8 + 2._r8*wa*B*dzt(k+1))) )/(1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))
            else
-             entw = exp(-2._r8*wp*dzt(k+1))
-             wn2 = entw*upw(k,i)**2._r8+(1._r8-entw)*wa*B/wp
+             ! get wn2
+             wp = wb*ent(k+1,i)*eturb
+             if (wp==0._r8) then
+               wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k+1)
+             else
+               entw = exp(-2._r8*wp*dzt(k+1))
+               wn2 = entw*upw(k,i)**2._r8+(1._r8-entw)*wa*B/wp
+             end if
+             wn = sqrt(max(wn2, 0._r8))
            end if
 
-           if (wn2>0._r8) then
-             upw(k+1,i)   = sqrt(wn2)
+           if (wn>0._r8) then
+             upw(k+1,i)   = wn
              upthv(k+1,i) = thvn
              upthl(k+1,i) = thln
              upqt(k+1,i)  = qtn
