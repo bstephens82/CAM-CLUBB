@@ -1977,6 +1977,11 @@ contains
     real(r8) :: prec_sed_macmic(pcols)
     real(r8) :: snow_sed_macmic(pcols)
 
+!+++ARH
+    real(r8) :: prec_sh_macmic(pcols)
+    real(r8) :: snow_sh_macmic(pcols)
+!---ARH
+
     ! energy checking variables
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
@@ -2273,7 +2278,10 @@ contains
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
-
+!+++ARH
+       prec_sh_macmic = 0._r8
+       snow_sh_macmic = 0._r8
+!---ARH
        do macmic_it = 1, cld_macmic_num_steps
 
           !===================================================
@@ -2379,6 +2387,10 @@ contains
           endif
 
           call t_stopf('macrop_tend')
+!+++ARH
+          prec_sh_macmic(:ncol) = prec_sh_macmic(:ncol) + prec_sh(:ncol)
+          snow_sh_macmic(:ncol) = snow_sh_macmic(:ncol) + snow_sh(:ncol)
+!---ARH
 
           !===================================================
           ! Calculate cloud microphysics
@@ -2516,7 +2528,10 @@ contains
        snow_pcw(:ncol) = snow_pcw_macmic(:ncol)/cld_macmic_num_steps
        prec_str(:ncol) = prec_pcw(:ncol) + prec_sed(:ncol)
        snow_str(:ncol) = snow_pcw(:ncol) + snow_sed(:ncol)
-
+!+++ARH
+       prec_sh(:ncol) = prec_sh_macmic(:ncol)/cld_macmic_num_steps
+       snow_sh(:ncol) = snow_sh_macmic(:ncol)/cld_macmic_num_steps
+!---ARH
     endif
 
     ! Add the precipitation from CARMA to the precipitation from stratiform.
