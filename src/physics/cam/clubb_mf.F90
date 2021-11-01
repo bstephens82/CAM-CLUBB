@@ -223,7 +223,7 @@ module clubb_mf
      real(r8), dimension(nz)              :: moist_th,   dry_th,      & ! momentum grid
                                              awthv,      awqc,        & ! momentum grid                     
                                              awthl_conv, awqt_conv,   & ! momentum grid
-                                             thv_env_zm, awthv_conv,  & ! MKW
+                                             thv_env_zm, awthv_conv,  & ! 
                                              thl_env_zm, qt_env_zm,   & ! momentum grid
                                              thl_env,    qt_env,      & ! thermodynamic grid
                                              thv_env
@@ -264,7 +264,7 @@ module clubb_mf
                                              lmixn,   srfarea,         & ! momentum grid
                                              srfwqtu, srfwthvu,        &
                                              facqtu,  facthvu
-!+++ARH
+
      !
      ! cape variables
      real(r8), dimension(nz)                :: t_zt
@@ -280,7 +280,7 @@ module clubb_mf
      real(r8)                               :: landfrac
      integer                                :: kpbl,     msg,          &
                                                lon,      mx
-!---ARH
+
      !
      ! parameters defining initial conditions for updrafts
      real(r8),parameter                   :: pwmin = 1.5_r8,           &
@@ -449,7 +449,7 @@ module clubb_mf
          call oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                         wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
                         wa, wb, tke, do_condensation, do_clubb_mf_precip, ztop )
-!+++ARH
+
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
          !ztop = ztop - 1600._r8
          !if (ztop < 1._r8) then
@@ -457,7 +457,7 @@ module clubb_mf
          !else
          !  dynamic_L0 = min(35._r8,clubb_mf_a0*(ztop**clubb_mf_b0))
          !end if
-!---ARH
+
        else if (clubb_mf_Lopt==4 .or. clubb_mf_Lopt==5) then
          !dilute cape calculation
          !dmpdz = -1._r8*ent_zt(2:nz,:)
@@ -1793,7 +1793,7 @@ do k = 1,msg-1
    end do ! Levels loop
 end do ! Columns loop
 
-!+++ARH
+
 !   if ( masterproc ) then
 !     do k = 1,msg-1
 !         do i = 1,nup
@@ -1801,7 +1801,7 @@ end do ! Columns loop
 !         end do
 !     end do
 !   end if
-!---ARH
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!END ENTRAINMENT LOOP!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
