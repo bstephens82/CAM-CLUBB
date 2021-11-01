@@ -3630,8 +3630,8 @@ end subroutine clubb_init_cnst
          !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
          !  fraction is purely from deep convection scheme.  
          deepcu(i,k) = max(0.0_r8,min(0.1_r8*log(1.0_r8+500.0_r8*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
-         shalcu(i,k) = mf_cloudfrac_output(i,k);!0._r8
-         sh_icwmr(i,k) = mf_qc_output(i,k);
+         shalcu(i,k) = mf_cloudfrac_output(i,k)!0._r8
+         sh_icwmr(i,k) = mf_qc_output(i,k)
        
          if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
             deepcu(i,k) = 0._r8
