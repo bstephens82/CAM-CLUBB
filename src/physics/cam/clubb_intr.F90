@@ -212,6 +212,9 @@ module clubb_intr
     kvh_idx, &		! CLUBB eddy diffusivity on thermo levels
     pblh_idx, &         ! PBL pbuf
     icwmrdp_idx, &	! In cloud mixing ratio for deep convection
+!+++MKW
+    icwmrsh_idx, &      ! In cloud mixing ratio for shallow convection (MF)
+!---MKW
     tke_idx, &          ! turbulent kinetic energy
     tpert_idx, &        ! temperature perturbation from PBL
     fice_idx, &         ! fice_idx index in physics buffer
@@ -267,9 +270,11 @@ module clubb_intr
     mf_wprtp_macmic_idx, &
     mf_wpthvp_macmic_idx
 
+!+++ARH
   integer :: &
     prec_sh_idx, &
     snow_sh_idx
+!---ARH
 
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
@@ -1003,6 +1008,9 @@ end subroutine clubb_init_cnst
     qist_idx    = pbuf_get_index('QIST')        ! Physical in-stratus IWC
     dp_frac_idx = pbuf_get_index('DP_FRAC')     ! Deep convection cloud fraction
     icwmrdp_idx = pbuf_get_index('ICWMRDP')     ! In-cloud deep convective mixing ratio
+!+++MKW
+    icwmrsh_idx = pbuf_get_index('ICWMRSH')     ! In-cloud shallow convective mixing ratio (EDMF)
+!---MKW
     sh_frac_idx = pbuf_get_index('SH_FRAC')     ! Shallow convection cloud fraction
     relvar_idx  = pbuf_get_index('RELVAR')      ! Relative cloud water variance
     accre_enhan_idx = pbuf_get_index('ACCRE_ENHAN') ! accretion enhancement for MG
@@ -1012,8 +1020,10 @@ end subroutine clubb_init_cnst
     naai_idx        = pbuf_get_index('NAAI')
     npccn_idx       = pbuf_get_index('NPCCN')
 
+!+++ARH
     prec_sh_idx  = pbuf_get_index('PREC_SH')
     snow_sh_idx  = pbuf_get_index('SNOW_SH')
+!---ARH
 
     iisclr_rt  = -1
     iisclr_thl = -1
@@ -1847,6 +1857,9 @@ end subroutine clubb_init_cnst
    real(r8), pointer, dimension(:) :: pblh     ! planetary boundary layer height                [m]
    real(r8), pointer, dimension(:,:) :: tke      ! turbulent kinetic energy                     [m^2/s^2]
    real(r8), pointer, dimension(:,:) :: dp_icwmr ! deep convection in cloud mixing ratio        [kg/kg]
+!+++MKW
+   real(r8), pointer, dimension(:,:) :: sh_icwmr ! shallow convection (EDMF) in cloud mixing ratio [kg/kg]
+!---MKW
    real(r8), pointer, dimension(:,:) :: ice_supersat_frac ! Cloud fraction of ice clouds (pverp)[fraction] 
    real(r8), pointer, dimension(:,:) :: relvar   ! relative cloud water variance                [-]
    real(r8), pointer, dimension(:,:) :: accre_enhan ! accretion enhancement factor              [-]
@@ -1876,9 +1889,10 @@ end subroutine clubb_init_cnst
    real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
    real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
-   ! MF precip
-   real(r8), pointer :: prec_sh(:)   ! total precipitation from MF
-   real(r8), pointer :: snow_sh(:)   ! snow from MF
+!+++ARH
+   real(r8),pointer :: prec_sh(:)   ! total precipitation from MF
+   real(r8),pointer :: snow_sh(:)   ! snow from MF
+!---ARH
 
    real(r8), pointer :: qt_macmic(:,:)
    real(r8), pointer :: thl_macmic(:,:)
@@ -1918,7 +1932,7 @@ end subroutine clubb_init_cnst
                                            mf_thflx_output,   mf_qvflx_output,     &
                                            mf_thlflx_output,  mf_qtflx_output,     &
                                            mf_thvflx_output,                       &
-                                           mf_rcm_output,     mf_cloudfrac_output, &
+                                           mf_rcm_output,                          &
                                            mf_precc_output 
    !
    real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
@@ -1927,7 +1941,9 @@ end subroutine clubb_init_cnst
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
                                            mf_thforc_output,  mf_qvforc_output,    & ! thermodynamic grid
-                                           mf_qcforc_output                          ! thermodynamic grid
+                                           mf_qcforc_output,                       & ! thermodynamic grid
+                                           mf_qc_output,      mf_cloudfrac_output    ! thermodynamic grid
+   
    ! MF plume level outputs
    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_upa_flip,         &
                                                               mf_upw_flip,         &
@@ -1952,26 +1968,30 @@ end subroutine clubb_init_cnst
 
    ! MF Plume
    real(r8), pointer                    :: tpert(:)
-   real(r8), dimension(pverp)           :: mf_dry_a,   mf_moist_a,    &
-                                           mf_dry_w,   mf_moist_w,    &
-                                           mf_dry_qt,  mf_moist_qt,   &
-                                           mf_dry_thl, mf_moist_thl,  &
-                                           mf_dry_u,   mf_moist_u,    &
-                                           mf_dry_v,   mf_moist_v,    &
-                                                       mf_moist_qc,   &
-                                           mf_sqt,     mf_sthl,       &
-                                                       mf_precc,      &
-                                           s_ae,       s_aw,          &
-                                           s_awthl,    s_awqt,        &
-                                           s_awql,     s_awqi,        &
-                                           s_awth,     s_awqv,        &
-                                           s_awu,      s_awv,         &
-                                           mf_thflx,   mf_qvflx,      &
-                                           mf_thlflx,  mf_qtflx,      &
-                                           mf_thvflx,  mf_qcflx,      &
-                                           mf_thforc,  mf_qvforc,     &
-                                           mf_qcforc,                 &
-                                           mf_rcm,     mf_cloudfrac    
+   real(r8), dimension(pverp)           :: mf_dry_a,   mf_moist_a,     &
+                                           mf_dry_w,   mf_moist_w,     &
+                                           mf_dry_qt,  mf_moist_qt,    &
+                                           mf_dry_thl, mf_moist_thl,   &
+                                           mf_dry_u,   mf_moist_u,     &
+                                           mf_dry_v,   mf_moist_v,     &
+                                                       mf_moist_qc,    &
+                                           mf_sqt,     mf_sthl,        &
+                                                       mf_precc,       &
+                                           s_ae,       s_aw,           &
+                                           s_awthl,    s_awqt,         &
+                                           s_awql,     s_awqi,         &
+                                           s_awth,     s_awqv,         &
+                                           s_awu,      s_awv,          &
+                                           mf_thflx,   mf_qvflx,       &
+                                           mf_thlflx,  mf_qtflx,       &
+                                           mf_thvflx,  mf_qcflx,       &
+                                           mf_thforc,  mf_qvforc,      &
+                                           mf_qcforc,                  &
+                                           mf_rcm,     mf_cloudfrac,   &    
+!+++MKW
+                                           mf_qc_zt,   mf_cloudfrac_zt
+!---MKW
+
    ! MF plume level
    real(r8), dimension(pverp,clubb_mf_nup) ::          mf_upa,        &
                                                        mf_upw,        &
@@ -2125,9 +2145,15 @@ end subroutine clubb_init_cnst
    call pbuf_get_field(pbuf, kvh_idx,     khzm)
    call pbuf_get_field(pbuf, pblh_idx,    pblh)
    call pbuf_get_field(pbuf, icwmrdp_idx, dp_icwmr)
+!+++MKW
+   call pbuf_get_field(pbuf, icwmrsh_idx, sh_icwmr)
+!---MKW
    call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmc_sh)
+
+!+++ARH
    call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
    call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
+!---ARH
 
    ! SILHS covariance contributions
    call pbuf_get_field(pbuf, rtp2_mc_zt_idx,    rtp2_mc_zt)
@@ -2409,6 +2435,9 @@ end subroutine clubb_init_cnst
    mf_qcforc_output(:,:)    = 0._r8
    mf_rcm_output(:,:)       = 0._r8
    mf_cloudfrac_output(:,:) = 0._r8
+!+++MKW
+   mf_qc_output(:,:)        = 0._r8
+!---MKW
    mf_ztop_output(:)        = 0._r8
    mf_L0_output(:)          = 0._r8
    mf_cape_output(:)        = 0._r8
@@ -2839,9 +2868,11 @@ end subroutine clubb_init_cnst
            mf_rcm(:pverp)      = mf_moist_a(:pverp)*mf_moist_qc(:pverp)
            mf_cloudfrac(:pverp)= mf_moist_a(:pverp)
 
+!+++ARH
            ! [kg/m2/s]->[m/s]
            prec_sh(i) = mf_precc(1)/1000._r8
            snow_sh(i) = 0._r8
+!---ARH
 
          end if
 
@@ -2942,6 +2973,11 @@ end subroutine clubb_init_cnst
       rtp2_zt = zm2zt_api(rtp2_in)
       thl2_zt = zm2zt_api(thlp2_in)
       wp2_zt  = zm2zt_api(wp2_in)
+!+++MKW
+      ! Need moist_qc and cloudfrac on thermo grid for output
+      mf_qc_zt = zm2zt_api(mf_moist_qc)
+      mf_cloudfrac_zt = zm2zt_api(mf_cloudfrac)
+!---MKW
 
       !  Arrays need to be "flipped" to CAM grid 
 
@@ -3036,7 +3072,6 @@ end subroutine clubb_init_cnst
            mf_thflx_output(i,pverp-k+1)     = mf_thflx(k)
            mf_qvflx_output(i,pverp-k+1)     = mf_qvflx(k)
            mf_rcm_output(i,pverp-k+1)       = mf_rcm(k)
-           mf_cloudfrac_output(i,pverp-k+1) = mf_cloudfrac(k)
            mf_precc_output(i,pverp-k+1)     = mf_precc(k)
            if (k.ne.1) then
              mf_thlforc_output(i,pverp-k+1)            = thlm_forcing(k)
@@ -3045,6 +3080,10 @@ end subroutine clubb_init_cnst
              mf_qvforc_output(i,pverp-k+1)             = mf_qvforc(k)
              mf_qcforc_output(i,pverp-k+1)             = mf_qcforc(k)
              mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup) = mf_upbuoy(k,:clubb_mf_nup)
+!+++MKW
+             mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac_zt(k)
+             mf_qc_output(i,pverp-k+1)                 = mf_qc_zt(k)
+!---MKW
            end if
 
            mf_upa_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_upa(k,:clubb_mf_nup)
@@ -3207,9 +3246,10 @@ end subroutine clubb_init_cnst
       ! Take into account the surface fluxes of heat and moisture
       !  Use correct qflux from cam_in, not lhf/latvap as was done previously
       te_b(i) = te_b(i)+(cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice))*hdtime      
-
+!+++ARH
       ! subtract enthalpy of falling precip from tb
       te_b(i) = te_b(i) - prec_sh(i)*1000._r8*latice*hdtime
+!---ARH
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
       se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop+1))
@@ -3618,7 +3658,10 @@ end subroutine clubb_init_cnst
          !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
          !  fraction is purely from deep convection scheme.  
          deepcu(i,k) = max(0.0_r8,min(0.1_r8*log(1.0_r8+500.0_r8*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
-         shalcu(i,k) = 0._r8
+!+++MKW
+         shalcu(i,k) = mf_cloudfrac_output(i,k);!0._r8
+         sh_icwmr(i,k) = mf_qc_output(i,k);
+!---MKW
        
          if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
             deepcu(i,k) = 0._r8
@@ -3628,7 +3671,7 @@ end subroutine clubb_init_cnst
          !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
          !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud 
          !  from CLUBB plus the deep convective cloud fraction
-         concld(i,k) = min(cloud_frac(i,k)-alst(i,k)+deepcu(i,k),0.80_r8)
+         concld(i,k) = min(cloud_frac(i,k)-alst(i,k)+deepcu(i,k)+shalcu(i,k),0.80_r8)
       enddo
    enddo
    
@@ -3707,7 +3750,9 @@ end subroutine clubb_init_cnst
 
    do k=1,pver
       do i=1,ncol
-         cloud_frac(i,k) = min(ast(i,k)+deepcu(i,k),1.0_r8)
+!+++MKW
+         cloud_frac(i,k) = min(ast(i,k)+deepcu(i,k)+shalcu(i,k),1.0_r8)
+!---MKW
       enddo
    enddo
    
@@ -3782,7 +3827,9 @@ end subroutine clubb_init_cnst
      temp2dp(:ncol,:) = wpthvp(:ncol,:)
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
+!+++ARH
      call outfld( 'PRECSH' , prec_sh(:ncol)  , pcols, lchnk )
+!---ARH
 
    call outfld( 'TKE_CLUBB',        tke,                   pcols, lchnk )
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out,           pcols, lchnk )
@@ -3810,6 +3857,9 @@ end subroutine clubb_init_cnst
    call outfld( 'SL',               sl_output,               pcols, lchnk )
    call outfld( 'CONCLD',           concld,                  pcols, lchnk )
    call outfld( 'DP_CLD',           deepcu,                  pcols, lchnk )
+!+++MKW
+   call outfld( 'SH_CLD',           shalcu,                  pcols, lchnk )
+!---MKW
    call outfld( 'ZMDLF',            dlf_liq_out,           pcols, lchnk )
    call outfld( 'ZMDLFI',           dlf_ice_out,           pcols, lchnk )
    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                 pcols, lchnk )
