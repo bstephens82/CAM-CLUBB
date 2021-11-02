@@ -304,12 +304,6 @@ module clubb_mf
      real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
                                              pblhmin  = 100._r8
      !
-     ! to condensate or not to condensate
-     logical                              :: do_condensation = .true.
-     !
-     ! use implicit method for plume updraft velocity
-     logical                              :: do_implicit = .false.
-     !
      ! evaporation efficiency after Suselj etal 2019
      real(r8),parameter                   :: ke = 2.5e-4_r8
      !
@@ -319,8 +313,17 @@ module clubb_mf
      ! fixed entrainment rate (debug only)
      real(r8),parameter                   :: fixent = 1.e-3_r8
      !
+     ! limiter for tke enahnced fractional entrainment
+     real(r8),parameter                   :: max_eturb = 25._r8
+     !
+     ! to condensate or not to condensate
+     logical                              :: do_condensation = .true.
+     !
      ! to upwind (stagger environ values)
      logical                              :: pupwind = .true.
+     !
+     ! use implicit method for plume updraft velocity
+     logical                              :: do_implicit = .false.
      !
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 
@@ -596,7 +599,7 @@ module clubb_mf
            end if
 
            ! integrate updraft
-           eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           eturb = min(1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i),max_eturb)
            entexp  = exp(-ent(k+1,i)*eturb*dzt(k+1))
            entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
 
