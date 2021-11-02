@@ -3879,6 +3879,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
+     call outfld( 'ICWMRSH'       , sh_icwmr,                  pcols, lchnk )
    end if
 
    if (macmic_it==cld_macmic_num_steps) then
