@@ -20,7 +20,8 @@ module clubb_mf
             clubb_mf_readnl, &
             do_clubb_mf, &
             do_clubb_mf_diag, &
-            clubb_mf_nup
+            clubb_mf_nup, &
+            do_clubb_mf_rad
 
   !
   ! Lopt 0 = fixed L0
@@ -38,6 +39,7 @@ module clubb_mf
   integer, protected :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
+  logical, protected :: do_clubb_mf_rad = .false.
   logical :: do_clubb_mf_precip = .false.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
@@ -61,7 +63,7 @@ module clubb_mf
 
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
-                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip
+                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -95,6 +97,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
     call mpi_bcast(do_clubb_mf_precip, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_precip")
+    call mpi_bcast(do_clubb_mf_rad, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_rad")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -314,7 +318,7 @@ module clubb_mf
      real(r8),parameter                   :: fixent = 1.e-3_r8
      !
      ! limiter for tke enahnced fractional entrainment
-     real(r8),parameter                   :: max_eturb = 25._r8
+     real(r8),parameter                   :: max_eturb = 10._r8
      !
      ! to condensate or not to condensate
      logical                              :: do_condensation = .true.
@@ -599,7 +603,8 @@ module clubb_mf
            end if
 
            ! integrate updraft
-           eturb = min(1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i),max_eturb)
+           !eturb = min(1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i),max_eturb)
+           eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
            entexp  = exp(-ent(k+1,i)*eturb*dzt(k+1))
            entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
 

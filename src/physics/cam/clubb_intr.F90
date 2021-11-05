@@ -30,7 +30,7 @@ module clubb_intr
 #ifdef CLUBB_SGS
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type
-  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup
+  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, do_clubb_mf_rad
   use cam_history_support, only: add_hist_coord
 #endif
 
@@ -1990,8 +1990,8 @@ end subroutine clubb_init_cnst
                                                        mf_upent
    ! CFL limiter vars
    real(r8), dimension(pcols)           :: max_cfl
-   real(r8)                             :: cflval,            cflfac
-   logical                              :: cfllim,     do_mf_rad
+   real(r8)                             :: cflval,     cflfac
+   logical                              :: cfllim     
 
    ! MF local vars
    real(r8), dimension(pverp)           :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
@@ -2802,10 +2802,6 @@ end subroutine clubb_init_cnst
                               mf_thlflx, mf_qtflx,                                            & ! output - variables needed for solver
                               mf_ztop_output(i),   mf_L0_output(i) )
 
-           !if ( masterproc ) then
-           !  write(iulog,*) "mf cape ", mf_cape_output(i)
-           !endif
-
            ! CFL limiter
            s_aw(1)   = 0._r8
            max_cfl(i)= 0._r8
@@ -2851,8 +2847,6 @@ end subroutine clubb_init_cnst
            ! [kg/m2/s]->[m/s]
            prec_sh(i) = mf_precc(1)/1000._r8
            snow_sh(i) = 0._r8
-
-           do_mf_rad = .false.
 
          end if
 
@@ -3622,9 +3616,9 @@ end subroutine clubb_init_cnst
    !  THIS PART COMPUTES CONVECTIVE AND DEEP CONVECTIVE CLOUD FRACTION                 !
    ! --------------------------------------------------------------------------------- ! 
  
-   deepcu(:,pver) = 0.0_r8
-   shalcu(:,pver) = 0.0_r8
-   sh_icwmr(:,pver) = 0.0_r8 
+   deepcu = 0.0_r8
+   shalcu = 0.0_r8
+
    do k=1,pver-1
       do i=1,ncol
          !  diagnose the deep convective cloud fraction, as done in macrophysics based on the 
@@ -3633,13 +3627,17 @@ end subroutine clubb_init_cnst
          !  fraction is purely from deep convection scheme.  
          deepcu(i,k) = max(0.0_r8,min(0.1_r8*log(1.0_r8+500.0_r8*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
 
-         if (do_mf_rad) then
+         if (do_clubb_mf_rad) then
            shalcu(i,k) = mf_cloudfrac_output(i,k)
            sh_icwmr(i,k) = mf_qc_output(i,k)
          end if       
 
          if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
             deepcu(i,k) = 0._r8
+         endif
+
+         if (shalcu(i,k) <= frac_limit .or. sh_icwmr(i,k) < ic_limit) then
+            shalcu(i,k) = 0._r8
          endif
              
          !  using the deep convective cloud fraction, and CLUBB cloud fraction (variable 

@@ -3712,6 +3712,12 @@ If .true. turn on Suselj et al 2019 microphysics.
 Default: .false.
 </entry>
 
+<entry id="do_clubb_mf_rad" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. couple MF plumes to radiation
+Default: .false.
+</entry>
+
 <entry id="clubb_mf_L0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Entrainment length scale in meters for individual plumes. Not used if
