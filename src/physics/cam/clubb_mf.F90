@@ -257,7 +257,8 @@ module clubb_mf
                                              wlv,    wtv,     wp,      & 
                                              B,                        & ! thermodynamic grid
                                              entexp, entexpu, entw,    & ! thermodynamic grid
-                                             eturb,  lmixt,            & ! thermodynamic grid
+                                             Mn,                       & ! momentum grid
+                                             eturb,  det,     lmixt,   & ! thermodynamic grid
                                              qtovqs, sevap,            & ! thermodynamic grid
                                              betathl,betaqt,           & ! thermodynamic grid        
                                              thln,   thvn,    thn,     & ! momentum grid
@@ -317,7 +318,11 @@ module clubb_mf
      ! fixed entrainment rate (debug only)
      real(r8),parameter                   :: fixent = 1.e-3_r8
      !
+     ! Arakawa and Schubert detrainment limiter
+     logical                              :: do_aspd = .false.
+     !
      ! limiter for tke enahnced fractional entrainment
+     ! (only used when do_aspd = .true.)
      real(r8),parameter                   :: max_eturb = 10._r8
      !
      ! to condensate or not to condensate
@@ -603,8 +608,10 @@ module clubb_mf
            end if
 
            ! integrate updraft
-           !eturb = min(1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i),max_eturb)
            eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           if (do_aspd) then
+             eturb = min(eturb,max_eturb)
+           end if
            entexp  = exp(-ent(k+1,i)*eturb*dzt(k+1))
            entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
 
@@ -671,6 +678,26 @@ module clubb_mf
            end if
          enddo
        enddo
+
+       if (do_aspd) then
+         do k=1,nz-1
+           do i=1,clubb_mf_nup
+             Mn = rho_zm(k)*upa(k,i)*upw(k,i)
+             if (Mn>0._r8) then
+               ! diagnose detrainment
+               det = ent(k+1,i)*eturb - (rho_zm(k+1)*upa(k+1,i)*upw(k+1,i) - Mn) &
+                             /(Mn*dzt(k+1))
+
+               if (det <= 0._r8) then
+                 ! diagnose area to eliminate detrainment and conserve mass
+                 Mn = rho_zm(k)*upa(k,i)*upw(k,i)*exp(ent(k+1,i)*eturb*dzt(k+1))
+                 upa(k+1,i) = Mn/(rho_zm(k+1)*upw(k+1,i))             
+               end if
+               !
+             end if
+           end do
+         end do
+       end if
 
        ! downward sweep for rain evaporation, snow melting 
        if (do_clubb_mf_precip) then
