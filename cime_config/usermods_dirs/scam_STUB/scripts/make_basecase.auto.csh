@@ -73,6 +73,9 @@ echo "scm_use_ana_iop = .true.">>user_nl_cam
 
 echo "cld_macmic_num_steps=6">>user_nl_cam
 #echo "deep_scheme = 'off'">>user_nl_cam
+#echo "zmconv_num_cin = 1">>user_nl_cam
+echo "use_gw_front = .false.">>user_nl_cam
+echo "use_gw_convect_dp = .false.">>user_nl_cam
 
 #echo "clubb_timestep=150.D0">>user_nl_cam
 #echo "clubb_gamma_coef = 0.27D0">>user_nl_cam
@@ -91,18 +94,17 @@ echo "cld_macmic_num_steps=6">>user_nl_cam
 #echo "clubb_C8b = 0.0">>user_nl_cam
 #echo "clubb_c14 = 1.1">>user_nl_cam
 
+echo "do_clubb_mf = .true.">>user_nl_cam
+echo "do_clubb_mf_diag = .true.">>user_nl_cam
+echo "do_clubb_mf_precip = .true.">>user_nl_cam
+echo "do_clubb_mf_rad = .false.">>user_nl_cam
+
 echo "clubb_mf_nup = 100">>user_nl_cam
 echo "clubb_mf_L0 = 50.D0">>user_nl_cam
 echo "clubb_mf_Lopt = 3">>user_nl_cam
 echo "clubb_mf_a0 = 1.D0">>user_nl_cam
 echo "clubb_mf_b0 = 0.5D0">>user_nl_cam
 echo "clubb_mf_alphturb = 3.D0">>user_nl_cam
-
-echo "do_clubb_mf = .true.">>user_nl_cam
-echo "do_clubb_mf_diag = .true.">>user_nl_cam
-#echo "zmconv_num_cin = 1">>user_nl_cam
-echo "use_gw_front = .false.">>user_nl_cam
-echo "use_gw_convect_dp = .false.">>user_nl_cam
 
 #Set case specific variables
 ./xmlchange PTS_LAT=${case_lat}  
