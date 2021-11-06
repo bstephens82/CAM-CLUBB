@@ -319,7 +319,7 @@ module clubb_mf
      real(r8),parameter                   :: fixent = 1.e-3_r8
      !
      ! Arakawa and Schubert detrainment limiter
-     logical                              :: do_aspd = .true.
+     logical                              :: do_aspd = .false.
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
