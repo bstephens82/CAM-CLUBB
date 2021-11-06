@@ -319,7 +319,7 @@ module clubb_mf
      real(r8),parameter                   :: fixent = 1.e-3_r8
      !
      ! Arakawa and Schubert detrainment limiter
-     logical                              :: do_aspd = .false.
+     logical                              :: do_aspd = .true.
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
@@ -682,12 +682,12 @@ module clubb_mf
        if (do_aspd) then
          do k=1,nz-1
            do i=1,clubb_mf_nup
-             Mn = rho_zm(k)*upa(k,i)*upw(k,i)
-             if (Mn>0._r8) then
+             !
+             if (upw(k+1,i)>0._r8) then
                ! diagnose detrainment
+               Mn = rho_zm(k)*upa(k,i)*upw(k,i)
                det = ent(k+1,i)*eturb - (rho_zm(k+1)*upa(k+1,i)*upw(k+1,i) - Mn) &
                              /(Mn*dzt(k+1))
-
                if (det <= 0._r8) then
                  ! diagnose area to eliminate detrainment and conserve mass
                  Mn = rho_zm(k)*upa(k,i)*upw(k,i)*exp(ent(k+1,i)*eturb*dzt(k+1))
@@ -695,6 +695,7 @@ module clubb_mf
                end if
                !
              end if
+             !
            end do
          end do
        end if

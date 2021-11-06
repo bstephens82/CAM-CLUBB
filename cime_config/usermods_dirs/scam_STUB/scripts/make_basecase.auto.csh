@@ -41,7 +41,7 @@ set loo = `echo $case_lon | cut -d '.' -f 1`
 echo $loo
 
 # set basecase name
-set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64_3Lopt_3alph"
+set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64_3Lopt_3alph_aspd"
 
 # create new basecase
 ${srcpath}/${src}/cime/scripts/create_newcase --case ${scratchdir}/${CASE} --compset ${COMPSET} --res T42_T42 --user-mods-dir ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach izumi --pecount 1 --compiler intel --queue short --run-unsupported
