@@ -230,7 +230,7 @@ module clubb_mf
                                              thv_env_zm, awthv_conv,  & ! 
                                              thl_env_zm, qt_env_zm,   & ! momentum grid
                                              thl_env,    qt_env,      & ! thermodynamic grid
-                                             thv_env
+                                             thv_env,    ac
      !
      ! updraft properties
      real(r8), dimension(nz,clubb_mf_nup) :: upqv,     upqs,           & ! momentum grid
@@ -387,6 +387,7 @@ module clubb_mf
 
      ! this is the environmental area - by default 1.
      ae = 1._r8
+     ac = 0._r8
 
      ! START MAIN COMPUTATION
      upw   = 0._r8
@@ -688,13 +689,14 @@ module clubb_mf
                Mn = rho_zm(k)*upa(k,i)*upw(k,i)
                det = ent(k+1,i)*eturb - (rho_zm(k+1)*upa(k+1,i)*upw(k+1,i) - Mn) &
                              /(Mn*dzt(k+1))
-               if (det <= 0._r8) then
+               if (det < 0._r8) then
                  ! diagnose area to eliminate detrainment and conserve mass
                  Mn = rho_zm(k)*upa(k,i)*upw(k,i)*exp(ent(k+1,i)*eturb*dzt(k+1))
                  upa(k+1,i) = Mn/(rho_zm(k+1)*upw(k+1,i))             
                end if
                !
              end if
+             ac(k+1) = ac(k+1) + upa(k+1,i)
              !
            end do
          end do
