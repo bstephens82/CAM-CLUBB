@@ -1266,7 +1266,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_qvforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qv forcing (EDMF)' )
       call addfld ( 'edmf_qcforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qc forcing (EDMF)' )
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /),  'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
-      call addfld ( 'edmf_cloudfrac', (/ 'ilev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
+      call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
       call addfld ( 'edmf_ztop'     ,  horiz_only,   'A', 'm'      , 'edmf ztop')
       call addfld ( 'edmf_L0'       ,  horiz_only,   'A', 'm'      , 'edmf dynamic L0')
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
