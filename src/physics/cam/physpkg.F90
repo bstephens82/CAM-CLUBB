@@ -2108,10 +2108,9 @@ contains
     real(r8) :: prec_sed_macmic(pcols)
     real(r8) :: snow_sed_macmic(pcols)
 
-!+++ARH
+    ! CLUBB+MF
     real(r8) :: prec_sh_macmic(pcols)
     real(r8) :: snow_sh_macmic(pcols)
-!---ARH
 
     ! energy checking variables
     real(r8) :: zero(pcols)                    ! array of zeros
@@ -2360,7 +2359,6 @@ contains
     end if
 
     flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
-
     call check_energy_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
 
     call check_tracers_chng(state, tracerint, "convect_shallow", nstep, ztodt, zero_tracers)
@@ -2430,12 +2428,10 @@ contains
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
-<<<<<<< HEAD
-!+++ARH
+
+       ! CLUBB+MF
        prec_sh_macmic = 0._r8
        snow_sh_macmic = 0._r8
-!---ARH
-=======
 
        ! contrail parameterization
        ! see Chen et al., 2012: Global contrail coverage simulated
@@ -2448,7 +2444,6 @@ contains
        ! accumulated over macmic substeps
        call physics_ptend_init(ptend_macp_all,state%psetcols,'macrophysics',lu=.true.,lv=.true.)
 
->>>>>>> upstream/cam_development
        do macmic_it = 1, cld_macmic_num_steps
 
           !===================================================
@@ -2518,11 +2513,9 @@ contains
 
              ! Since we "added" the reserved liquid back in this routine, we need
              ! to account for it in the energy checker
-!+++ARH
-             ! add MF precip to flx_cnd [m/s]
+
+             ! CLUBB+MF: add MF precip to flx_cnd [m/s]
              flx_cnd(:ncol) = -1._r8*rliq(:ncol) + prec_sh(:ncol)
-             !flx_cnd(:ncol) = -1._r8*rliq(:ncol)
-!---ARH
              flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
 
              ! Unfortunately, physics_update does not know what time period
@@ -2556,10 +2549,10 @@ contains
           endif
 
           call t_stopf('macrop_tend')
-!+++ARH
+
+          ! CLUBB+MF
           prec_sh_macmic(:ncol) = prec_sh_macmic(:ncol) + prec_sh(:ncol)
           snow_sh_macmic(:ncol) = snow_sh_macmic(:ncol) + snow_sh(:ncol)
-!---ARH
 
           !===================================================
           ! Calculate cloud microphysics
@@ -2701,10 +2694,11 @@ contains
        snow_pcw(:ncol) = snow_pcw_macmic(:ncol)/cld_macmic_num_steps
        prec_str(:ncol) = prec_pcw(:ncol) + prec_sed(:ncol)
        snow_str(:ncol) = snow_pcw(:ncol) + snow_sed(:ncol)
-!+++ARH
+
+       ! CLUBB+MF
        prec_sh(:ncol) = prec_sh_macmic(:ncol)/cld_macmic_num_steps
        snow_sh(:ncol) = snow_sh_macmic(:ncol)/cld_macmic_num_steps
-!---ARH
+
     endif
 
     ! Add the precipitation from CARMA to the precipitation from stratiform.
