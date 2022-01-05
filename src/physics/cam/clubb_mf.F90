@@ -2085,7 +2085,7 @@ end SUBROUTINE ientropy
 ! Wrapper for qsat_water that does translation between Pa and hPa
 ! qsat_water uses Pa internally, so get it right, need to pass in Pa.
 ! Afterward, set es back to hPa.
-elemental subroutine qsat_hPa(t, p, es, qm)
+subroutine qsat_hPa(t, p, es, qm)
   use wv_saturation, only: qsat_water
 
   ! Inputs

@@ -226,6 +226,7 @@ module clubb_intr
     kvh_idx, &		! CLUBB eddy diffusivity on thermo levels
     pblh_idx, &         ! PBL pbuf
     icwmrdp_idx, &	! In cloud mixing ratio for deep convection
+    icwmrsh_idx, &      ! In cloud mixing ratio for shallow convection (MF)
     tke_idx, &          ! turbulent kinetic energy
     tpert_idx, &        ! temperature perturbation from PBL
     fice_idx, &         ! fice_idx index in physics buffer
@@ -1687,6 +1688,7 @@ end subroutine clubb_init_cnst
 
    real(r8) :: dtime				        ! CLUBB time step                               [s]   
    real(r8) :: edsclr_in(pverp+1-top_lev,edsclr_dim)    ! Scalars to be diffused through CLUBB 		[units vary]
+   real(r8) :: tke_in(pverp+1-top_lev)                  !  TKE
    real(r8) :: wp2_in(pverp+1-top_lev)			! vertical velocity variance (CLUBB)		[m^2/s^2]
    real(r8) :: wp3_in(pverp+1-top_lev)			! third moment vertical velocity		[m^3/s^3]
    real(r8) :: wpthlp_in(pverp+1-top_lev)		! turbulent flux of thetal			[K m/s]
@@ -3282,7 +3284,7 @@ end subroutine clubb_init_cnst
       ! variable.
       if (clubb_do_energyfix) then
         do k=clubbtop+1,pver
-           clubb_s(k) = clubb_s(k) - se_dis*gravit
+           clubb_s(k) = clubb_s(k) - se_dis(k)*gravit
         enddo
       endif           
       ! convert to units of +ve [K]
