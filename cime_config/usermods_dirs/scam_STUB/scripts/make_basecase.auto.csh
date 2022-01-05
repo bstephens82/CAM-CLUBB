@@ -20,7 +20,7 @@ set case_lon = "$argv[$n]"
 set n = 3
 set loc_string = "$argv[$n]"
 
-set src=cam6_3_006.dev
+set src=cam.clubbmf
 set srcpath=/home/$USER/src
 set scratchdir=/scratch/cluster/$USER
 set COMPSET=FSCAM
@@ -41,7 +41,7 @@ set loo = `echo $case_lon | cut -d '.' -f 1`
 echo $loo
 
 # set basecase name
-set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_cam64_3Lopt_3alph_aspd"
+set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_test0"
 
 # create new basecase
 ${srcpath}/${src}/cime/scripts/create_newcase --case ${scratchdir}/${CASE} --compset ${COMPSET} --res T42_T42 --user-mods-dir ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach izumi --pecount 1 --compiler intel --queue short --run-unsupported
@@ -56,7 +56,7 @@ sed -i 's/intel\/mvapich2-2.3rc2-intel-18.0.3/intel\/mvapich2-2.1-qlc/' ./env_ma
 ./xmlchange DOUT_S=FALSE
 
 ### Append to CAM configure options
-./xmlchange --append CAM_CONFIG_OPTS='-phys cam64 -nlev 58'
+./xmlchange --append CAM_CONFIG_OPTS='-phys cam_dev -nlev 58'
 
 
 # ATM_NCPL should be at least 192 to accomodate
