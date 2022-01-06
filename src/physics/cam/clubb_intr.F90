@@ -3284,7 +3284,7 @@ end subroutine clubb_init_cnst
       ! variable.
       if (clubb_do_energyfix) then
         do k=clubbtop+1,pver
-           clubb_s(k) = clubb_s(k) - se_dis(k)*gravit
+           clubb_s(k) = clubb_s(k) - se_dis(i)*gravit
         enddo
       endif           
       ! convert to units of +ve [K]
