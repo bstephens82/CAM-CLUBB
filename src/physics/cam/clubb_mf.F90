@@ -514,6 +514,9 @@ module clubb_mf
          ! overide stochastic entrainment with fixent
          ent(:,:) = fixent
        else
+         ! "trigger" condition
+         if (dynamic_L0 <= 0.0_r8) return
+ 
          ! get entrainment coefficient, dz/L0
          do i=1,clubb_mf_nup
            do k=1,nz
@@ -1192,6 +1195,8 @@ module clubb_mf
     !
     ! use tke enhanced entrainment
     logical                     :: do_tptke = .false.
+
+    zcb = zcb_unset
 
     upw(1) = 0.5_r8 * wmax
     upa(1) = 0.5_r8 * erf( wmax/(sqrt(2._r8)*sigmaw) )
