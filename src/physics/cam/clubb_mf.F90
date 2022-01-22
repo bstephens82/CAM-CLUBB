@@ -321,6 +321,9 @@ module clubb_mf
      ! Arakawa and Schubert detrainment limiter
      logical                              :: do_aspd = .false.
      !
+     ! Lower limit on entrainment length scale
+     real(r8),parameter                   :: min_L0 = 10._r8
+     !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
      real(r8),parameter                   :: max_eturb = 10._r8
@@ -510,13 +513,14 @@ module clubb_mf
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
        end if
 
+       ! limiter to avoid division by zero
+       if (dynamic_L0 <= 0.0_r8) dynamic_L0 = min_L0
+
        if (debug) then
          ! overide stochastic entrainment with fixent
          ent(:,:) = fixent
        else
-         ! "trigger" condition
-         if (dynamic_L0 <= 0.0_r8) return
- 
+         
          ! get entrainment coefficient, dz/L0
          do i=1,clubb_mf_nup
            do k=1,nz
