@@ -380,7 +380,6 @@ module clubb_mf
      qtflx     = 0._r8
      thflx     = 0._r8
      qvflx     = 0._r8
-!+++ARH
      qcflx     = 0._r8
     
      ent       = 0._r8
