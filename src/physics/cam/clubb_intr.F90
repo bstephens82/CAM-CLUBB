@@ -415,8 +415,8 @@ module clubb_intr
     call pbuf_add_field('wpthlp_mc_zt','global',dtype_r8, (/pcols,pverp/), wpthlp_mc_zt_idx)
     call pbuf_add_field('rtpthlp_mc_zt','global',dtype_r8,(/pcols,pverp/), rtpthlp_mc_zt_idx)
 
-    call add_hist_coord('macmic_num_steps', cld_macmic_num_steps, 'macro/micro cycle index')
-    call add_hist_coord('clubb_mf_nup', clubb_mf_nup, 'plume ensemble size')
+    call add_hist_coord('ncyc', cld_macmic_num_steps, 'macro/micro cycle index')
+    call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
 
     call pbuf_add_field('QT_macmic'           ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), qt_macmic_idx)
     call pbuf_add_field('THETAL_macmic'       ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), thl_macmic_idx)
@@ -1315,28 +1315,28 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_ztop'     ,  horiz_only,  'A', 'm'       , 'edmf ztop')
       call addfld ( 'edmf_L0'       ,  horiz_only,  'A', 'm'       , 'edmf dynamic L0')
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
-      call addfld ( 'edmf_upa'      , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
-      call addfld ( 'edmf_upw'      , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'm/s'     , 'Plume updraft vertical velocity (EDMF)' )
-      call addfld ( 'edmf_upqt'     , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'kg/kg'   , 'Plume updraft total water mixing ratio (EDMF)' )
-      call addfld ( 'edmf_upthl'    , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'K'       , 'Plume updraft liquid potential temperature (EDMF)' )
-      call addfld ( 'edmf_upthv'    , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'm/s'     , 'Plume updraft virtual potential temperature (EDMF)' )
-      call addfld ( 'edmf_upth'     , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'm/s'     , 'Plume updraft potential temperature (EDMF)' )
-      call addfld ( 'edmf_upqc'     , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'kg/kg'   , 'Plume updraft condensate mixing ratio (EDMF)' )
-      call addfld ( 'edmf_upent'    , (/ 'ilev', 'clubb_mf_nup' /), 'A', 'k1/m'    , 'Plume updraft entrainment rate (EDMF)' )
-      call addfld ( 'edmf_upbuoy'   , (/  'lev', 'clubb_mf_nup' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
+      call addfld ( 'edmf_upa'      , (/ 'ilev', 'nens' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
+      call addfld ( 'edmf_upw'      , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft vertical velocity (EDMF)' )
+      call addfld ( 'edmf_upqt'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft total water mixing ratio (EDMF)' )
+      call addfld ( 'edmf_upthl'    , (/ 'ilev', 'nens' /), 'A', 'K'       , 'Plume updraft liquid potential temperature (EDMF)' )
+      call addfld ( 'edmf_upthv'    , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft virtual potential temperature (EDMF)' )
+      call addfld ( 'edmf_upth'     , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft potential temperature (EDMF)' )
+      call addfld ( 'edmf_upqc'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft condensate mixing ratio (EDMF)' )
+      call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', 'k1/m'    , 'Plume updraft entrainment rate (EDMF)' )
+      call addfld ( 'edmf_upbuoy'   , (/  'ilev', 'nens' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
     end if 
 
-    call addfld ('QT_macmic'           , (/ 'ilev', 'macmic_num_steps' /), 'A', 'kg/kg'   , 'QT at macro/micro substep')
-    call addfld ('THETAL_macmic'       , (/ 'ilev', 'macmic_num_steps' /), 'A', 'K'       , 'THETAL at macro/micro substep')
-    call addfld ('RCM_CLUBB_macmic'    , (/ 'ilev', 'macmic_num_steps' /), 'A', 'kg/kg'   , 'RCM CLUBB at macro/micro substep')
-    call addfld ('CLDFRAC_CLUBB_macmic', (/ 'ilev', 'macmic_num_steps' /), 'A', 'fraction', 'CLDFRAC CLUBB at macro/micro substep')
-    call addfld ('WPTHLP_CLUBB_macmic' , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'Heat Flux at macro/micro substep')
-    call addfld ('WPRTP_CLUBB_macmic'  , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'Moisture Flux at macro/micro substep')
-    call addfld ('WPTHVP_CLUBB_macmic' , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'Buoyancy Flux at macro/micro substep')
+    call addfld ('QT_macmic'           , (/ 'ilev', 'ncyc' /), 'A', 'kg/kg'   , 'QT at macro/micro substep')
+    call addfld ('THETAL_macmic'       , (/ 'ilev', 'ncyc' /), 'A', 'K'       , 'THETAL at macro/micro substep')
+    call addfld ('RCM_CLUBB_macmic'    , (/ 'ilev', 'ncyc' /), 'A', 'kg/kg'   , 'RCM CLUBB at macro/micro substep')
+    call addfld ('CLDFRAC_CLUBB_macmic', (/ 'ilev', 'ncyc' /), 'A', 'fraction', 'CLDFRAC CLUBB at macro/micro substep')
+    call addfld ('WPTHLP_CLUBB_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Heat Flux at macro/micro substep')
+    call addfld ('WPRTP_CLUBB_macmic'  , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Moisture Flux at macro/micro substep')
+    call addfld ('WPTHVP_CLUBB_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Buoyancy Flux at macro/micro substep')
     if (do_clubb_mf) then
-      call addfld ( 'edmf_thlflx_macmic', (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'thl flux (EDMF) at macro/micro substep' )
-      call addfld ( 'edmf_thvflx_macmic', (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'thv flux (EDMF) at macro/micro substep' )
-      call addfld ( 'edmf_qtflx_macmic' , (/ 'ilev', 'macmic_num_steps' /), 'A', 'W/m2'    , 'qt flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_thlflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'thl flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_thvflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'thv flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_qtflx_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'qt flux (EDMF) at macro/micro substep' )
     end if
 
     !  Initialize statistics, below are dummy variables
@@ -1797,6 +1797,7 @@ end subroutine clubb_init_cnst
    real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
    real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pver)
+   real(r8) :: eleak(pcols)
 
    real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
    real(r8) :: wpthlp_output(pcols,pverp)       ! Heat flux output variable                     [W/m2]
@@ -1997,10 +1998,8 @@ end subroutine clubb_init_cnst
                                                               mf_upthv_output,     &
                                                               mf_upth_output,      &
                                                               mf_upqc_output,      &
-                                                              mf_upent_output
-   ! MF plume level outputs to outfld
-   real(r8), dimension(pcols,pver*clubb_mf_nup) ::            mf_upbuoy_output
-
+                                                              mf_upent_output,     &
+                                                              mf_upbuoy_output
    ! MF Plume
    real(r8), pointer                    :: tpert(:)
    real(r8), dimension(pverp)           :: mf_dry_a,   mf_moist_a,     &
@@ -3104,7 +3103,6 @@ end subroutine clubb_init_cnst
              mf_thforc_output(i,pverp-k+1)             = mf_thforc(k)
              mf_qvforc_output(i,pverp-k+1)             = mf_qvforc(k)
              mf_qcforc_output(i,pverp-k+1)             = mf_qcforc(k)
-             mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup) = mf_upbuoy(k,:clubb_mf_nup)
              mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac_zt(k)
              mf_qc_output(i,pverp-k+1)                 = mf_qc_zt(k)
            end if
@@ -3117,7 +3115,7 @@ end subroutine clubb_init_cnst
            mf_upth_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_upth(k,:clubb_mf_nup)
            mf_upqc_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_upqc(k,:clubb_mf_nup)
            mf_upent_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_upent(k,:clubb_mf_nup)
-
+           mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup)    = mf_upbuoy(k,:clubb_mf_nup)
          end if
 
       enddo
@@ -3132,7 +3130,7 @@ end subroutine clubb_init_cnst
           mf_upth_output(i,pverp*(k-1)+1:pverp*k)  = mf_upth_flip(i,:pverp,k)
           mf_upqc_output(i,pverp*(k-1)+1:pverp*k)  = mf_upqc_flip(i,:pverp,k)
           mf_upent_output(i,pverp*(k-1)+1:pverp*k) = mf_upent_flip(i,:pverp,k)
-          mf_upbuoy_output(i,pver*(k-1)+1:pver*k)  = mf_upbuoy_flip(i,:pver,k)
+          mf_upbuoy_output(i,pverp*(k-1)+1:pverp*k)  = mf_upbuoy_flip(i,:pverp,k)
         end do
       end if
 
@@ -3269,6 +3267,7 @@ end subroutine clubb_init_cnst
       ! Take into account the surface fluxes of heat and moisture
       !  Use correct qflux from cam_in, not lhf/latvap as was done previously
       te_b(i) = te_b(i)+(cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice))*hdtime      
+
       ! subtract enthalpy of falling precip from tb
       te_b(i) = te_b(i) - prec_sh(i)*1000._r8*latice*hdtime
 
@@ -3363,7 +3362,9 @@ end subroutine clubb_init_cnst
    enddo  ! end column loop
 
    ! dte / hdtime = [kg/s2]/[s] = W/m2
-   call outfld('ELEAK_CLUBB', (te_a - te_b)/hdtime, pcols, lchnk)
+   eleak(:ncol) = (te_a(:ncol) - te_b(:ncol))/hdtime
+   call outfld('ELEAK_CLUBB', eleak, pcols, lchnk)
+
    call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
 
    call outfld('KVH_CLUBB', khzm, pcols, lchnk)
