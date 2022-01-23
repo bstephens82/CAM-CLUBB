@@ -3140,8 +3140,11 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_damp_wp2_using_em');
    add_default($nl, 'do_clubb_mf');
    add_default($nl, 'do_clubb_mf_diag');
+   add_default($nl, 'do_clubb_mf_rad');
+   add_default($nl, 'do_clubb_mf_precip');
    add_default($nl, 'clubb_mf_L0');
    add_default($nl, 'clubb_mf_ent0');
+   add_default($nl, 'clubb_mf_alphturb');
    add_default($nl, 'clubb_mf_Lopt');
    add_default($nl, 'clubb_mf_a0');
    add_default($nl, 'clubb_mf_b0');
