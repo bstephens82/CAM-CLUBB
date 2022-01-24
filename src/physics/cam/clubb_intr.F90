@@ -23,6 +23,9 @@ module clubb_intr
   use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman, rhoh2o
 
   use spmd_utils,    only: masterproc 
+!+++ARH
+  use spmd_utils,    only: iam
+!---ARH
   use constituents,  only: pcnst, cnst_add
   use pbl_utils,     only: calc_ustar, calc_obklen
   use ref_pres,      only: top_lev => trop_cloud_top_lev  
@@ -286,6 +289,10 @@ module clubb_intr
     prec_sh_idx, &
     snow_sh_idx
 
+!+++ARH
+  integer :: ztopm1_idx
+!---ARH
+
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
 
@@ -429,6 +436,9 @@ module clubb_intr
       call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
       call pbuf_add_field('edmf_qtflx_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wprtp_macmic_idx)
       call pbuf_add_field('edmf_thvflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
+!+++ARH
+      call pbuf_add_field('ZTOPM1'             ,'global' ,  dtype_r8, (/pcols/), ztopm1_idx)
+!---ARH
     end if
 
 #endif 
@@ -1546,6 +1556,11 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf2d, wprtp_mc_zt_idx,   0.0_r8)
        call pbuf_set_field(pbuf2d, wpthlp_mc_zt_idx,  0.0_r8)
        call pbuf_set_field(pbuf2d, rtpthlp_mc_zt_idx, 0.0_r8)
+!+++ARH
+       if (do_clubb_mf) then
+         call pbuf_set_field(pbuf2d, ztopm1_idx, 0.0_r8)
+       end if
+!---ARH
     endif
   
     ! The following is physpkg, so it needs to be initialized every time
@@ -1930,6 +1945,10 @@ end subroutine clubb_init_cnst
    real(r8),pointer :: prec_sh(:)   ! total precipitation from MF
    real(r8),pointer :: snow_sh(:)   ! snow from MF
 
+!+++ARH
+   real(r8), pointer :: ztopm1(:)
+!---ARH
+
    real(r8), pointer :: qt_macmic(:,:)
    real(r8), pointer :: thl_macmic(:,:)
    real(r8), pointer :: rcm_macmic(:,:)
@@ -2039,6 +2058,10 @@ end subroutine clubb_init_cnst
    real(r8), dimension(pcols)           :: max_cfl
    real(r8)                             :: cflval,     cflfac
    logical                              :: cfllim
+
+!+++ARH
+   real(r8)                             :: mf_ztopm1
+!---ARH
 
    ! MF local vars
    real(r8), dimension(pverp)           :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
@@ -2207,6 +2230,9 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, mf_wprtp_macmic_idx, mf_qtflx_macmic)
      call pbuf_get_field(pbuf, mf_wpthvp_macmic_idx, mf_thvflx_macmic)
      call pbuf_get_field(pbuf, tpert_idx, tpert)
+!+++ARH
+     call pbuf_get_field(pbuf, ztopm1_idx, ztopm1)
+!---ARH
    end if
 
    ! Initialize the apply_const variable (note special logic is due to eularian backstepping)
@@ -2824,6 +2850,13 @@ end subroutine clubb_init_cnst
              thv_ds_zm = zt2zm_api( thv_ds_zt  )
            end if
 
+!+++ARH
+           !if (t==0) then
+           !  mf_ztopm1 = ztopm1(i)
+           !end if
+           ! fix ztop over clubb subcycles
+           mf_ztopm1 = ztopm1(i)
+!---ARH
            call integrate_mf( pverp,                                                          & ! input
                               rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
                               rho_zt,    dzt,         zt_g,       p_in_Pa,    invrs_exner_zt, & ! input
@@ -2832,7 +2865,10 @@ end subroutine clubb_init_cnst
                                                       thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
                                                       wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
-                              wpthlp_in, tke_in,      tpert(i),                               & ! input
+!+++ARH
+                              !wpthlp_in, tke_in,      tpert(i),                               & ! input
+                              wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,                  & ! input                     
+!---ARH
                               mf_cape_output(i),                                              & ! output - plume diagnostics
                               mf_upa,                                                         & ! output - plume diagnostics
                               mf_upw,                                                         & ! output - plume diagnostics
@@ -2981,6 +3017,17 @@ end subroutine clubb_init_cnst
                                                      out_radzt,out_radzm,out_sfc)
 
       enddo  ! end time loop
+
+!+++ARH
+      if (do_clubb_mf) then
+        if (macmic_it == 1) then
+          ! update ztop after first mac/mic subcycle of a physics time-step
+          ztopm1(i) = mf_ztopm1
+          !ztopm1(i) = 0.5_r8*ztopm1(i) + 0.5_r8*mf_ztopm1
+        end if
+        write(100+iam,*) "i, ztopm1, ", i, ztopm1(i)
+      end if
+!---ARH
 
       if (clubb_do_adv) then
          if (macmic_it  ==  cld_macmic_num_steps) then 

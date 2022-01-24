@@ -9,6 +9,9 @@ module clubb_mf
   use spmd_utils,    only: masterproc
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun
+!+++ARH
+  use time_manager,  only: is_first_step
+!---ARH
   use physconst,     only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
                            cpwv, cpliq, rh2o, zvir, pi
 
@@ -115,7 +118,10 @@ module clubb_mf
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                                              wthl,    wqt,       pblh,              & ! input
-                           wpthlp_env, tke,  tpert,                                 & ! input
+!+++ARH
+                           !wpthlp_env, tke,  tpert,                                 & ! input
+                           wpthlp_env, tke,  tpert,  ztopm1,                        & ! input
+!---ARH
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
                            upw,                                                     & ! output
@@ -189,7 +195,9 @@ module clubb_mf
 
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
-
+!+++ARH
+     real(r8), intent(inout)             :: ztopm1
+!---ARH
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
                                                          upqt,    & ! momentum grid
@@ -342,7 +350,6 @@ module clubb_mf
      !
      ! to debug flag
      logical                              :: debug  = .false.
-
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -512,6 +519,19 @@ module clubb_mf
            ztop = mcape
          end if
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
+!+++ARH
+       else if (clubb_mf_Lopt==6) then
+         ! grab ztop from max height of ensemble in prior time-step
+         if (is_first_step()) then
+           !Test plume
+           call oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
+                          wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
+                          wa, wb, tke, do_condensation, do_clubb_mf_precip, ztop )
+         else
+           ztop = ztopm1
+         end if
+         dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
+!---ARH
        end if
 
        ! limiter to avoid division by zero
@@ -827,6 +847,14 @@ module clubb_mf
            return
          end if
        enddo
+
+!+++ARH
+       do k=1,nz
+         if (ae(k) < 1._r8) then
+           ztopm1 = zm(k)
+         end if
+       end do
+!---ARH
 
        ! downward sweep to get ensemble mean precip
        do k = nz,2,-1
