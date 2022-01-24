@@ -820,6 +820,12 @@ module clubb_mf
              sthl(k) = sthl(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i)
            end if
          enddo
+         ! no convection if convection terminates at first level
+         if (k == 2 .and. ae(k) == 1._r8) then
+           sqt(k) = 0_r8
+           sthl(k) = 0._r8
+           return
+         end if
        enddo
 
        ! downward sweep to get ensemble mean precip

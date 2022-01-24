@@ -6,4 +6,5 @@ do_clubb_mf=.true.
 do_clubb_mf_diag=.true.
 do_clubb_mf_rad=.true.
 do_clubb_mf_precip=.true.
+clubb_mf_Lopt=3
 deep_scheme='off'
