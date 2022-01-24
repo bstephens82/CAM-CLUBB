@@ -2815,6 +2815,15 @@ end subroutine clubb_init_cnst
            qv_zm      = zt2zm_api( qv_zt )
            qc_zm      = zt2zm_api( qc_zt )
 
+           if (t>1) then
+             ! update thv if clubb is subcycled
+             thv_ds_zt(:pverp) = thlm_in(:pverp) &
+                                 + latvap*rcm_inout(:pverp)*invrs_exner_zt(:pverp)/cpair
+             thv_ds_zt(:pverp) = thv_ds_zt(:pverp) &
+                                 * (1._r8+zvir*(rtm_in(:pverp)-rcm_inout(:pverp)) - rcm_inout(:pverp))
+             thv_ds_zm = zt2zm_api( thv_ds_zt  )
+           end if
+
            call integrate_mf( pverp,                                                          & ! input
                               rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
                               rho_zt,    dzt,         zt_g,       p_in_Pa,    invrs_exner_zt, & ! input
