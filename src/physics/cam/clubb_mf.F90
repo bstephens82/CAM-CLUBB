@@ -10,7 +10,8 @@ module clubb_mf
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun
 !+++ARH
-  use time_manager,  only: is_first_step
+  use time_manager,  only: is_first_step, get_nstep
+  use spmd_utils,    only: iam
 !---ARH
   use physconst,     only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
                            cpwv, cpliq, rh2o, zvir, pi
@@ -421,6 +422,10 @@ module clubb_mf
      supqt = 0._r8
      supthl= 0._r8
 
+     dynamic_L0 = 0._r8
+     ztop = 0._r8
+     mcape = 0._r8
+
      ! unique identifier
      zcb_unset = 9999999._r8
      zcb       = zcb_unset
@@ -521,21 +526,15 @@ module clubb_mf
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
 !+++ARH
        else if (clubb_mf_Lopt==6) then
-         ! grab ztop from max height of ensemble in prior time-step
-         if (is_first_step()) then
-           !Test plume
-           call oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
-                          wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
-                          wa, wb, tke, do_condensation, do_clubb_mf_precip, ztop )
-         else
-           ztop = ztopm1
-         end if
+         ! grab ztop from max height of ensemble in prior time-step(s)
+         ztop = ztopm1
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
+         if (masterproc) write(iam+110,*) 'mf_ztop ', ztop
 !---ARH
        end if
 
        ! limiter to avoid division by zero
-       if (dynamic_L0 <= 0.0_r8) dynamic_L0 = min_L0
+       dynamic_L0 = max(min_L0,dynamic_L0)
 
        if (debug) then
          ! overide stochastic entrainment with fixent

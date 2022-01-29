@@ -25,6 +25,7 @@ module clubb_intr
   use spmd_utils,    only: masterproc 
 !+++ARH
   use spmd_utils,    only: iam
+  use time_manager,  only: get_nstep
 !---ARH
   use constituents,  only: pcnst, cnst_add
   use pbl_utils,     only: calc_ustar, calc_obklen
@@ -291,6 +292,8 @@ module clubb_intr
 
 !+++ARH
   integer :: ztopm1_idx
+  integer :: ztopm2_idx
+  integer :: ztop_macmic_idx
 !---ARH
 
   !  Output arrays for CLUBB statistics    
@@ -438,6 +441,8 @@ module clubb_intr
       call pbuf_add_field('edmf_thvflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
 !+++ARH
       call pbuf_add_field('ZTOPM1'             ,'global' ,  dtype_r8, (/pcols/), ztopm1_idx)
+      call pbuf_add_field('ZTOPM2'             ,'global' ,  dtype_r8, (/pcols/), ztopm2_idx)
+      call pbuf_add_field('ZTOP_MACMIC'        ,'physpkg',  dtype_r8, (/pcols/), ztop_macmic_idx)
 !---ARH
     end if
 
@@ -1559,6 +1564,8 @@ end subroutine clubb_init_cnst
 !+++ARH
        if (do_clubb_mf) then
          call pbuf_set_field(pbuf2d, ztopm1_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ztopm2_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ztop_macmic_idx, 0.0_r8)
        end if
 !---ARH
     endif
@@ -1947,6 +1954,8 @@ end subroutine clubb_init_cnst
 
 !+++ARH
    real(r8), pointer :: ztopm1(:)
+   real(r8), pointer :: ztopm2(:)
+   real(r8), pointer :: ztop_macmic(:)
 !---ARH
 
    real(r8), pointer :: qt_macmic(:,:)
@@ -2060,7 +2069,7 @@ end subroutine clubb_init_cnst
    logical                              :: cfllim
 
 !+++ARH
-   real(r8)                             :: mf_ztopm1
+   real(r8)                             :: mf_ztopm1, mf_ztop_nadv
 !---ARH
 
    ! MF local vars
@@ -2232,6 +2241,8 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, tpert_idx, tpert)
 !+++ARH
      call pbuf_get_field(pbuf, ztopm1_idx, ztopm1)
+     call pbuf_get_field(pbuf, ztopm2_idx, ztopm2)
+     call pbuf_get_field(pbuf, ztop_macmic_idx, ztop_macmic)
 !---ARH
    end if
 
@@ -2815,6 +2826,14 @@ end subroutine clubb_init_cnst
       stats_nsamp = nint(stats_tsamp/dtime)
       stats_nout = nint(stats_tout/dtime)
 
+!+++ARH
+      if (do_clubb_mf) then
+        mf_ztopm1 = 0._r8
+        mf_ztop_nadv = 0._r8
+        if (macmic_it==1) ztop_macmic(i) = 0._r8
+      end if
+!---ARH
+
       do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
     
          !  Increment the statistics then being stats timestep
@@ -2851,11 +2870,8 @@ end subroutine clubb_init_cnst
            end if
 
 !+++ARH
-           !if (t==0) then
-           !  mf_ztopm1 = ztopm1(i)
-           !end if
-           ! fix ztop over clubb subcycles
            mf_ztopm1 = ztopm1(i)
+           !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
 !---ARH
            call integrate_mf( pverp,                                                          & ! input
                               rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
@@ -2943,7 +2959,9 @@ end subroutine clubb_init_cnst
            ! [kg/m2/s]->[m/s]
            prec_sh(i) = mf_precc(1)/1000._r8
            snow_sh(i) = 0._r8
-
+!+++ARH
+           mf_ztop_nadv = mf_ztop_nadv + mf_ztopm1 
+!---ARH
          end if
 
          !  Advance CLUBB CORE one timestep in the future
@@ -3020,12 +3038,16 @@ end subroutine clubb_init_cnst
 
 !+++ARH
       if (do_clubb_mf) then
-        if (macmic_it == 1) then
-          ! update ztop after first mac/mic subcycle of a physics time-step
-          ztopm1(i) = mf_ztopm1
-          !ztopm1(i) = 0.5_r8*ztopm1(i) + 0.5_r8*mf_ztopm1
+        mf_ztop_nadv = mf_ztop_nadv/REAL(nadv)
+        ztop_macmic(i) = ztop_macmic(i) + mf_ztop_nadv
+        !if (masterproc) write(100+iam,*) "nstep, macmic_it, nadv, ", get_nstep(), macmic_it, nadv
+        !if (masterproc) write(100+iam,*) "ztopm1, ztop_macmic(i), mf_ztop_nadv, ", ztopm1(i), ztop_macmic(i), mf_ztop_nadv
+
+        if (macmic_it == cld_macmic_num_steps) then
+          ztopm2(i) = ztopm1(i)        
+          ztopm1(i) = ztop_macmic(i)/REAL(cld_macmic_num_steps)
+          if (masterproc) write(100+iam,*) "nstep, updated ztopm1, ztopm2, ", get_nstep(), ztopm1(i), ztopm2(i)
         end if
-        write(100+iam,*) "i, ztopm1, ", i, ztopm1(i)
       end if
 !---ARH
 
