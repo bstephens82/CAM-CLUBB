@@ -121,7 +121,7 @@ module clubb_mf
                                              wthl,    wqt,       pblh,              & ! input
 !+++ARH
                            !wpthlp_env, tke,  tpert,                                 & ! input
-                           wpthlp_env, tke,  tpert,  ztopm1,                        & ! input
+                           wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
 !---ARH
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
@@ -197,6 +197,7 @@ module clubb_mf
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
 !+++ARH
+     real(r8), intent(in)                :: rhinv
      real(r8), intent(inout)             :: ztopm1
 !---ARH
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
@@ -530,6 +531,11 @@ module clubb_mf
          ztop = ztopm1
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
          if (masterproc) write(iam+110,*) 'mf_ztop ', ztop
+
+       else if (clubb_mf_Lopt==7) then
+         ztop = rhinv
+         dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
+         if (masterproc) write(iam+110,*) 'rhinv, dynamic_L0 ', rhinv, dynamic_L0
 !---ARH
        end if
 

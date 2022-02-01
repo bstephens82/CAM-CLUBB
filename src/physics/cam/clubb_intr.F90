@@ -1615,6 +1615,11 @@ end subroutine clubb_init_cnst
    use cam_logfile,    only: iulog
    use tropopause,     only: tropopause_findChemTrop
    use time_manager,   only: get_nstep
+
+!+++ARH
+   use wv_saturation,   only: qsat
+   use interpolate_data,only: vertinterp
+!---ARH
       
 #ifdef CLUBB_SGS
    use hb_diff,                   only: pblintd
@@ -2070,6 +2075,10 @@ end subroutine clubb_init_cnst
 
 !+++ARH
    real(r8)                             :: mf_ztopm1, mf_ztop_nadv
+
+   real(r8), dimension(pcols,pver)      :: esat,      rh
+   real(r8), dimension(pcols)           :: rh500
+   real(r8)                             :: rhinv
 !---ARH
 
    ! MF local vars
@@ -2243,6 +2252,15 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, ztopm1_idx, ztopm1)
      call pbuf_get_field(pbuf, ztopm2_idx, ztopm2)
      call pbuf_get_field(pbuf, ztop_macmic_idx, ztop_macmic)
+
+     ! Relative humidity
+     do k = 1, pver
+        call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), esat(1:ncol,k), rh(1:ncol,k), ncol)
+     end do
+     rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
+     ! Interpolate to 500 hPa
+     call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rh500, &
+         extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
 !---ARH
    end if
 
@@ -2872,6 +2890,9 @@ end subroutine clubb_init_cnst
 !+++ARH
            mf_ztopm1 = ztopm1(i)
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
+
+           rhinv = 0._r8
+           if (rh500(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rh500(i)) - 1._r8 )
 !---ARH
            call integrate_mf( pverp,                                                          & ! input
                               rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
@@ -2883,7 +2904,7 @@ end subroutine clubb_init_cnst
                                                       wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
 !+++ARH
                               !wpthlp_in, tke_in,      tpert(i),                               & ! input
-                              wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,                  & ! input                     
+                              wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
 !---ARH
                               mf_cape_output(i),                                              & ! output - plume diagnostics
                               mf_upa,                                                         & ! output - plume diagnostics
