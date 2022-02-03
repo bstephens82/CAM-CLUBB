@@ -487,7 +487,9 @@ module clubb_mf
          !else
          !  dynamic_L0 = min(35._r8,clubb_mf_a0*(ztop**clubb_mf_b0))
          !end if
-
+!+++ARH
+         if (masterproc) write(iam+110,*) 'ztop, dynamic_L0 ', ztop, dynamic_L0
+!---ARH
        else if (clubb_mf_Lopt==4 .or. clubb_mf_Lopt==5) then
          !dilute cape calculation
          !dmpdz = -1._r8*ent_zt(2:nz,:)
@@ -530,7 +532,7 @@ module clubb_mf
          ! grab ztop from max height of ensemble in prior time-step(s)
          ztop = ztopm1
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-         if (masterproc) write(iam+110,*) 'mf_ztop ', ztop
+         if (masterproc) write(iam+110,*) 'mf_ztop, dynamic_L0 ', ztop, dynamic_L0
 
        else if (clubb_mf_Lopt==7) then
          ztop = rhinv

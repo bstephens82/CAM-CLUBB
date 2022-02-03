@@ -21,7 +21,9 @@ module clubb_intr
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
   use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman, rhoh2o
-
+!+++ARH
+  use physconst,     only: rga
+!---ARH
   use spmd_utils,    only: masterproc 
 !+++ARH
   use spmd_utils,    only: iam
@@ -2077,6 +2079,7 @@ end subroutine clubb_init_cnst
    real(r8)                             :: mf_ztopm1, mf_ztop_nadv
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
+   real(r8), dimension(pcols,pver)      :: mq,        mqsat
    real(r8), dimension(pcols)           :: rh500
    real(r8)                             :: rhinv
 !---ARH
@@ -2257,10 +2260,20 @@ end subroutine clubb_init_cnst
      do k = 1, pver
         call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), esat(1:ncol,k), rh(1:ncol,k), ncol)
      end do
-     rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
-     ! Interpolate to 500 hPa
-     call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rh500, &
-         extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
+
+     !rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
+     !! Interpolate to 500 hPa
+     !call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rh500, &
+     !    extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
+
+     ! Mass of q, by layer and vertically integrated
+     mq(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
+     mqsat(:ncol,:) = rh(:ncol,:) * state%pdel(:ncol,:) * rga
+     do k=2,pver
+       mq(:ncol,1) = mq(:ncol,1) + mq(:ncol,k)
+       mqsat(:ncol,1) = mqsat(:ncol,1) + mqsat(:ncol,k)
+     end do
+     rh500(:ncol) = mq(:ncol,1)/mqsat(:ncol,1) 
 !---ARH
    end if
 
@@ -2892,6 +2905,7 @@ end subroutine clubb_init_cnst
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
 
            rhinv = 0._r8
+           if (rh500(i) > 1._r8) rh500(i) = 1._r8
            if (rh500(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rh500(i)) - 1._r8 )
 !---ARH
            call integrate_mf( pverp,                                                          & ! input

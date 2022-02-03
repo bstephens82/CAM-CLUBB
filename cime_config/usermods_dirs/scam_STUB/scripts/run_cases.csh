@@ -2,12 +2,12 @@
 
 set src = cam.clubbmf.ztopm1
 
-#set lat = 23.08900523560209
-#set lon = 205
-#set casenam = st10
-#source make_basecase.auto.csh $lat $lon $casenam
+set lat = 23.08900523560209
+set lon = 205
+set casenam = st10
+source make_basecase.auto.csh $lat $lon $casenam
 
-#cd /home/aherring/src/$src/cime_config/usermods_dirs/scam_STUB/scripts
+cd /home/aherring/src/$src/cime_config/usermods_dirs/scam_STUB/scripts
 
 set lat = 24.03141361256544
 set lon = 207.5
