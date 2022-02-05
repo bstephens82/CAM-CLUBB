@@ -332,7 +332,10 @@ module clubb_mf
      logical                              :: do_aspd = .false.
      !
      ! Lower limit on entrainment length scale
-     real(r8),parameter                   :: min_L0 = 10._r8
+     real(r8),parameter                   :: min_L0 = 1._r8
+!+++ARH
+     real(r8),parameter                   :: max_L0 = 10.e3_r8
+!---ARH
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
@@ -543,6 +546,9 @@ module clubb_mf
 
        ! limiter to avoid division by zero
        dynamic_L0 = max(min_L0,dynamic_L0)
+!+++ARH
+       dynamic_L0 = min(max_L0,dynamic_L0)
+!---ARH      
 
        if (debug) then
          ! overide stochastic entrainment with fixent
@@ -710,6 +716,9 @@ module clubb_mf
              upth(k+1,i)  = thn
              upbuoy(k+1,i)= B
            else
+!+++ARH
+             ent(k+2:nz,i) = 0._r8
+!---ARH
              exit
            end if
          enddo
@@ -831,7 +840,8 @@ module clubb_mf
          do i=1,clubb_mf_nup
            ae  (k) = ae  (k) - upa(k,i)
            aw  (k) = aw  (k) + upa(k,i)*upw(k,i)
-           awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
+!+++ARH
+           !awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
            awthl(k)= awthl(k)+ upa(k,i)*upw(k,i)*upthl(k,i) 
            awthv(k)= awthv(k)+ upa(k,i)*upw(k,i)*upthv(k,i) 
@@ -845,8 +855,18 @@ module clubb_mf
              ! scale autoconv by factor (1-fdd)? 
              sqt(k)  = sqt(k)  + 0.5_r8*(upa(k,i)+upa(k-1,i))*supqt(k,i)
              sthl(k) = sthl(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i)
+!+++ARH
+             awu (k) = awu (k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*ent(k,i)
+!---ARH
            end if
          enddo
+!+++ARH
+         if (k > 1 .and. ae(k) < 1._r8) then
+           awu(k) = awu(k)/(1._r8-0.5_r8*(ae(k)+ae(k-1)))
+         else
+           awu(k) = 0._r8
+         end if
+!---ARH
          ! no convection if convection terminates at first level
          if (k == 2 .and. ae(k) == 1._r8) then
            sqt(k) = 0_r8

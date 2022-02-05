@@ -2256,24 +2256,24 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, ztopm2_idx, ztopm2)
      call pbuf_get_field(pbuf, ztop_macmic_idx, ztop_macmic)
 
-     ! Relative humidity
+     ! SVP
      do k = 1, pver
         call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), esat(1:ncol,k), rh(1:ncol,k), ncol)
      end do
 
-     !rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
-     !! Interpolate to 500 hPa
-     !call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rh500, &
-     !    extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
+     ! Interpolate RH to 500 hPa
+     rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
+     call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rh500, &
+         extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
 
      ! Mass of q, by layer and vertically integrated
-     mq(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
-     mqsat(:ncol,:) = rh(:ncol,:) * state%pdel(:ncol,:) * rga
-     do k=2,pver
-       mq(:ncol,1) = mq(:ncol,1) + mq(:ncol,k)
-       mqsat(:ncol,1) = mqsat(:ncol,1) + mqsat(:ncol,k)
-     end do
-     rh500(:ncol) = mq(:ncol,1)/mqsat(:ncol,1) 
+     !mq(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
+     !mqsat(:ncol,:) = rh(:ncol,:) * state%pdel(:ncol,:) * rga
+     !do k=2,pver
+     !  mq(:ncol,1) = mq(:ncol,1) + mq(:ncol,k)
+     !  mqsat(:ncol,1) = mqsat(:ncol,1) + mqsat(:ncol,k)
+     !end do
+     !rh500(:ncol) = mq(:ncol,1)/mqsat(:ncol,1) 
 !---ARH
    end if
 
@@ -2905,7 +2905,7 @@ end subroutine clubb_init_cnst
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
 
            rhinv = 0._r8
-           if (rh500(i) > 1._r8) rh500(i) = 1._r8
+           if (rh500(i) >= 1._r8) rh500(i) = 0.999_r8
            if (rh500(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rh500(i)) - 1._r8 )
 !---ARH
            call integrate_mf( pverp,                                                          & ! input
@@ -3500,13 +3500,18 @@ end subroutine clubb_init_cnst
    ! ------------------------------------------------- !
 
    !  Output CLUBB tendencies 
+!+++ARH
+if (macmic_it==1) then
+!---ARH
    call outfld( 'RVMTEND_CLUBB', ptend_loc%q(:,:,ixq), pcols, lchnk)
    call outfld( 'RCMTEND_CLUBB', ptend_loc%q(:,:,ixcldliq), pcols, lchnk)
    call outfld( 'RIMTEND_CLUBB', ptend_loc%q(:,:,ixcldice), pcols, lchnk)
    call outfld( 'STEND_CLUBB',   ptend_loc%s,pcols, lchnk)
    call outfld( 'UTEND_CLUBB',   ptend_loc%u,pcols, lchnk)
    call outfld( 'VTEND_CLUBB',   ptend_loc%v,pcols, lchnk)     
-
+!+++ARH
+end if
+!---ARH
    call outfld( 'CMELIQ',        cmeliq, pcols, lchnk)
 
    call physics_ptend_sum(ptend_loc,ptend_all,ncol)
@@ -3944,9 +3949,14 @@ end subroutine clubb_init_cnst
    call outfld( 'WP3_CLUBB',        wp3_output,            pcols, lchnk )
    call outfld( 'UPWP_CLUBB',       upwp,                  pcols, lchnk )
    call outfld( 'VPWP_CLUBB',       vpwp,                  pcols, lchnk )
+!+++ARH
+if (macmic_it==1) then
+!---ARH
    call outfld( 'WPTHLP_CLUBB',     wpthlp_output,         pcols, lchnk )
    call outfld( 'WPRTP_CLUBB',      wprtp_output,          pcols, lchnk )
-
+!+++ARH
+end if
+!---ARH
      temp2dp(:ncol,:) =  rtp2(:ncol,:)*1.0e6_r8
      call outfld( 'RTP2_CLUBB',       temp2dp,                 pcols, lchnk )
 
@@ -4003,6 +4013,9 @@ end subroutine clubb_init_cnst
    ! Writing state variables after EDMF scheme for detailed analysis !
    ! --------------------------------------------------------------- !
    if (do_clubb_mf) then
+!+++ARH
+   if (macmic_it == 1) then
+!---ARH
      call outfld( 'edmf_DRY_A'    , mf_dry_a_output,           pcols, lchnk )
      call outfld( 'edmf_MOIST_A'  , mf_moist_a_output,         pcols, lchnk )
      call outfld( 'edmf_DRY_W'    , mf_dry_w_output,           pcols, lchnk )
@@ -4050,6 +4063,9 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
      call outfld( 'ICWMRSH'       , sh_icwmr,                  pcols, lchnk )
+!+++ARH
+   end if
+!---ARH
    end if
 
    if (macmic_it==cld_macmic_num_steps) then
