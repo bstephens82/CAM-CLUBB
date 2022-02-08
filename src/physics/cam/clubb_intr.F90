@@ -3501,7 +3501,7 @@ end subroutine clubb_init_cnst
 
    !  Output CLUBB tendencies 
 !+++ARH
-if (macmic_it==1) then
+!if (macmic_it==1) then
 !---ARH
    call outfld( 'RVMTEND_CLUBB', ptend_loc%q(:,:,ixq), pcols, lchnk)
    call outfld( 'RCMTEND_CLUBB', ptend_loc%q(:,:,ixcldliq), pcols, lchnk)
@@ -3510,7 +3510,7 @@ if (macmic_it==1) then
    call outfld( 'UTEND_CLUBB',   ptend_loc%u,pcols, lchnk)
    call outfld( 'VTEND_CLUBB',   ptend_loc%v,pcols, lchnk)     
 !+++ARH
-end if
+!end if
 !---ARH
    call outfld( 'CMELIQ',        cmeliq, pcols, lchnk)
 
@@ -3950,12 +3950,12 @@ end if
    call outfld( 'UPWP_CLUBB',       upwp,                  pcols, lchnk )
    call outfld( 'VPWP_CLUBB',       vpwp,                  pcols, lchnk )
 !+++ARH
-if (macmic_it==1) then
+!if (macmic_it==1) then
 !---ARH
    call outfld( 'WPTHLP_CLUBB',     wpthlp_output,         pcols, lchnk )
    call outfld( 'WPRTP_CLUBB',      wprtp_output,          pcols, lchnk )
 !+++ARH
-end if
+!end if
 !---ARH
      temp2dp(:ncol,:) =  rtp2(:ncol,:)*1.0e6_r8
      call outfld( 'RTP2_CLUBB',       temp2dp,                 pcols, lchnk )
@@ -4014,7 +4014,7 @@ end if
    ! --------------------------------------------------------------- !
    if (do_clubb_mf) then
 !+++ARH
-   if (macmic_it == 1) then
+!   if (macmic_it == 1) then
 !---ARH
      call outfld( 'edmf_DRY_A'    , mf_dry_a_output,           pcols, lchnk )
      call outfld( 'edmf_MOIST_A'  , mf_moist_a_output,         pcols, lchnk )
@@ -4064,7 +4064,7 @@ end if
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
      call outfld( 'ICWMRSH'       , sh_icwmr,                  pcols, lchnk )
 !+++ARH
-   end if
+!   end if
 !---ARH
    end if
 
