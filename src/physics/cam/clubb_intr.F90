@@ -1327,7 +1327,10 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_thforc'   , (/ 'lev' /),  'A', 'K/s'     , 'th forcing (EDMF)' )
       call addfld ( 'edmf_qvforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qv forcing (EDMF)' )
       call addfld ( 'edmf_qcforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qc forcing (EDMF)' )
-      call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
+!+++ARH
+      !call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
+      call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'in-cloud cloud mixing ratio (EDMF)' )
+!---ARH
       call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
       call addfld ( 'edmf_ztop'     ,  horiz_only,  'A', 'm'       , 'edmf ztop')
       call addfld ( 'edmf_L0'       ,  horiz_only,  'A', 'm'       , 'edmf dynamic L0')
@@ -2057,6 +2060,7 @@ end subroutine clubb_init_cnst
                                            mf_thforc,  mf_qvforc,      &
                                            mf_qcforc,                  &
                                            mf_rcm,     mf_cloudfrac,   &
+                                           mf_rcm_nadv,mf_cloudfrac_nadv, &
                                            mf_qc_zt,   mf_cloudfrac_zt
 
    ! MF plume level
@@ -2076,7 +2080,8 @@ end subroutine clubb_init_cnst
    logical                              :: cfllim
 
 !+++ARH
-   real(r8)                             :: mf_ztopm1, mf_ztop_nadv
+   real(r8)                             :: mf_ztopm1, mf_ztop_nadv,   &
+                                           mf_precc_nadv, mf_snow_nadv
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
    real(r8), dimension(pcols,pver)      :: mq,        mqsat
@@ -2862,6 +2867,14 @@ end subroutine clubb_init_cnst
         mf_ztopm1 = 0._r8
         mf_ztop_nadv = 0._r8
         if (macmic_it==1) ztop_macmic(i) = 0._r8
+
+        mf_precc_nadv             = 0._r8
+        mf_snow_nadv              = 0._r8
+
+        mf_rcm(:pverp)            = 0._r8
+        mf_cloudfrac(:pverp)      = 0._r8
+        mf_rcm_nadv(:pverp)       = 0._r8
+        mf_cloudfrac_nadv(:pverp) = 0._r8
       end if
 !---ARH
 
@@ -2905,7 +2918,7 @@ end subroutine clubb_init_cnst
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
 
            rhinv = 0._r8
-           if (rh500(i) >= 1._r8) rh500(i) = 0.999_r8
+           if (rh500(i) >= 1._r8) rh500(i) = 0.99999_r8
            if (rh500(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rh500(i)) - 1._r8 )
 !---ARH
            call integrate_mf( pverp,                                                          & ! input
@@ -2986,15 +2999,16 @@ end subroutine clubb_init_cnst
 
            end do
            ! compute ensemble cloud properties
-           mf_rcm       = 0._r8
-           mf_cloudfrac = 0._r8
-           mf_rcm(:pverp)      = mf_moist_a(:pverp)*mf_moist_qc(:pverp)
-           mf_cloudfrac(:pverp)= mf_moist_a(:pverp)
+!+++ARH
+           !mf_rcm_nadv(:pverp)       = mf_rcm_nadv(:pverp) + mf_moist_a(:pverp)*mf_moist_qc(:pverp)
+           ! I am redefining rcm to be in-cloud qc to facilaite radiation calc.
+           mf_rcm_nadv(:pverp)       = mf_rcm_nadv(:pverp) + mf_moist_qc(:pverp)
+           mf_cloudfrac_nadv(:pverp) = mf_cloudfrac_nadv(:pverp) + mf_moist_a(:pverp)
 
            ! [kg/m2/s]->[m/s]
-           prec_sh(i) = mf_precc(1)/1000._r8
-           snow_sh(i) = 0._r8
-!+++ARH
+           mf_precc_nadv = mf_precc_nadv + mf_precc(1)/1000._r8
+           mf_snow_nadv  = 0._r8
+
            mf_ztop_nadv = mf_ztop_nadv + mf_ztopm1 
 !---ARH
          end if
@@ -3081,8 +3095,13 @@ end subroutine clubb_init_cnst
         if (macmic_it == cld_macmic_num_steps) then
           ztopm2(i) = ztopm1(i)        
           ztopm1(i) = ztop_macmic(i)/REAL(cld_macmic_num_steps)
-          if (masterproc) write(100+iam,*) "nstep, updated ztopm1, ztopm2, ", get_nstep(), ztopm1(i), ztopm2(i)
+          !if (masterproc) write(100+iam,*) "nstep, updated ztopm1, ztopm2, ", get_nstep(), ztopm1(i), ztopm2(i)
         end if
+ 
+        mf_rcm(:pverp) = mf_rcm_nadv(:pverp)/REAL(nadv)
+        mf_cloudfrac(:pverp) = mf_cloudfrac_nadv(:pverp)/REAL(nadv)
+        prec_sh(i) = mf_precc_nadv/REAL(nadv)
+        snow_sh(i) = mf_snow_nadv/REAL(nadv)
       end if
 !---ARH
 
@@ -3112,7 +3131,11 @@ end subroutine clubb_init_cnst
       thl2_zt = zm2zt_api(thlp2_in)
       wp2_zt  = zm2zt_api(wp2_in)
       ! Need moist_qc and cloudfrac on thermo grid for output
-      mf_qc_zt = zm2zt_api(mf_moist_qc)
+!+++ARH
+      !mf_qc_zt = zm2zt_api(mf_moist_qc)
+      ! note I'm redefining rcm to be incloud qc
+      mf_qc_zt = zm2zt_api(mf_rcm)
+!---ARH
       mf_cloudfrac_zt = zm2zt_api(mf_cloudfrac)
 
       !  Arrays need to be "flipped" to CAM grid 
@@ -3500,18 +3523,12 @@ end subroutine clubb_init_cnst
    ! ------------------------------------------------- !
 
    !  Output CLUBB tendencies 
-!+++ARH
-!if (macmic_it==1) then
-!---ARH
    call outfld( 'RVMTEND_CLUBB', ptend_loc%q(:,:,ixq), pcols, lchnk)
    call outfld( 'RCMTEND_CLUBB', ptend_loc%q(:,:,ixcldliq), pcols, lchnk)
    call outfld( 'RIMTEND_CLUBB', ptend_loc%q(:,:,ixcldice), pcols, lchnk)
    call outfld( 'STEND_CLUBB',   ptend_loc%s,pcols, lchnk)
    call outfld( 'UTEND_CLUBB',   ptend_loc%u,pcols, lchnk)
    call outfld( 'VTEND_CLUBB',   ptend_loc%v,pcols, lchnk)     
-!+++ARH
-!end if
-!---ARH
    call outfld( 'CMELIQ',        cmeliq, pcols, lchnk)
 
    call physics_ptend_sum(ptend_loc,ptend_all,ncol)
@@ -3949,14 +3966,9 @@ end subroutine clubb_init_cnst
    call outfld( 'WP3_CLUBB',        wp3_output,            pcols, lchnk )
    call outfld( 'UPWP_CLUBB',       upwp,                  pcols, lchnk )
    call outfld( 'VPWP_CLUBB',       vpwp,                  pcols, lchnk )
-!+++ARH
-!if (macmic_it==1) then
-!---ARH
    call outfld( 'WPTHLP_CLUBB',     wpthlp_output,         pcols, lchnk )
    call outfld( 'WPRTP_CLUBB',      wprtp_output,          pcols, lchnk )
-!+++ARH
-!end if
-!---ARH
+
      temp2dp(:ncol,:) =  rtp2(:ncol,:)*1.0e6_r8
      call outfld( 'RTP2_CLUBB',       temp2dp,                 pcols, lchnk )
 
@@ -4013,9 +4025,6 @@ end subroutine clubb_init_cnst
    ! Writing state variables after EDMF scheme for detailed analysis !
    ! --------------------------------------------------------------- !
    if (do_clubb_mf) then
-!+++ARH
-!   if (macmic_it == 1) then
-!---ARH
      call outfld( 'edmf_DRY_A'    , mf_dry_a_output,           pcols, lchnk )
      call outfld( 'edmf_MOIST_A'  , mf_moist_a_output,         pcols, lchnk )
      call outfld( 'edmf_DRY_W'    , mf_dry_w_output,           pcols, lchnk )
@@ -4063,9 +4072,6 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
      call outfld( 'ICWMRSH'       , sh_icwmr,                  pcols, lchnk )
-!+++ARH
-!   end if
-!---ARH
    end if
 
    if (macmic_it==cld_macmic_num_steps) then
