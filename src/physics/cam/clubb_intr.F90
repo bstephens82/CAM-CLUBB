@@ -1322,8 +1322,10 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_qcforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qc forcing (EDMF)' )
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
       call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
+      call addfld ( 'edmf_ent'      , (/ 'lev' /),  'A', '1/m'     , 'ensemble mean entrainment (EDMF)' )
       call addfld ( 'edmf_ztop'     ,  horiz_only,  'A', 'm'       , 'edmf ztop',       flag_xyfill=.True.)
       call addfld ( 'edmf_L0'       ,  horiz_only,  'A', 'm'       , 'edmf dynamic L0', flag_xyfill=.True.)
+      call addfld ( 'edmf_cfl'      ,  horiz_only,  'A', 'unitless', 'max flux cfl number (EDMF)' )
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'nens' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
       call addfld ( 'edmf_upw'      , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft vertical velocity (EDMF)' )
@@ -1332,7 +1334,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_upthv'    , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft virtual potential temperature (EDMF)' )
       call addfld ( 'edmf_upth'     , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft potential temperature (EDMF)' )
       call addfld ( 'edmf_upqc'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft condensate mixing ratio (EDMF)' )
-      call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', 'k1/m'    , 'Plume updraft entrainment rate (EDMF)' )
+      call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft entrainment rate (EDMF)' )
       call addfld ( 'edmf_upbuoy'   , (/  'ilev', 'nens' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
     end if 
 
@@ -1480,6 +1482,7 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_qcforc'   , 1, ' ')
          call add_default( 'edmf_rcm'      , 1, ' ')
          call add_default( 'edmf_cloudfrac', 1, ' ')
+         call add_default( 'edmf_ent'      , 1, ' ')
          call add_default( 'edmf_ztop'     , 1, ' ')
          call add_default( 'edmf_L0'       , 1, ' ')
          call add_default( 'edmf_cape'     , 1, ' ')
@@ -1996,12 +1999,12 @@ end subroutine clubb_init_cnst
                                            mf_precc_output
    !
    real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
-                                           mf_cape_output
+                                           mf_cape_output,    mf_cfl_output
    !
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
                                            mf_thforc_output,  mf_qvforc_output,    & ! thermodynamic grid
-                                           mf_qcforc_output,                       & ! thermodynamic grid
+                                           mf_qcforc_output,  mf_ent_output,       & ! thermodynamic grid
                                            mf_qc_output,      mf_cloudfrac_output    ! thermodynamic grid
 
    ! MF plume level outputs
@@ -2049,7 +2052,8 @@ end subroutine clubb_init_cnst
                                            mf_qc_nadv, mf_cloudfrac_nadv, &
                                            mf_qc_zt,   mf_cloudfrac_zt,&
                                            mf_rcm,     mf_rcm_nadv,    &
-                                           mf_thlforc_nadv,mf_qtforc_nadv
+                                           mf_thlforc_nadv,mf_qtforc_nadv, &
+                                           mf_ent,     mf_ent_nadv     
 
    ! MF plume level
    real(r8), dimension(pverp,clubb_mf_nup) ::          mf_upa,        &
@@ -2063,8 +2067,9 @@ end subroutine clubb_init_cnst
                                                        mf_upent
 
    ! CFL limiter vars
-   real(r8), dimension(pcols)           :: max_cfl
-   real(r8)                             :: cflval,     cflfac
+   real(r8), parameter                  :: cflval = 1._r8
+   real(r8)                             :: cflfac,     max_cfl,        &
+                                           lambda,     max_cfl_nadv
    logical                              :: cfllim
 
    real(r8)                             :: mf_ztop,    mf_ztop_nadv,   &
@@ -2528,10 +2533,12 @@ end subroutine clubb_init_cnst
    mf_qcforc_output(:,:)    = 0._r8
    mf_rcm_output(:,:)       = 0._r8
    mf_cloudfrac_output(:,:) = 0._r8
+   mf_ent_output(:,:)       = 0._r8
    mf_qc_output(:,:)        = 0._r8
    mf_ztop_output(:)        = 0._r8
    mf_L0_output(:)          = 0._r8
    mf_cape_output(:)        = 0._r8
+   mf_cfl_output(:)         = 0._r8
 
    !  Loop over all columns in lchnk to advance CLUBB core
    do i=1,ncol   ! loop over columns
@@ -2871,6 +2878,11 @@ end subroutine clubb_init_cnst
 
         mf_thlforc_nadv(:pverp)   = 0._r8
         mf_qtforc_nadv(:pverp)    = 0._r8
+
+        max_cfl_nadv = 0._r8
+
+        mf_ent(:pverp)            = 0._r8
+        mf_ent_nadv(:pverp)       = 0._r8
       end if
 
       do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
@@ -2912,7 +2924,7 @@ end subroutine clubb_init_cnst
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
 
            rhinv = 0._r8
-           if (rh500(i) >= 1._r8) rh500(i) = 0.99999_r8
+           if (rh500(i) >= 1._r8) rh500(i) = 0.990_r8
            if (rh500(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rh500(i)) - 1._r8 )
 
            call integrate_mf( pverp,                                                          & ! input
@@ -2955,14 +2967,13 @@ end subroutine clubb_init_cnst
 
            ! CFL limiter
            s_aw(1)   = 0._r8
-           max_cfl(i)= 0._r8
+           max_cfl   = 0._r8
            do k=2,pverp
-             max_cfl(i) = max(max_cfl(i),dtime*invrs_dzt(k)*max(s_aw(k-1),s_aw(k)))
+             max_cfl = max(max_cfl,dtime*invrs_dzt(k)*max(s_aw(k-1),s_aw(k)))
            end do
-           cflval = 1._r8
            cflfac = 1._r8
            cfllim = .true.
-           if (max_cfl(i).gt.cflval.and.cfllim) cflfac = cflval/max_cfl(i)
+           if (max_cfl.gt.cflval.and.cfllim) cflfac = cflval/max_cfl
 
            ! pass MF turbulent advection term as CLUBB explicit forcing term
            rtm_forcing  = 0._r8
@@ -2989,6 +3000,20 @@ end subroutine clubb_init_cnst
                               ((rho_ds_zm(k) * mf_qcflx(k)) - (rho_ds_zm(k-1) * mf_qcflx(k-1)))
 
            end do
+
+           ! Scale rtm_forcing so that rtm doesn't go negative
+           do k=2,pverp
+             if ((-1._r8*rtm_forcing(k)*dtime) > rtm_in(k)) then
+               lambda = -1._r8*rtm_in(k)/(rtm_forcing(k)*dtime)
+               rtm_forcing(k) = lambda*rtm_forcing(k)
+             end if
+           end do
+           ! Recalculate precip using new forcing
+           mf_precc(:pverp) = 0._r8
+           do k=pverp,2,-1
+             mf_precc(k-1) = mf_precc(k) - rho_zt(k)*dzt(k)*rtm_forcing(k) 
+           end do
+
            ! compute ensemble cloud properties
            mf_qc_nadv(:pverp)        = mf_qc_nadv(:pverp) + mf_moist_qc(:pverp)
            mf_rcm_nadv(:pverp)       = mf_rcm_nadv(:pverp) + mf_moist_a(:pverp)*mf_moist_qc(:pverp)
@@ -3005,6 +3030,11 @@ end subroutine clubb_init_cnst
 
            mf_thlforc_nadv(:pverp) = mf_thlforc_nadv(:pverp) + thlm_forcing(:pverp)
            mf_qtforc_nadv(:pverp)  = mf_qtforc_nadv(:pverp) + rtm_forcing(:pverp)
+           
+           max_cfl_nadv = MAX(max_cfl,max_cfl_nadv)
+
+           mf_ent(:pverp)      = s_awu(:pverp)
+           mf_ent_nadv(:pverp) = mf_ent_nadv(:pverp) + mf_ent(:pverp)
          end if
 
          !  Advance CLUBB CORE one timestep in the future
@@ -3099,6 +3129,8 @@ end subroutine clubb_init_cnst
 
         mf_thlforc_nadv(:pverp) = mf_thlforc_nadv(:pverp)/REAL(nadv)
         mf_qtforc_nadv(:pverp)  = mf_qtforc_nadv(:pverp)/REAL(nadv)
+
+        mf_ent_nadv(:pverp) = mf_ent_nadv(:pverp)/REAL(nadv)
       end if
 
       if (clubb_do_adv) then
@@ -3233,6 +3265,7 @@ end subroutine clubb_init_cnst
              mf_qvforc_output(i,pverp-k+1)             = mf_qvforc(k)
              mf_qcforc_output(i,pverp-k+1)             = mf_qcforc(k)
              mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac_zt(k)
+             mf_ent_output(i,pverp-k+1)                = mf_ent_nadv(k)
              mf_qc_output(i,pverp-k+1)                 = mf_qc_zt(k)
            end if
 
@@ -3254,6 +3287,7 @@ end subroutine clubb_init_cnst
         if (mf_L0_nadv == 0._r8) mf_L0_nadv = fillvalue
         mf_ztop_output(i) = mf_ztop_nadv
         mf_L0_output(i)   = mf_L0_nadv
+        mf_cfl_output(i)  = max_cfl_nadv
         do k=1,clubb_mf_nup
           mf_upa_output(i,pverp*(k-1)+1:pverp*k)   = mf_upa_flip(i,:pverp,k)
           mf_upw_output(i,pverp*(k-1)+1:pverp*k)   = mf_upw_flip(i,:pverp,k)
@@ -4056,6 +4090,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_qcforc'   , mf_qcforc_output,          pcols, lchnk )
      call outfld( 'edmf_rcm'      , mf_rcm_output,             pcols, lchnk )
      call outfld( 'edmf_cloudfrac', mf_cloudfrac_output,       pcols, lchnk )
+     call outfld( 'edmf_ent'      , mf_ent_output,             pcols, lchnk )
      call outfld( 'edmf_upa'      , mf_upa_output,             pcols, lchnk )
      call outfld( 'edmf_upw'      , mf_upw_output,             pcols, lchnk )
      call outfld( 'edmf_upqt'     , mf_upqt_output,            pcols, lchnk )
@@ -4068,6 +4103,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
+     call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
      call outfld( 'ICWMRSH'       , sh_icwmr,                  pcols, lchnk )
    end if
 

@@ -9,10 +9,8 @@ module clubb_mf
   use spmd_utils,    only: masterproc
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun
-!+++ARH
   use time_manager,  only: is_first_step, get_nstep
   use spmd_utils,    only: iam
-!---ARH
   use physconst,     only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
                            cpwv, cpliq, rh2o, zvir, pi
 
@@ -119,10 +117,7 @@ module clubb_mf
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                                              wthl,    wqt,       pblh,              & ! input
-!+++ARH
-                           !wpthlp_env, tke,  tpert,                                 & ! input
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
-!---ARH
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
                            upw,                                                     & ! output
@@ -196,10 +191,9 @@ module clubb_mf
 
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
-!+++ARH
      real(r8), intent(in)                :: rhinv
      real(r8), intent(inout)             :: ztopm1
-!---ARH
+
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
                                                          upqt,    & ! momentum grid
@@ -332,10 +326,8 @@ module clubb_mf
      logical                              :: do_aspd = .false.
      !
      ! Lower limit on entrainment length scale
-     real(r8),parameter                   :: min_L0 = 1._r8
-!+++ARH
-     real(r8),parameter                   :: max_L0 = 10.e3_r8
-!---ARH
+     real(r8),parameter                   :: min_L0 = 0.5_r8,          &
+                                             max_L0 = 15.e3_r8
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
@@ -490,9 +482,6 @@ module clubb_mf
          !else
          !  dynamic_L0 = min(35._r8,clubb_mf_a0*(ztop**clubb_mf_b0))
          !end if
-!+++ARH
-         if (masterproc) write(iam+110,*) 'ztop, dynamic_L0 ', ztop, dynamic_L0
-!---ARH
        else if (clubb_mf_Lopt==4 .or. clubb_mf_Lopt==5) then
          !dilute cape calculation
          !dmpdz = -1._r8*ent_zt(2:nz,:)
@@ -530,25 +519,21 @@ module clubb_mf
            ztop = mcape
          end if
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-!+++ARH
+
        else if (clubb_mf_Lopt==6) then
          ! grab ztop from max height of ensemble in prior time-step(s)
          ztop = ztopm1
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-         if (masterproc) write(iam+110,*) 'mf_ztop, dynamic_L0 ', ztop, dynamic_L0
-
+         !if (masterproc) write(iam+110,*) 'mf_ztop, dynamic_L0 ', ztop, dynamic_L0
        else if (clubb_mf_Lopt==7) then
          ztop = rhinv
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-         if (masterproc) write(iam+110,*) 'rhinv, dynamic_L0 ', rhinv, dynamic_L0
-!---ARH
+         !if (masterproc) write(iam+110,*) 'rhinv, dynamic_L0 ', rhinv, dynamic_L0
        end if
 
        ! limiter to avoid division by zero
        dynamic_L0 = max(min_L0,dynamic_L0)
-!+++ARH
        dynamic_L0 = min(max_L0,dynamic_L0)
-!---ARH      
 
        if (debug) then
          ! overide stochastic entrainment with fixent
@@ -716,9 +701,7 @@ module clubb_mf
              upth(k+1,i)  = thn
              upbuoy(k+1,i)= B
            else
-!+++ARH
              ent(k+2:nz,i) = 0._r8
-!---ARH
              exit
            end if
          enddo
@@ -840,7 +823,6 @@ module clubb_mf
          do i=1,clubb_mf_nup
            ae  (k) = ae  (k) - upa(k,i)
            aw  (k) = aw  (k) + upa(k,i)*upw(k,i)
-!+++ARH
            !awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
            awthl(k)= awthl(k)+ upa(k,i)*upw(k,i)*upthl(k,i) 
@@ -855,18 +837,16 @@ module clubb_mf
              ! scale autoconv by factor (1-fdd)? 
              sqt(k)  = sqt(k)  + 0.5_r8*(upa(k,i)+upa(k-1,i))*supqt(k,i)
              sthl(k) = sthl(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i)
-!+++ARH
+             ! hack awu to contain ensemble entrainment
              awu (k) = awu (k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*ent(k,i)
-!---ARH
            end if
          enddo
-!+++ARH
-         if (k > 1 .and. ae(k) < 1._r8) then
+         ! hack awu to contain ensemble entrainment
+         if (k > 1 .and. 0.5_r8*(ae(k)+ae(k-1)) < 1._r8) then
            awu(k) = awu(k)/(1._r8-0.5_r8*(ae(k)+ae(k-1)))
          else
            awu(k) = 0._r8
          end if
-!---ARH
          ! no convection if convection terminates at first level
          if (k == 2 .and. ae(k) == 1._r8) then
            sqt(k) = 0_r8
@@ -875,13 +855,12 @@ module clubb_mf
          end if
        enddo
 
-!+++ARH
+       ! ztopm1 calculation
        do k=1,nz
          if (ae(k) < 1._r8) then
            ztopm1 = zm(k)
          end if
        end do
-!---ARH
 
        ! downward sweep to get ensemble mean precip
        do k = nz,2,-1
