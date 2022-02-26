@@ -2053,7 +2053,7 @@ end subroutine clubb_init_cnst
                                            mf_qc_zt,   mf_cloudfrac_zt,&
                                            mf_rcm,     mf_rcm_nadv,    &
                                            mf_thlforc_nadv,mf_qtforc_nadv, &
-                                           mf_ent,     mf_ent_nadv     
+                                           mf_ent_nadv     
 
    ! MF plume level
    real(r8), dimension(pverp,clubb_mf_nup) ::          mf_upa,        &
@@ -2069,7 +2069,9 @@ end subroutine clubb_init_cnst
    ! CFL limiter vars
    real(r8), parameter                  :: cflval = 1._r8
    real(r8)                             :: cflfac,     max_cfl,        &
-                                           lambda,     max_cfl_nadv
+                                           lambda,     max_cfl_nadv,   &
+                                           th_sfc
+
    logical                              :: cfllim
 
    real(r8)                             :: mf_ztop,    mf_ztop_nadv,   &
@@ -2808,6 +2810,9 @@ end subroutine clubb_init_cnst
           p_in_Pa_zm(k) = state1%pint(i,pverp-k+1)
           invrs_exner_zm(k) = 1._r8/((p_in_Pa_zm(k)/p0_clubb)**(kappa_zm(k)))
         enddo
+!+++ARH
+        th_sfc = cam_in%ts(i)*invrs_exner_zm(1)
+!---ARH
       end if
      
       if (clubb_do_adv) then
@@ -2878,11 +2883,9 @@ end subroutine clubb_init_cnst
 
         mf_thlforc_nadv(:pverp)   = 0._r8
         mf_qtforc_nadv(:pverp)    = 0._r8
+        mf_ent_nadv(:pverp)       = 0._r8
 
         max_cfl_nadv = 0._r8
-
-        mf_ent(:pverp)            = 0._r8
-        mf_ent_nadv(:pverp)       = 0._r8
       end if
 
       do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
@@ -2934,7 +2937,10 @@ end subroutine clubb_init_cnst
                                                       th_zt,      qv_zt,      qc_zt,          & ! input
                                                       thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
-                                                      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+!+++ARH
+                                                      !wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+                                         th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+!---ARH
                               wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
                               mf_cape_output(i),                                              & ! output - plume diagnostics
                               mf_upa,                                                         & ! output - plume diagnostics
@@ -2975,6 +2981,21 @@ end subroutine clubb_init_cnst
            cfllim = .true.
            if (max_cfl.gt.cflval.and.cfllim) cflfac = cflval/max_cfl
 
+           ! Scale microphys so it can't drive qt negative
+           do k=2,pverp
+             if ((-1._r8*mf_sqt(k)*dtime) > rtm_in(k)) then
+               lambda = -1._r8*rtm_in(k)/(mf_sqt(k)*dtime)
+               mf_sqt(k) = lambda*mf_sqt(k)
+               mf_sthl(k) = lambda*mf_sthl(k)
+             end if
+           end do
+
+           ! Recalculate precip using new microphys forcing
+           mf_precc(:pverp) = 0._r8
+           do k=pverp,2,-1
+             mf_precc(k-1) = mf_precc(k) - rho_zt(k)*dzt(k)*mf_sqt(k)
+           end do
+
            ! pass MF turbulent advection term as CLUBB explicit forcing term
            rtm_forcing  = 0._r8
            thlm_forcing = 0._r8
@@ -3001,19 +3022,6 @@ end subroutine clubb_init_cnst
 
            end do
 
-           ! Scale rtm_forcing so that rtm doesn't go negative
-           do k=2,pverp
-             if ((-1._r8*rtm_forcing(k)*dtime) > rtm_in(k)) then
-               lambda = -1._r8*rtm_in(k)/(rtm_forcing(k)*dtime)
-               rtm_forcing(k) = lambda*rtm_forcing(k)
-             end if
-           end do
-           ! Recalculate precip using new forcing
-           mf_precc(:pverp) = 0._r8
-           do k=pverp,2,-1
-             mf_precc(k-1) = mf_precc(k) - rho_zt(k)*dzt(k)*rtm_forcing(k) 
-           end do
-
            ! compute ensemble cloud properties
            mf_qc_nadv(:pverp)        = mf_qc_nadv(:pverp) + mf_moist_qc(:pverp)
            mf_rcm_nadv(:pverp)       = mf_rcm_nadv(:pverp) + mf_moist_a(:pverp)*mf_moist_qc(:pverp)
@@ -3023,18 +3031,16 @@ end subroutine clubb_init_cnst
            mf_precc_nadv = mf_precc_nadv + mf_precc(1)/1000._r8
            mf_snow_nadv  = 0._r8
 
-           ! accumulate ztop over nadv subcycles
+           ! accumulate over nadv subcycles
            mf_L0_nadv     = mf_L0_nadv + mf_L0
            mf_ztop_nadv   = mf_ztop_nadv + mf_ztop
            mf_ztopm1_nadv = mf_ztopm1_nadv + mf_ztopm1 
 
            mf_thlforc_nadv(:pverp) = mf_thlforc_nadv(:pverp) + thlm_forcing(:pverp)
            mf_qtforc_nadv(:pverp)  = mf_qtforc_nadv(:pverp) + rtm_forcing(:pverp)
+           mf_ent_nadv(:pverp)     = mf_ent_nadv(:pverp) + s_awu(:pverp)
            
            max_cfl_nadv = MAX(max_cfl,max_cfl_nadv)
-
-           mf_ent(:pverp)      = s_awu(:pverp)
-           mf_ent_nadv(:pverp) = mf_ent_nadv(:pverp) + mf_ent(:pverp)
          end if
 
          !  Advance CLUBB CORE one timestep in the future

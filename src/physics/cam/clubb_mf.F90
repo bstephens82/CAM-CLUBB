@@ -116,7 +116,10 @@ module clubb_mf
                                              th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
-                                             wthl,    wqt,       pblh,              & ! input
+!+++ARH
+                                             !wthl,    wqt,       pblh,              & ! input
+                                       ths,  wthl,    wqt,       pblh,              & ! input
+!---ARH
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
@@ -192,6 +195,9 @@ module clubb_mf
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
+!+++ARH
+     real(r8), intent(in)                :: ths
+!---ARH
      real(r8), intent(inout)             :: ztopm1
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
@@ -327,7 +333,7 @@ module clubb_mf
      !
      ! Lower limit on entrainment length scale
      real(r8),parameter                   :: min_L0 = 0.5_r8,          &
-                                             max_L0 = 15.e3_r8
+                                             max_L0 = 10.e3_r8
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
@@ -427,8 +433,10 @@ module clubb_mf
      zcb       = zcb_unset
 
      convh = max(pblh,pblhmin)
-     wthv = wthl+zvir*thv(1)*wqt
-
+!+++ARH
+     !wthv = wthl+zvir*thv(1)*wqt
+     wthv = wthl+zvir*ths*wqt
+!---ARH
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
