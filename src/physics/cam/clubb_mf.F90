@@ -643,7 +643,15 @@ module clubb_mf
            end if
 
            ! integrate updraft
-           eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+!+++ARH
+           !eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           if (dynamic_L0 >= max_L0) then
+             eturb = 1._r8
+           else
+             eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           end if
+!---ARH
+
            if (do_aspd) then
              eturb = min(eturb,max_eturb)
            end if
