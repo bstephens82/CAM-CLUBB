@@ -1951,6 +1951,7 @@
 <clubb_mf_a0                       > 2.0     </clubb_mf_a0>
 <clubb_mf_b0                       > 0.5     </clubb_mf_b0>
 <clubb_mf_nup                      > 10      </clubb_mf_nup>
+<clubb_mf_max_L0                   > 10.e3   </clubb_mf_max_L0>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>

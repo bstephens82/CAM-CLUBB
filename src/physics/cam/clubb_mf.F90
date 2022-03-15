@@ -38,6 +38,7 @@ module clubb_mf
   real(r8) :: clubb_mf_L0      = 0._r8
   real(r8) :: clubb_mf_ent0    = 0._r8
   real(r8) :: clubb_mf_alphturb= 0._r8
+  real(r8) :: clubb_mf_max_L0  = 0._r8
   integer, protected :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
@@ -65,7 +66,7 @@ module clubb_mf
 
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
-                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad
+                           clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -93,6 +94,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_alphturb")
     call mpi_bcast(clubb_mf_nup,  1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
+    call mpi_bcast(clubb_mf_max_L0,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_max_L0")
     call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
     call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
@@ -332,8 +335,7 @@ module clubb_mf
      logical                              :: do_aspd = .false.
      !
      ! Lower limit on entrainment length scale
-     real(r8),parameter                   :: min_L0 = 0.5_r8,          &
-                                             max_L0 = 10.e3_r8
+     real(r8),parameter                   :: min_L0 = 0.5_r8
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
@@ -541,7 +543,7 @@ module clubb_mf
 
        ! limiter to avoid division by zero
        dynamic_L0 = max(min_L0,dynamic_L0)
-       dynamic_L0 = min(max_L0,dynamic_L0)
+       dynamic_L0 = min(clubb_mf_max_L0,dynamic_L0)
 
        if (debug) then
          ! overide stochastic entrainment with fixent
@@ -645,7 +647,7 @@ module clubb_mf
            ! integrate updraft
 !+++ARH
            !eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
-           if (dynamic_L0 >= max_L0) then
+           if (dynamic_L0 >= clubb_mf_max_L0) then
              eturb = 1._r8
            else
              eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
