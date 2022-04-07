@@ -414,6 +414,12 @@ module clubb_mf
      supqt = 0._r8
      supthl= 0._r8
 
+!+++ARH
+     dynamic_L0 = 0._r8
+     ztop = 0._r8
+     mcape = 0._r8
+!---ARH
+
      ! unique identifier
      zcb_unset = 9999999._r8
      zcb       = zcb_unset
