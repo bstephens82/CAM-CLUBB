@@ -537,7 +537,7 @@ module clubb_mf
        end if
 
        ! limiter to avoid division by zero
-       dynamic_L0 = min(clubb_mf_max_L0,max(min_L0,dynamic_L0))
+       dynamic_L0 = max(min_L0,dynamic_L0)
 
        if (debug) then
          ! overide stochastic entrainment with fixent
