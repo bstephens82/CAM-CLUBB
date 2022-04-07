@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-set src = cam.clubbmf.ztopm1
+set src = cam.clubbmf
 
 set lat = 23.08900523560209
 set lon = 205

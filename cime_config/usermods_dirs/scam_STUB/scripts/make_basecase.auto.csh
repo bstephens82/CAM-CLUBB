@@ -20,7 +20,7 @@ set case_lon = "$argv[$n]"
 set n = 3
 set loc_string = "$argv[$n]"
 
-set src=cam.clubbmf.ztopm1
+set src=cam.clubbmf
 set srcpath=/home/$USER/src
 set scratchdir=/scratch/cluster/$USER
 set COMPSET=FSCAM
