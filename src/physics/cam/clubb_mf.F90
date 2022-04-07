@@ -9,6 +9,8 @@ module clubb_mf
   use spmd_utils,    only: masterproc
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun
+  use time_manager,  only: is_first_step, get_nstep
+  use spmd_utils,    only: iam
   use physconst,     only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
                            cpwv, cpliq, rh2o, zvir, pi
 
@@ -21,7 +23,8 @@ module clubb_mf
             do_clubb_mf, &
             do_clubb_mf_diag, &
             clubb_mf_nup, &
-            do_clubb_mf_rad
+            do_clubb_mf_rad, &
+            clubb_mf_Lopt
 
   !
   ! Lopt 0 = fixed L0
@@ -29,13 +32,16 @@ module clubb_mf
   !      2 = wpthlp_clubb L0
   !      3 = test plume L0
   !      4 = lel
-  !      5 = cape
+  !      5 = ztopm1
+  !      6 = rel.hum. at 500 hPa
+  !      7 = column int. rel.hum.
   integer  :: clubb_mf_Lopt    = 0
   real(r8) :: clubb_mf_a0      = 0._r8
   real(r8) :: clubb_mf_b0      = 0._r8
   real(r8) :: clubb_mf_L0      = 0._r8
   real(r8) :: clubb_mf_ent0    = 0._r8
   real(r8) :: clubb_mf_alphturb= 0._r8
+  real(r8) :: clubb_mf_max_L0  = 0._r8
   integer, protected :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
@@ -63,7 +69,7 @@ module clubb_mf
 
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
-                           clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad
+                           clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -91,6 +97,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_alphturb")
     call mpi_bcast(clubb_mf_nup,  1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
+    call mpi_bcast(clubb_mf_max_L0,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_max_L0")
     call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
     call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
@@ -114,8 +122,8 @@ module clubb_mf
                                              th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
-                                             wthl,    wqt,       pblh,              & ! input
-                           wpthlp_env, tke,  tpert,                                 & ! input
+                                       ths,  wthl,    wqt,       pblh,              & ! input
+                           wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
                            upw,                                                     & ! output
@@ -189,6 +197,9 @@ module clubb_mf
 
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
+     real(r8), intent(in)                :: rhinv
+     real(r8), intent(in)                :: ths
+     real(r8), intent(inout)             :: ztopm1
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
@@ -316,13 +327,13 @@ module clubb_mf
      real(r8),parameter                   :: fdd = 0._r8
      !
      ! fixed entrainment rate (debug only)
-     real(r8),parameter                   :: fixent = 1.e-3_r8
+     real(r8),parameter                   :: fixent = 2.e-4_r8
      !
      ! Arakawa and Schubert detrainment limiter
      logical                              :: do_aspd = .false.
      !
      ! Lower limit on entrainment length scale
-     real(r8),parameter                   :: min_L0 = 10._r8
+     real(r8),parameter                   :: min_L0 = 0.5_r8
      !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
@@ -342,7 +353,6 @@ module clubb_mf
      !
      ! to debug flag
      logical                              :: debug  = .false.
-
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -423,7 +433,7 @@ module clubb_mf
      zcb       = zcb_unset
 
      convh = max(pblh,pblhmin)
-     wthv = wthl+zvir*thv(1)*wqt
+     wthv = wthl+zvir*ths*wqt
 
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
@@ -478,7 +488,6 @@ module clubb_mf
          !else
          !  dynamic_L0 = min(35._r8,clubb_mf_a0*(ztop**clubb_mf_b0))
          !end if
-
        else if (clubb_mf_Lopt==4 .or. clubb_mf_Lopt==5) then
          !dilute cape calculation
          !dmpdz = -1._r8*ent_zt(2:nz,:)
@@ -515,6 +524,15 @@ module clubb_mf
          else if (clubb_mf_Lopt==5) then
            ztop = mcape
          end if
+         dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
+
+       else if (clubb_mf_Lopt==6) then
+         ! grab ztop from max height of ensemble in prior time-step(s)
+         ztop = ztopm1
+         dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
+         !if (masterproc) write(iam+110,*) 'mf_ztop, dynamic_L0 ', ztop, dynamic_L0
+       else if (clubb_mf_Lopt==7 .or. clubb_mf_Lopt==8) then
+         ztop = rhinv
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
        end if
 
@@ -621,7 +639,15 @@ module clubb_mf
            end if
 
            ! integrate updraft
-           eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+!+++ARH
+           !eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           if (dynamic_L0 >= clubb_mf_max_L0) then
+             eturb = 1._r8
+           else
+             eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+           end if
+!---ARH
+
            if (do_aspd) then
              eturb = min(eturb,max_eturb)
            end if
@@ -648,11 +674,6 @@ module clubb_mf
 
            ! get buoyancy
            B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
-           if (debug) then
-             if ( masterproc ) then
-               write(iulog,*) "B(k,i), k, i ", B, k, i
-             end if
-           end if
 
            if (do_implicit) then
              wp = clubb_mf_alphturb*wb*ent(k+1,i)*sqrt(0.5_r8*(tke(k+1)+tke(k)))*dzt(k+1)
@@ -687,6 +708,7 @@ module clubb_mf
              upth(k+1,i)  = thn
              upbuoy(k+1,i)= B
            else
+             ent(k+2:nz,i) = 0._r8
              exit
            end if
          enddo
@@ -733,12 +755,6 @@ module clubb_mf
              ! get rain rate
              uprr(k-1,i) = uprr(k,i) &
                          - rho_zt(k)*dzt(k)*( supqt(k,i)*(1._r8-fdd) + sevap )
-
-             if (debug) then
-               if ( masterproc ) then
-                 write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
-               end if
-             end if
 
              ! update source terms
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(k-1,i))
@@ -808,7 +824,7 @@ module clubb_mf
          do i=1,clubb_mf_nup
            ae  (k) = ae  (k) - upa(k,i)
            aw  (k) = aw  (k) + upa(k,i)*upw(k,i)
-           awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
+           !awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
            awthl(k)= awthl(k)+ upa(k,i)*upw(k,i)*upthl(k,i) 
            awthv(k)= awthv(k)+ upa(k,i)*upw(k,i)*upthv(k,i) 
@@ -822,8 +838,16 @@ module clubb_mf
              ! scale autoconv by factor (1-fdd)? 
              sqt(k)  = sqt(k)  + 0.5_r8*(upa(k,i)+upa(k-1,i))*supqt(k,i)
              sthl(k) = sthl(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i)
+             ! hack awu to contain ensemble entrainment
+             awu (k) = awu (k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*ent(k,i)
            end if
          enddo
+         ! hack awu to contain ensemble entrainment
+         if (k > 1 .and. 0.5_r8*(ae(k)+ae(k-1)) < 1._r8) then
+           awu(k) = awu(k)/(1._r8-0.5_r8*(ae(k)+ae(k-1)))
+         else
+           awu(k) = 0._r8
+         end if
          ! no convection if convection terminates at first level
          if (k == 2 .and. ae(k) == 1._r8) then
            sqt(k) = 0_r8
@@ -831,6 +855,13 @@ module clubb_mf
            return
          end if
        enddo
+
+       ! ztopm1 calculation
+       do k=1,nz
+         if (ae(k) < 1._r8) then
+           ztopm1 = zm(k)
+         end if
+       end do
 
        ! downward sweep to get ensemble mean precip
        do k = nz,2,-1

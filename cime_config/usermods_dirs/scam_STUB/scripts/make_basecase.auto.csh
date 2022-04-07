@@ -41,10 +41,10 @@ set loo = `echo $case_lon | cut -d '.' -f 1`
 echo $loo
 
 # set basecase name
-set CASE="${src}_${COMPSET}_L58_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_test0"
+set CASE="${src}_${COMPSET}_L58dev_CAMFORC_${loc_string}_${case_date}_c`date '+%y%m%d'`_100nup_100a3b3alph_nozm"
 
 # create new basecase
-${srcpath}/${src}/cime/scripts/create_newcase --case ${scratchdir}/${CASE} --compset ${COMPSET} --res T42_T42 --user-mods-dir ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach izumi --pecount 1 --compiler intel --queue short --run-unsupported
+${srcpath}/${src}/cime/scripts/create_newcase --case ${scratchdir}/${CASE} --compset ${COMPSET} --res T42_T42 --user-mods-dir ${srcpath}/${src}/cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach izumi --pecount 1 --compiler intel --driver mct --queue short --run-unsupported
 
 cd ${scratchdir}/${CASE}
 
@@ -71,11 +71,9 @@ sed -i 's/intel\/mvapich2-2.3rc2-intel-18.0.3/intel\/mvapich2-2.1-qlc/' ./env_ma
 
 echo "scm_use_ana_iop = .true.">>user_nl_cam
 
-echo "cld_macmic_num_steps=6">>user_nl_cam
-#echo "deep_scheme = 'off'">>user_nl_cam
+echo "cld_macmic_num_steps=3">>user_nl_cam
+echo "deep_scheme = 'off'">>user_nl_cam
 #echo "zmconv_num_cin = 1">>user_nl_cam
-echo "use_gw_front = .false.">>user_nl_cam
-echo "use_gw_convect_dp = .false.">>user_nl_cam
 
 #echo "clubb_timestep=150.D0">>user_nl_cam
 #echo "clubb_gamma_coef = 0.27D0">>user_nl_cam
@@ -97,13 +95,13 @@ echo "use_gw_convect_dp = .false.">>user_nl_cam
 echo "do_clubb_mf = .true.">>user_nl_cam
 echo "do_clubb_mf_diag = .true.">>user_nl_cam
 echo "do_clubb_mf_precip = .true.">>user_nl_cam
-echo "do_clubb_mf_rad = .false.">>user_nl_cam
+echo "do_clubb_mf_rad = .true.">>user_nl_cam
 
 echo "clubb_mf_nup = 100">>user_nl_cam
 echo "clubb_mf_L0 = 50.D0">>user_nl_cam
-echo "clubb_mf_Lopt = 3">>user_nl_cam
-echo "clubb_mf_a0 = 1.D0">>user_nl_cam
-echo "clubb_mf_b0 = 0.5D0">>user_nl_cam
+echo "clubb_mf_Lopt = 7">>user_nl_cam
+echo "clubb_mf_a0 = 100.D0">>user_nl_cam
+echo "clubb_mf_b0 = 1.D0">>user_nl_cam
 echo "clubb_mf_alphturb = 3.D0">>user_nl_cam
 
 #Set case specific variables

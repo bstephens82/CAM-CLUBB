@@ -3149,6 +3149,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_a0');
    add_default($nl, 'clubb_mf_b0');
    add_default($nl, 'clubb_mf_nup');
+   add_default($nl, 'clubb_mf_max_L0');
 }
 
 # Force exit if running cam_dev and CLUBB is off
