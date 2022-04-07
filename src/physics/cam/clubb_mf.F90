@@ -23,7 +23,8 @@ module clubb_mf
             do_clubb_mf, &
             do_clubb_mf_diag, &
             clubb_mf_nup, &
-            do_clubb_mf_rad
+            do_clubb_mf_rad, &
+            clubb_mf_Lopt
 
   !
   ! Lopt 0 = fixed L0
@@ -31,7 +32,9 @@ module clubb_mf
   !      2 = wpthlp_clubb L0
   !      3 = test plume L0
   !      4 = lel
-  !      5 = cape
+  !      5 = ztopm1
+  !      6 = rel.hum. at 500 hPa
+  !      7 = column int. rel.hum.
   integer  :: clubb_mf_Lopt    = 0
   real(r8) :: clubb_mf_a0      = 0._r8
   real(r8) :: clubb_mf_b0      = 0._r8
@@ -119,10 +122,7 @@ module clubb_mf
                                              th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
-!+++ARH
-                                             !wthl,    wqt,       pblh,              & ! input
                                        ths,  wthl,    wqt,       pblh,              & ! input
-!---ARH
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
@@ -198,9 +198,7 @@ module clubb_mf
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
-!+++ARH
      real(r8), intent(in)                :: ths
-!---ARH
      real(r8), intent(inout)             :: ztopm1
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
@@ -329,7 +327,7 @@ module clubb_mf
      real(r8),parameter                   :: fdd = 0._r8
      !
      ! fixed entrainment rate (debug only)
-     real(r8),parameter                   :: fixent = 1.e-3_r8
+     real(r8),parameter                   :: fixent = 2.e-4_r8
      !
      ! Arakawa and Schubert detrainment limiter
      logical                              :: do_aspd = .false.
@@ -435,10 +433,8 @@ module clubb_mf
      zcb       = zcb_unset
 
      convh = max(pblh,pblhmin)
-!+++ARH
-     !wthv = wthl+zvir*thv(1)*wqt
      wthv = wthl+zvir*ths*wqt
-!---ARH
+
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
@@ -535,10 +531,9 @@ module clubb_mf
          ztop = ztopm1
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
          !if (masterproc) write(iam+110,*) 'mf_ztop, dynamic_L0 ', ztop, dynamic_L0
-       else if (clubb_mf_Lopt==7) then
+       else if (clubb_mf_Lopt==7 .or. clubb_mf_Lopt==8) then
          ztop = rhinv
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-         !if (masterproc) write(iam+110,*) 'rhinv, dynamic_L0 ', rhinv, dynamic_L0
        end if
 
        ! limiter to avoid division by zero
@@ -680,11 +675,6 @@ module clubb_mf
 
            ! get buoyancy
            B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
-           if (debug) then
-             if ( masterproc ) then
-               write(iulog,*) "B(k,i), k, i ", B, k, i
-             end if
-           end if
 
            if (do_implicit) then
              wp = clubb_mf_alphturb*wb*ent(k+1,i)*sqrt(0.5_r8*(tke(k+1)+tke(k)))*dzt(k+1)
@@ -766,12 +756,6 @@ module clubb_mf
              ! get rain rate
              uprr(k-1,i) = uprr(k,i) &
                          - rho_zt(k)*dzt(k)*( supqt(k,i)*(1._r8-fdd) + sevap )
-
-             if (debug) then
-               if ( masterproc ) then
-                 write(iulog,*) "uprr(k,i), k, i ", uprr(k,i), k, i
-               end if
-             end if
 
              ! update source terms
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(k-1,i))

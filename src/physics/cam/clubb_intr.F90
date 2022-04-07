@@ -34,7 +34,7 @@ module clubb_intr
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type
   use cloud_fraction,   only: dp1, dp2
-  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, do_clubb_mf_rad
+  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, do_clubb_mf_rad, clubb_mf_Lopt
   use cam_history_support, only: add_hist_coord
 #endif
 
@@ -2081,7 +2081,7 @@ end subroutine clubb_init_cnst
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
    real(r8), dimension(pcols,pver)      :: mq,        mqsat
-   real(r8), dimension(pcols)           :: rh500
+   real(r8), dimension(pcols)           :: rhlev
    real(r8)                             :: rhinv
 
    ! MF local vars
@@ -2261,19 +2261,22 @@ end subroutine clubb_init_cnst
         call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), esat(1:ncol,k), rh(1:ncol,k), ncol)
      end do
 
-     ! Interpolate RH to 500 hPa
-     rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
-     call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rh500, &
-         extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
-
-     ! Mass of q, by layer and vertically integrated
-     !mq(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
-     !mqsat(:ncol,:) = rh(:ncol,:) * state%pdel(:ncol,:) * rga
-     !do k=2,pver
-     !  mq(:ncol,1) = mq(:ncol,1) + mq(:ncol,k)
-     !  mqsat(:ncol,1) = mqsat(:ncol,1) + mqsat(:ncol,k)
-     !end do
-     !rh500(:ncol) = mq(:ncol,1)/mqsat(:ncol,1) 
+     rhlev(:ncol) = 0._r8
+     if (clubb_mf_Lopt==7) then
+       ! Interpolate RH to 500 hPa
+       rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
+       call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rhlev, &
+           extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
+     else if (clubb_mf_Lopt==8) then
+       ! Mass of q, by layer and vertically integrated
+       mq(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
+       mqsat(:ncol,:) = rh(:ncol,:) * state%pdel(:ncol,:) * rga
+       do k=2,pver
+         mq(:ncol,1) = mq(:ncol,1) + mq(:ncol,k)
+         mqsat(:ncol,1) = mqsat(:ncol,1) + mqsat(:ncol,k)
+       end do
+       rhlev(:ncol) = mq(:ncol,1)/mqsat(:ncol,1) 
+     end if     
    end if
 
    ! Initialize the apply_const variable (note special logic is due to eularian backstepping)
@@ -2810,9 +2813,9 @@ end subroutine clubb_init_cnst
           p_in_Pa_zm(k) = state1%pint(i,pverp-k+1)
           invrs_exner_zm(k) = 1._r8/((p_in_Pa_zm(k)/p0_clubb)**(kappa_zm(k)))
         enddo
-!+++ARH
+
         th_sfc = cam_in%ts(i)*invrs_exner_zm(1)
-!---ARH
+
       end if
      
       if (clubb_do_adv) then
@@ -2927,8 +2930,8 @@ end subroutine clubb_init_cnst
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
 
            rhinv = 0._r8
-           if (rh500(i) >= 1._r8) rh500(i) = 0.990_r8
-           if (rh500(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rh500(i)) - 1._r8 )
+           if (rhlev(i) >= 1._r8) rhlev(i) = 0.990_r8
+           if (rhlev(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rhlev(i)) - 1._r8 )
 
            call integrate_mf( pverp,                                                          & ! input
                               rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
@@ -2937,10 +2940,7 @@ end subroutine clubb_init_cnst
                                                       th_zt,      qv_zt,      qc_zt,          & ! input
                                                       thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
-!+++ARH
-                                                      !wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                                          th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
-!---ARH
                               wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
                               mf_cape_output(i),                                              & ! output - plume diagnostics
                               mf_upa,                                                         & ! output - plume diagnostics
