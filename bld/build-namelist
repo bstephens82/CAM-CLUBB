@@ -316,12 +316,6 @@ if ($print>=2) { print "Using namelist defaults file $nl_defaults_file$eol"; }
 
 my $defaults = Build::NamelistDefaults->new($nl_defaults_file, $cfg);
 
-# CAMDEV
-my $phys_check = $cfg->get('phys');
-if ($phys_check eq 'cam64') {
-    $cfg->set('phys', 'cam6');
-    }
-
 #-----------------------------------------------------------------------------------------------
 # Similarly to the namelist definition and defaults files, the use case file
 # may also come from the usr_src directories.  Determine the location of the
