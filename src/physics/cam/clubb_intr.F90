@@ -1329,12 +1329,14 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'nens' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
       call addfld ( 'edmf_upw'      , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft vertical velocity (EDMF)' )
+      call addfld ( 'edmf_upmf'     , (/ 'ilev', 'nens' /), 'A', 'kg/m2/s' , 'Plume updraft mass flux (EDMF)' )
       call addfld ( 'edmf_upqt'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft total water mixing ratio (EDMF)' )
       call addfld ( 'edmf_upthl'    , (/ 'ilev', 'nens' /), 'A', 'K'       , 'Plume updraft liquid potential temperature (EDMF)' )
       call addfld ( 'edmf_upthv'    , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft virtual potential temperature (EDMF)' )
       call addfld ( 'edmf_upth'     , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft potential temperature (EDMF)' )
       call addfld ( 'edmf_upqc'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft condensate mixing ratio (EDMF)' )
       call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft entrainment rate (EDMF)' )
+      call addfld ( 'edmf_updet'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft dettrainment rate (EDMF)' )
       call addfld ( 'edmf_upbuoy'   , (/  'ilev', 'nens' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
     end if 
 
@@ -2010,22 +2012,26 @@ end subroutine clubb_init_cnst
    ! MF plume level outputs
    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_upa_flip,         &
                                                               mf_upw_flip,         &
+                                                              mf_upmf_flip,        &
                                                               mf_upqt_flip,        &
                                                               mf_upthl_flip,       &
                                                               mf_upthv_flip,       &
                                                               mf_upth_flip,        &
                                                               mf_upqc_flip,        &
                                                               mf_upbuoy_flip,      &
-                                                              mf_upent_flip
+                                                              mf_upent_flip,       &
+                                                              mf_updet_flip
    ! MF plume level outputs to outfld
    real(r8), dimension(pcols,pverp*clubb_mf_nup) ::           mf_upa_output,       &
                                                               mf_upw_output,       &
+                                                              mf_upmf_output,      &
                                                               mf_upqt_output,      &
                                                               mf_upthl_output,     &
                                                               mf_upthv_output,     &
                                                               mf_upth_output,      &
                                                               mf_upqc_output,      &
                                                               mf_upent_output,     &
+                                                              mf_updet_output,     &
                                                               mf_upbuoy_output
    ! MF Plume
    real(r8), pointer                    :: tpert(:)
@@ -2058,12 +2064,14 @@ end subroutine clubb_init_cnst
    ! MF plume level
    real(r8), dimension(pverp,clubb_mf_nup) ::          mf_upa,        &
                                                        mf_upw,        &
+                                                       mf_upmf,       &
                                                        mf_upqt,       &
                                                        mf_upthl,      &
                                                        mf_upthv,      &
                                                        mf_upth,       &
                                                        mf_upqc,       &
                                                        mf_upbuoy,     &
+                                                       mf_updet,      &
                                                        mf_upent
 
    ! CFL limiter vars
@@ -2510,6 +2518,7 @@ end subroutine clubb_init_cnst
    s_awv_output(:,:)        = 0._r8
    mf_upa_output(:,:)       = 0._r8
    mf_upw_output(:,:)       = 0._r8
+   mf_upmf_output(:,:)      = 0._r8
    mf_upqt_output(:,:)      = 0._r8
    mf_upthl_output(:,:)     = 0._r8
    mf_upthv_output(:,:)     = 0._r8
@@ -2517,8 +2526,10 @@ end subroutine clubb_init_cnst
    mf_upqc_output(:,:)      = 0._r8
    mf_upbuoy_output(:,:)    = 0._r8
    mf_upent_output(:,:)     = 0._r8
+   mf_updet_output(:,:)     = 0._r8
    mf_upa_flip(:,:,:)       = 0._r8
    mf_upw_flip(:,:,:)       = 0._r8
+   mf_upmf_flip(:,:,:)      = 0._r8
    mf_upqt_flip(:,:,:)      = 0._r8
    mf_upthl_flip(:,:,:)     = 0._r8
    mf_upthv_flip(:,:,:)     = 0._r8
@@ -2526,6 +2537,7 @@ end subroutine clubb_init_cnst
    mf_upqc_flip(:,:,:)      = 0._r8
    mf_upbuoy_flip(:,:,:)    = 0._r8
    mf_upent_flip(:,:,:)     = 0._r8
+   mf_updet_flip(:,:,:)     = 0._r8
    mf_thlflx_output(:,:)    = 0._r8
    mf_thvflx_output(:,:)    = 0._r8
    mf_qtflx_output(:,:)     = 0._r8
@@ -2945,6 +2957,7 @@ end subroutine clubb_init_cnst
                               mf_cape_output(i),                                              & ! output - plume diagnostics
                               mf_upa,                                                         & ! output - plume diagnostics
                               mf_upw,                                                         & ! output - plume diagnostics
+                              mf_upmf,                                                        & ! output - plume diagnostics
                               mf_upqt,                                                        & ! output - plume diagnostics
                               mf_upthl,                                                       & ! output - plume diagnostics
                               mf_upthv,                                                       & ! output - plume diagnostics
@@ -2952,6 +2965,7 @@ end subroutine clubb_init_cnst
                               mf_upqc,                                                        & ! output - plume diagnostics
                               mf_upbuoy,                                                      & ! output - plume diagnostics
                               mf_upent,                                                       & ! output - plume diagnostics
+                              mf_updet,                                                       & ! output - plume diagnostics
                               mf_dry_a,  mf_moist_a,                                          & ! output - plume diagnostics
                               mf_dry_w,  mf_moist_w,                                          & ! output - plume diagnostics
                               mf_dry_qt, mf_moist_qt,                                         & ! output - plume diagnostics
@@ -3277,12 +3291,14 @@ end subroutine clubb_init_cnst
 
            mf_upa_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_upa(k,:clubb_mf_nup)
            mf_upw_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_upw(k,:clubb_mf_nup)
+           mf_upmf_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_upmf(k,:clubb_mf_nup)
            mf_upqt_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_upqt(k,:clubb_mf_nup)
            mf_upthl_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_upthl(k,:clubb_mf_nup)
            mf_upthv_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_upthv(k,:clubb_mf_nup)
            mf_upth_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_upth(k,:clubb_mf_nup)
            mf_upqc_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_upqc(k,:clubb_mf_nup)
            mf_upent_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_upent(k,:clubb_mf_nup)
+           mf_updet_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_updet(k,:clubb_mf_nup)
            mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup)    = mf_upbuoy(k,:clubb_mf_nup)
          end if
 
@@ -3297,12 +3313,14 @@ end subroutine clubb_init_cnst
         do k=1,clubb_mf_nup
           mf_upa_output(i,pverp*(k-1)+1:pverp*k)   = mf_upa_flip(i,:pverp,k)
           mf_upw_output(i,pverp*(k-1)+1:pverp*k)   = mf_upw_flip(i,:pverp,k)
+          mf_upmf_output(i,pverp*(k-1)+1:pverp*k)  = mf_upmf_flip(i,:pverp,k)
           mf_upqt_output(i,pverp*(k-1)+1:pverp*k)  = mf_upqt_flip(i,:pverp,k)
           mf_upthl_output(i,pverp*(k-1)+1:pverp*k) = mf_upthl_flip(i,:pverp,k)
           mf_upthv_output(i,pverp*(k-1)+1:pverp*k) = mf_upthv_flip(i,:pverp,k)
           mf_upth_output(i,pverp*(k-1)+1:pverp*k)  = mf_upth_flip(i,:pverp,k)
           mf_upqc_output(i,pverp*(k-1)+1:pverp*k)  = mf_upqc_flip(i,:pverp,k)
           mf_upent_output(i,pverp*(k-1)+1:pverp*k) = mf_upent_flip(i,:pverp,k)
+          mf_updet_output(i,pverp*(k-1)+1:pverp*k) = mf_updet_flip(i,:pverp,k)
           mf_upbuoy_output(i,pverp*(k-1)+1:pverp*k)  = mf_upbuoy_flip(i,:pverp,k)
         end do
       end if
@@ -4099,6 +4117,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_ent'      , mf_ent_output,             pcols, lchnk )
      call outfld( 'edmf_upa'      , mf_upa_output,             pcols, lchnk )
      call outfld( 'edmf_upw'      , mf_upw_output,             pcols, lchnk )
+     call outfld( 'edmf_upmf'     , mf_upmf_output,            pcols, lchnk )
      call outfld( 'edmf_upqt'     , mf_upqt_output,            pcols, lchnk )
      call outfld( 'edmf_upthl'    , mf_upthl_output,           pcols, lchnk )
      call outfld( 'edmf_upthv'    , mf_upthv_output,           pcols, lchnk )
@@ -4106,6 +4125,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_upqc'     , mf_upqc_output,            pcols, lchnk )
      call outfld( 'edmf_upbuoy'   , mf_upbuoy_output,          pcols, lchnk )
      call outfld( 'edmf_upent'    , mf_upent_output,           pcols, lchnk )
+     call outfld( 'edmf_updet'    , mf_updet_output,           pcols, lchnk )
      call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )

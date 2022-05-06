@@ -32,9 +32,10 @@ module clubb_mf
   !      2 = wpthlp_clubb L0
   !      3 = test plume L0
   !      4 = lel
-  !      5 = ztopm1
-  !      6 = rel.hum. at 500 hPa
-  !      7 = column int. rel.hum.
+  !      4 = cape
+  !      6 = ztopm1
+  !      7 = rel.hum. at 500 hPa
+  !      8 = column int. rel.hum.
   integer  :: clubb_mf_Lopt    = 0
   real(r8) :: clubb_mf_a0      = 0._r8
   real(r8) :: clubb_mf_b0      = 0._r8
@@ -127,13 +128,15 @@ module clubb_mf
                            mcape,                                                   & ! output
                            upa,                                                     & ! output
                            upw,                                                     & ! output
+                           upmf,                                                    & ! output
                            upqt,                                                    & ! output
                            upthl,                                                   & ! output
                            upthv,                                                   & ! output
                            upth,                                                    & ! output
                            upqc,                                                    & ! output
                            upbuoy,                                                  & ! output
-                           ent,                                                     & ! output
+                           upent,                                                   & ! output
+                           updet,                                                   & ! output
                            dry_a,   moist_a,                                        & ! output
                            dry_w,   moist_w,                                        & ! output
                            dry_qt,  moist_qt,                                       & ! output
@@ -177,7 +180,7 @@ module clubb_mf
   ! Additional modifications by Adam Herrington, NCAR                                 !
   ! ================================================================================= !
 
-     use physconst,          only: rair, cpair, gravit, latvap, latice, zvir
+     use wv_saturation,      only : qsat
 
      integer,  intent(in)                :: nz
      real(r8), dimension(nz), intent(in) :: u,      v,            & ! thermodynamic grid
@@ -203,13 +206,15 @@ module clubb_mf
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
+                                                         upmf,    & ! momentum grid
                                                          upqt,    & ! momentum grid
                                                          upthl,   & ! momentum grid
                                                          upthv,   & ! momentum grid
                                                          upth,    & ! momentum grid
                                                          upqc,    & ! momentum grid
                                                          upbuoy,  & ! momentum grid
-                                                         ent
+                                                         upent,   & ! momentum grid
+                                                         updet
 
      real(r8),dimension(nz), intent(out) :: dry_a,   moist_a,     & ! momentum grid
                                             dry_w,   moist_w,     & ! momentum grid
@@ -254,7 +259,7 @@ module clubb_mf
                                              uprr                        ! thermodynamic grid
      !
      ! entrainment profiles
-     real(r8), dimension(nz,clubb_mf_nup) :: entf                        ! thermodynamic grid
+     real(r8), dimension(nz,clubb_mf_nup) :: entf,     mix               ! thermodynamic grid
      integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
@@ -296,7 +301,22 @@ module clubb_mf
      real(r8)                               :: landfrac
      integer                                :: kpbl,     msg,          &
                                                lon,      mx
-
+     !
+     ! buoyancy sorting variables
+     real(r8)                               :: tlm,     excessm, qsm,     &   
+                                               tln,     excessn, es,      &
+                                               xc,      xsat,    x_en,    &
+                                               x_cu,    xs1,     xs2,     &
+                                               aquad,   bquad,   cquad,   &
+                                               thlxsat, thvxsat, qtxsat,  &
+                                               thv_x0,  thv_x1,  cridis,  &
+                                               thln0,   qtn0,    wn0,     &
+                                               entn,    detn,    mfn,     &
+                                               ee2,     ud2
+     integer                                :: kk,      status,  iter_xc
+     real(r8),parameter                     :: amax = 0.6_r8
+     real(r8),parameter                     :: rle = 0.1_r8    
+     integer,parameter                      :: niter_xc = 3
      !
      ! parameters defining initial conditions for updrafts
      real(r8),parameter                   :: pwmin = 1.5_r8,           &
@@ -326,8 +346,11 @@ module clubb_mf
      ! fraction of rain detrained into downdrafts
      real(r8),parameter                   :: fdd = 0._r8
      !
-     ! fixed entrainment rate (debug only)
-     real(r8),parameter                   :: fixent = 2.e-4_r8
+     ! to fix entrainmnet rate
+     logical                              :: fixent = .true.
+     !
+     ! fixed entrainment rate
+     real(r8),parameter                   :: fixent_ent = 2.e-4_r8
      !
      ! Arakawa and Schubert detrainment limiter
      logical                              :: do_aspd = .false.
@@ -350,9 +373,6 @@ module clubb_mf
      !
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 
-     !
-     ! to debug flag
-     logical                              :: debug  = .false.
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -392,9 +412,10 @@ module clubb_mf
      qvflx     = 0._r8
      qcflx     = 0._r8
     
-     ent       = 0._r8
+     mix       = 0._r8
      entf      = 0._r8
      enti      = 0
+     det       = 0._r8
      cape      = 0._r8
      mcape     = 0._r8
      dmpdz     = 0._r8
@@ -410,6 +431,7 @@ module clubb_mf
      upthv = 0._r8
      upqt  = 0._r8
      upa   = 0._r8
+     upmf  = 0._r8
      upu   = 0._r8
      upv   = 0._r8
      upqc  = 0._r8
@@ -423,6 +445,8 @@ module clubb_mf
      uprr  = 0._r8
      supqt = 0._r8
      supthl= 0._r8
+     upent = 0._r8
+     updet = 0._r8
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
@@ -438,7 +462,11 @@ module clubb_mf
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
-       ! get surface conditions
+       ! --------------------------------------------------------- !
+       ! Construct PDF at the surface from surface fluxes          ! 
+       ! and initialize plume thv, qt, w                           !
+       ! --------------------------------------------------------- !
+
        wstar   = max( wstarmin, (gravit/thv(1)*wthv*convh)**(1._r8/3._r8) )
        qstar   = wqt / wstar
        thvstar = wthv / wstar
@@ -450,10 +478,79 @@ module clubb_mf
        wmin = sigmaw * pwmin
        wmax = sigmaw * pwmax
 
+       do i=1,clubb_mf_nup
+         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
+         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
+
+         upw(1,i) = 0.5_r8 * (wlv+wtv)
+         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
+                    - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
+
+         upmf(1,i)= rho_zm(1)*upa(1,i)*upw(1,i)
+
+         upu(1,i) = u(1)
+         upv(1,i) = v(1)
+
+         upqt(1,i)  = cwqt * upw(1,i) * sigmaqt/sigmaw
+         upthv(1,i) = cwthv * upw(1,i) * sigmathv/sigmaw
+       enddo
+
+       facqtu=1._r8
+       facthvu=1._r8
+       if (scalesrf) then
+         ! scale surface fluxes
+         srfwqtu = 0._r8
+         srfwthvu = 0._r8
+         srfarea = 0._r8
+         do i=1,clubb_mf_nup
+             srfwqtu=srfwqtu+upqt(1,i)*upw(1,i)*upa(1,i)
+             srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
+             srfarea = srfarea+upa(1,i)
+         end do
+         facqtu=srfarea*wqt/srfwqtu
+         facthvu=srfarea*wthv/srfwthvu
+       end if
+
+       do i=1,clubb_mf_nup
+
+         if (pupwind) then
+           betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+           betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+           upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
+           upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
+         else
+           upqt(1,i)=qt(1)+facqtu*upqt(1,i)
+           upthv(1,i)=thv(1)+facthvu*upthv(1,i)
+         end if
+         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
+         upth(1,i)  = upthl(1,i)
+
+         ! get cloud, lowest momentum level 
+         if (do_condensation) then
+           call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
+                                thvn, qcn, thn, qln, qin, qsn, lmixn)
+           upthv(1,i) = thvn
+           upqc(1,i)  = qcn
+           upql(1,i)  = qln
+           upqi(1,i)  = qin
+           upqs(1,i)  = qsn
+           upth(1,i)  = thn
+           if (qcn > 0._r8) zcb(i) = zm(1)
+         else
+           ! assume no cldliq
+           upqc(1,i)  = 0._r8
+         end if
+       end do
+
+       ! --------------------------------------------------------- !
+       ! Calculate dynamic_L based on value of namelist            ! 
+       ! should probably make into a subroutine                    !
+       ! --------------------------------------------------------- !
+
        if (clubb_mf_Lopt==0) then
          !Constant L0
          dynamic_L0 = clubb_mf_L0
-         ztop = 0._r8
+         ztop = clubb_mf_L0
        else if (clubb_mf_Lopt==1) then
          !TKE
          do k=nz-2,2,-1
@@ -540,157 +637,198 @@ module clubb_mf
        dynamic_L0 = max(min_L0,dynamic_L0)
        dynamic_L0 = min(clubb_mf_max_L0,dynamic_L0)
 
-       if (debug) then
-         ! overide stochastic entrainment with fixent
-         ent(:,:) = fixent
-       else
-         
-         ! get entrainment coefficient, dz/L0
-         do i=1,clubb_mf_nup
-           do k=1,nz
-             entf(k,i) = dzt(k) / dynamic_L0
-           enddo
-         enddo
-
-         ! get poisson, P(dz/L0)
-         call poisson( nz, clubb_mf_nup, entf, enti, u(2:5))
-
-         ! get entrainment, ent=ent0/dz*P(dz/L0)
-         do i=1,clubb_mf_nup
-           do k=1,nz
-             ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k)
-           enddo
-         enddo
-       end if
-
-       do i=1,clubb_mf_nup
-         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
-         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
-
-         upw(1,i) = 0.5_r8 * (wlv+wtv)
-         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
-                    - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
-
-         upu(1,i) = u(1)
-         upv(1,i) = v(1)
-
-         upqt(1,i)  = cwqt * upw(1,i) * sigmaqt/sigmaw
-         upthv(1,i) = cwthv * upw(1,i) * sigmathv/sigmaw
-       enddo
-
-       facqtu=1._r8
-       facthvu=1._r8
-       if (scalesrf) then 
-         ! scale surface fluxes
-         srfwqtu = 0._r8
-         srfwthvu = 0._r8
-         srfarea = 0._r8
-         do i=1,clubb_mf_nup
-             srfwqtu=srfwqtu+upqt(1,i)*upw(1,i)*upa(1,i)
-             srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
-             srfarea = srfarea+upa(1,i)
-         end do
-         facqtu=srfarea*wqt/srfwqtu
-         facthvu=srfarea*wthv/srfwthvu
-       end if
-
-       do i=1,clubb_mf_nup
-
-         if (pupwind) then
-           betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
-           betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
-           upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
-           upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
-         else
-           upqt(1,i)=qt(1)+facqtu*upqt(1,i)
-           upthv(1,i)=thv(1)+facthvu*upthv(1,i)
-         end if
-         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
-         upth(1,i)  = upthl(1,i)
-
-         ! get cloud, lowest momentum level 
-         if (do_condensation) then
-           call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
-                                thvn, qcn, thn, qln, qin, qsn, lmixn)
-           upthv(1,i) = thvn
-           upqc(1,i)  = qcn
-           upql(1,i)  = qln
-           upqi(1,i)  = qin
-           upqs(1,i)  = qsn
-           upth(1,i)  = thn
-           if (qcn > 0._r8) zcb(i) = zm(1)
-         else
-           ! assume no cldliq
-           upqc(1,i)  = 0._r8
-         end if
-       end do
-
-       ! get updraft properties
+       ! --------------------------------------------------------- !
+       ! Main upward sweep to compute updraft properties           ! 
+       !                                                           !
+       ! --------------------------------------------------------- !
        do i=1,clubb_mf_nup
          do k=1,nz-1
 
-           ! get microphysics, autoconversion
-           if (do_clubb_mf_precip .and. upqc(k,i) > 0._r8) then
-             call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt(k+1,i))
+           do iter_xc = 1, niter_xc
 
-             supthl(k+1,i) = -1._r8*lmixn*supqt(k+1,i)*iexner_zt(k+1)/cpair
-           else
-             supqt(k+1,i)  = 0._r8
-             supthl(k+1,i) = 0._r8
-           end if
+             if (iter_xc==1) then
+               qtn  = upqt(k,i)
+               thln = upthl(k,i)
+               wn   = upw(k,i)
+             else
+               qtn  = 0.5_r8*(qtn + qtn0)
+               thln = 0.5_r8*(thln + thln0)
+               wn = 0.5_r8*(wn + wn0)
+             end if
 
-           ! integrate updraft
-!+++ARH
-           !eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
-           if (dynamic_L0 >= clubb_mf_max_L0) then
-             eturb = 1._r8
-           else
-             eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
-           end if
-!---ARH
+             ! --------------------------------------------------------- !
+             ! Compute excess water to derive neutral mixing fraction    ! 
+             ! after Bretherton et al 2014                               !
+             ! --------------------------------------------------------- !
 
-           if (do_aspd) then
-             eturb = min(eturb,max_eturb)
-           end if
-           entexp  = exp(-ent(k+1,i)*eturb*dzt(k+1))
-           entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
+             ! qexcess of the envrionment
+             tlm = thl_zm(k+1)/iexner_zm(k+1)
+             call qsat(tlm,p_zm(k+1),es,qsm)
+             excessm = qt_zm(k+1) - qsm
 
-           qtn  = qt(k+1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt(k+1,i)
-           thln = thl(k+1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl(k+1,i)           
-           un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
-           vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
+             ! qexcess in plume
+             tln  = thln/iexner_zm(k+1)
+             call qsat(tln,p_zm(k+1),es,qsn)
+             excessn = qtn - qsn
 
-           ! convert source terms to a tendency
-           supqt(k+1,i) = supqt(k+1,i)*upw(k,i)/dzt(k+1)
-           supthl(k+1,i) = supthl(k+1,i)*upw(k,i)/dzt(k+1)
-
-           ! get cloud, momentum levels
-           if (do_condensation) then
              call condensation_mf(qtn, thln, p_zm(k+1), iexner_zm(k+1), &
                                   thvn, qcn, thn, qln, qin, qsn, lmixn)
-             if (zcb(i).eq.zcb_unset .and. qcn > 0._r8) zcb(i) = zm(k+1)
-           else
-             thvn = thln*(1._r8+zvir*qtn)
-           end if
 
-           ! get buoyancy
-           B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
+             ! critical stopping distance
+             cridis = rle*ztopm1
 
-           if (do_implicit) then
-             wp = clubb_mf_alphturb*wb*ent(k+1,i)*sqrt(0.5_r8*(tke(k+1)+tke(k)))*dzt(k+1)
-             wn = (-wp + sqrt(wp**2._r8 + (1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))* &
-                   (upw(k,i)**2._r8 + 2._r8*wa*B*dzt(k+1))) )/(1._r8 + 2._r8*wb*ent(k+1,i)*dzt(k+1))
-           else
-             ! get wn2
-             wp = wb*ent(k+1,i)*eturb
-             if (wp==0._r8) then
-               wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k+1)
+             ! ----------------------------------------------------------------- !
+             ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
+             ! ----------------------------------------------------------------- !
+             if (excessm*excessn > 0._r8) then
+               xc = min(1._r8,max(0._r8,1._r8-2._r8*wa*gravit*cridis/wn**2._r8*(1._r8-thvn/thv_zm(k+1))))
+               aquad = 0._r8
+               bquad = 0._r8
+               cquad = 0._r8
              else
-               entw = exp(-2._r8*wp*dzt(k+1))
-               wn2 = entw*upw(k,i)**2._r8+(1._r8-entw)*wa*B/wp
+             ! -------------------------------------------------- !
+             ! Case 2 : When either cumulus or env. is saturated. !
+             ! -------------------------------------------------- !
+               xsat    = excessn / ( excessn - excessm );
+               thlxsat = thln + xsat * ( thl_zm(k+1) - thln );
+               qtxsat  = qtn  + xsat * ( qt_zm(k+1) - qtn );
+               call condensation_mf(qtxsat, thlxsat, p_zm(k+1), iexner_zm(k+1), &
+                                    thvxsat, qcn, thn, qln, qin, qsn, lmixn)
+               ! -------------------------------------------------- !
+               ! kk=1 : Cumulus Segment, kk=2 : Environment Segment !
+               ! -------------------------------------------------- ! 
+               do kk = 1, 2
+                 if( kk .eq. 1 ) then
+                   thv_x0 = thvn
+                   thv_x1 = ( 1._r8 - 1._r8/xsat ) * thvn + ( 1._r8/xsat ) * thvxsat
+                 else
+                   thv_x1 = thv_zm(k+1)
+                   thv_x0 = ( xsat / ( xsat - 1._r8 ) ) * thv_zm(k+1) + ( 1._r8/( 1._r8 - xsat ) ) * thvxsat
+                 endif
+                 aquad =  wn**2
+                 bquad =  2._r8*wa*gravit*cridis*(thv_x1 - thv_x0)/thv_zm(k+1) - 2._r8*wn**2
+                 cquad =  2._r8*wa*gravit*cridis*(thv_x0 - thv_zm(k+1))/thv_zm(k+1)  + wn**2
+                 if( kk .eq. 1 ) then
+                   if( ( bquad**2-4._r8*aquad*cquad ) .ge. 0._r8 ) then
+                     call roots(aquad,bquad,cquad,xs1,xs2,status)
+                     x_cu = min(1._r8,max(0._r8,min(xsat,min(xs1,xs2))))
+                   else
+                     x_cu = xsat
+                   endif
+                 else
+                   if( ( bquad**2-4._r8*aquad*cquad) .ge. 0._r8 ) then
+                     call roots(aquad,bquad,cquad,xs1,xs2,status)
+                     x_en = min(1._r8,max(0._r8,max(xsat,min(xs1,xs2))))
+                   else
+                     x_en = 1._r8
+                   endif
+                 endif
+               enddo
+               if( x_cu .eq. xsat ) then
+                 xc = max(x_cu, x_en)
+               else
+                 xc = x_cu
+               endif
+             endif
+
+             if (iter_xc==1) then
+               if (fixent) then
+                 !mix(k+1,i) = fixent_ent
+                 mix(k+1,i) = 7._r8/zt(k+1)
+               else
+                 ! --------------------------------------------------------- !
+                 ! Stochastic entrainmnet calculation                        ! 
+                 ! From Suselj et al 2019, after Romps and Kuang 2010        !
+                 ! --------------------------------------------------------- !
+
+                 ! get entrainment coefficient, dz/L0
+                 entf(k+1,i) = dzt(k+1) / dynamic_L0
+
+                 ! get poisson, P(dz/L0)
+                 call poisson( 1, 1, entf(k+1,i), enti(k+1,i), u(2:5))
+
+                 ! get entrainment, ent=ent0/dz*P(dz/L0)
+                 mix(k+1,i) = real( enti(k+1,i))*clubb_mf_ent0/dzt(k+1)
+               end if
              end if
-             wn = sqrt(max(wn2, 0._r8))
-           end if
+
+             ee2 = xc**2
+             ud2 = 1._r8 - 2._r8*xc + xc**2
+
+             entn  = mix(k+1,i) * ee2
+             detn  = mix(k+1,i) * ud2
+             mfn = upmf(k,i)*exp( dzt(k+1)*( entn - detn ))
+
+             ! --------------------------------------------------------- !
+             ! TKE enhanced entrainment                                  ! 
+             ! switches off when dynamic_L0 > max_L0                     !
+             ! --------------------------------------------------------- !
+!+++ARH
+             !if (dynamic_L0 >= clubb_mf_max_L0) then
+               eturb = 1._r8
+             !else
+             !  eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+             !end if
+             !if (do_aspd) eturb = min(eturb,max_eturb)
+!---ARH
+
+             ! get microphysics, autoconversion
+             ! (pls double-check this routine)
+             if (do_clubb_mf_precip .and. upqc(k,i) > 0._r8) then
+               call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt(k+1,i))
+               supthl(k+1,i) = -1._r8*lmixn*supqt(k+1,i)*iexner_zt(k+1)/cpair
+             else
+               supqt(k+1,i)  = 0._r8
+               supthl(k+1,i) = 0._r8
+             end if
+
+             ! integrate updraft
+             entexp  = exp(-entn*eturb*dzt(k+1))
+             entexpu = exp(-entn*dzt(k+1)/3._r8)
+
+             qtn0  = qtn
+             thln0 = thln
+
+             qtn  = qt(k+1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt(k+1,i)
+             thln = thl(k+1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl(k+1,i)           
+             un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
+             vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
+
+             ! convert source terms to a tendency
+             supqt(k+1,i) = supqt(k+1,i)*upw(k,i)/dzt(k+1)
+             supthl(k+1,i) = supthl(k+1,i)*upw(k,i)/dzt(k+1)
+
+             ! get cloud, momentum levels
+             if (do_condensation) then
+               call condensation_mf(qtn, thln, p_zm(k+1), iexner_zm(k+1), &
+                                    thvn, qcn, thn, qln, qin, qsn, lmixn)
+               if (zcb(i).eq.zcb_unset .and. qcn > 0._r8) zcb(i) = zm(k+1)
+             else
+               thvn = thln*(1._r8+zvir*qtn)
+             end if
+
+             ! get buoyancy
+             B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
+
+             wn0 = wn
+
+             if (do_implicit) then
+               wp = clubb_mf_alphturb*wb*entn*sqrt(0.5_r8*(tke(k+1)+tke(k)))*dzt(k+1)
+               wn = (-wp + sqrt(wp**2._r8 + (1._r8 + 2._r8*wb*entn*dzt(k+1))* &
+                     (upw(k,i)**2._r8 + 2._r8*wa*B*dzt(k+1))) )/(1._r8 + 2._r8*wb*entn*dzt(k+1))
+             else
+               ! get wn2
+               wp = wb*entn*eturb
+               if (wp==0._r8) then
+                 wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k+1)
+               else
+                 entw = exp(-2._r8*wp*dzt(k+1))
+                 wn2 = entw*upw(k,i)**2._r8+(1._r8-entw)*wa*B/wp
+               end if
+               wn = sqrt(max(wn2, 0._r8))
+             end if
+
+           end do !iter_xc
 
            if (wn>0._r8) then
              upw(k+1,i)   = wn
@@ -701,7 +839,9 @@ module clubb_mf
              upqs(k+1,i)  = qsn
              upu(k+1,i)   = un
              upv(k+1,i)   = vn
-             upa(k+1,i)   = upa(k,i)
+             upa(k+1,i)   = upmf(k+1,i)/(wn*rho_zm(k+1))
+             upent(k+1,i) = entn
+             updet(k+1,i) = detn
              upql(k+1,i)  = qln
              upqi(k+1,i)  = qin
              upqv(k+1,i)  = qtn - qcn
@@ -709,33 +849,53 @@ module clubb_mf
              upth(k+1,i)  = thn
              upbuoy(k+1,i)= B
            else
-             ent(k+2:nz,i) = 0._r8
              exit
            end if
          enddo
        enddo
 
-       if (do_aspd) then
-         do k=1,nz-1
-           do i=1,clubb_mf_nup
-             !
-             if (upw(k+1,i)>0._r8) then
-               ! diagnose detrainment
-               Mn = rho_zm(k)*upa(k,i)*upw(k,i)
-               det = ent(k+1,i)*eturb - (rho_zm(k+1)*upa(k+1,i)*upw(k+1,i) - Mn) &
-                             /(Mn*dzt(k+1))
-               if (det < 0._r8) then
-                 ! diagnose area to eliminate detrainment and conserve mass
-                 Mn = rho_zm(k)*upa(k,i)*upw(k,i)*exp(ent(k+1,i)*eturb*dzt(k+1))
-                 upa(k+1,i) = Mn/(rho_zm(k+1)*upw(k+1,i))             
-               end if
-               !
-             end if
-             ac(k+1) = ac(k+1) + upa(k+1,i)
-             !
-           end do
+       ! --------------------------------------------------------- !
+       ! Limit total convective area                               ! 
+       ! (in future compute a mass conserving detrainment rate)    !
+       ! --------------------------------------------------------- !
+       do k=1,nz-1
+         do i=1,clubb_mf_nup
+           !
+           ac(k) = ac(k) + upa(k,i)
+           !
          end do
-       end if
+         if (ac(k) > amax) then
+           upa(k,:) = upa(k,:)*amax/ac(k)
+         end if
+       end do
+
+       ! --------------------------------------------------------- !
+       ! AS.pd limiter                                             ! 
+       ! (likley incosistent with buoyancy sorting algorithm)      !
+       ! --------------------------------------------------------- !
+!+++ARH
+!       if (do_aspd) then
+!         do k=1,nz-1
+!           do i=1,clubb_mf_nup
+!             !
+!             if (upw(k+1,i)>0._r8) then
+!               ! diagnose detrainment
+!               Mn = rho_zm(k)*upa(k,i)*upw(k,i)
+!               det = ent(k+1,i)*eturb - (rho_zm(k+1)*upa(k+1,i)*upw(k+1,i) - Mn) &
+!                             /(Mn*dzt(k+1))
+!               if (det < 0._r8) then
+!                 ! diagnose area to eliminate detrainment and conserve mass
+!                 Mn = rho_zm(k)*upa(k,i)*upw(k,i)*exp(ent(k+1,i)*eturb*dzt(k+1))
+!                 upa(k+1,i) = Mn/(rho_zm(k+1)*upw(k+1,i))             
+!               end if
+!               !
+!             end if
+!             ac(k+1) = ac(k+1) + upa(k+1,i)
+!             !
+!           end do
+!         end do
+!       end if
+!---ARH
 
        ! downward sweep for rain evaporation, snow melting 
        if (do_clubb_mf_precip) then
@@ -840,7 +1000,7 @@ module clubb_mf
              sqt(k)  = sqt(k)  + 0.5_r8*(upa(k,i)+upa(k-1,i))*supqt(k,i)
              sthl(k) = sthl(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i)
              ! hack awu to contain ensemble entrainment
-             awu (k) = awu (k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*ent(k,i)
+             awu (k) = awu (k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*mix(k,i)
            end if
          enddo
          ! hack awu to contain ensemble entrainment
@@ -1211,6 +1371,51 @@ module clubb_mf
       end do
 
   end subroutine hormann
+
+  subroutine roots(a,b,c,r1,r2,status)
+  ! --------------------------------------------------------- !
+  ! Subroutine to solve the second order polynomial equation. !
+  ! after uwshcu.F90                                          !
+  ! --------------------------------------------------------- !
+    real(r8), intent(in)  :: a
+    real(r8), intent(in)  :: b
+    real(r8), intent(in)  :: c
+    real(r8), intent(out) :: r1
+    real(r8), intent(out) :: r2
+    integer , intent(out) :: status
+    real(r8)              :: q
+
+    status = 0
+
+    if( a .eq. 0._r8 ) then                            ! Form b*x + c = 0
+        if( b .eq. 0._r8 ) then                        ! Failure: c = 0
+            status = 1
+        else                                           ! b*x + c = 0
+            r1 = -c/b
+        endif
+        r2 = r1
+    else
+        if( b .eq. 0._r8 ) then                        ! Form a*x**2 + c = 0
+            if( a*c .gt. 0._r8 ) then                  ! Failure: x**2 = -c/a < 0
+                status = 2
+            else                                       ! x**2 = -c/a 
+                r1 = sqrt(-c/a)
+            endif
+            r2 = -r1
+       else                                            ! Form a*x**2 + b*x + c = 0
+            if( (b**2 - 4._r8*a*c) .lt. 0._r8 ) then   ! Failure, no real roots
+                 status = 3
+            else
+                 q  = -0.5_r8*(b + sign(1.0_r8,b)*sqrt(b**2 - 4._r8*a*c))
+                 r1 =  q/a
+                 r2 =  c/q
+            endif
+       endif
+    endif
+
+    return
+
+  end subroutine roots
 
   subroutine oneplume( nz, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                        wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
