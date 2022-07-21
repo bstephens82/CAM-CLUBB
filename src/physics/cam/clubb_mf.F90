@@ -344,7 +344,7 @@ module clubb_mf
      real(r8),parameter                   :: ke = 2.5e-4_r8
      !
      ! fraction of rain detrained into downdrafts
-     real(r8),parameter                   :: fdd = 0._r8
+     real(r8),parameter                   :: fdd = 0.5_r8
      !
      ! to fix entrainmnet rate
      logical                              :: fixent = .true.
