@@ -126,14 +126,14 @@ module clubb_mf
                                        ths,  wthl,    wqt,       pblh,              & ! input
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
                            mcape,                                                   & ! output
-                           upa,                                                     & ! output
-                           upw,                                                     & ! output
+                           upa,     dna,                                            & ! output
+                           upw,     dnw,                                            & ! output
                            upmf,                                                    & ! output
-                           upqt,                                                    & ! output
-                           upthl,                                                   & ! output
-                           upthv,                                                   & ! output
-                           upth,                                                    & ! output
-                           upqc,                                                    & ! output
+                           upqt,    dnqt,                                           & ! output
+                           upthl,   dnthl,                                          & ! output
+                           upthv,   dnthv,                                          & ! output
+                           upth,    dnth,                                           & ! output
+                           upqc,    dnqc,                                           & ! output
                            upbuoy,                                                  & ! output
                            upent,                                                   & ! output
                            updet,                                                   & ! output
@@ -216,6 +216,14 @@ module clubb_mf
                                                          upent,   & ! momentum grid
                                                          updet
 
+     real(r8),dimension(nz,clubb_mf_nup), intent(out) :: dna,     & ! momentum grid
+                                                         dnw,     & ! momentum grid
+                                                         dnqt,    & ! momentum grid
+                                                         dnthl,   & ! momentum grid
+                                                         dnthv,   & ! momentum grid
+                                                         dnth,    & ! momentum grid
+                                                         dnqc
+
      real(r8),dimension(nz), intent(out) :: dry_a,   moist_a,     & ! momentum grid
                                             dry_w,   moist_w,     & ! momentum grid
                                             dry_qt,  moist_qt,    & ! momentum grid
@@ -252,18 +260,25 @@ module clubb_mf
      real(r8), dimension(nz,clubb_mf_nup) :: upqv,     upqs,           & ! momentum grid
                                              upql,     upqi,           & ! momentum grid
                                              upu,      upv,            & ! momentum grid 
-                                             uplmix                      ! momentum grid
+                                             uplmix,   upauto            ! momentum grid
+     !
+     ! downdraft properties
+     real(r8), dimension(nz,clubb_mf_nup) ::           dnqs,           & ! momentum grid
+                                             dnql,     dnqi,           & ! momentum grid
+                                             dnu,      dnv,            & ! momentum grid 
+                                             dnlmix                      ! momentum grid
      !
      ! microphyiscs terms
      real(r8), dimension(nz,clubb_mf_nup) :: supqt,    supthl,         & ! thermodynamic grid 
-                                             uprr                        ! thermodynamic grid
+                                             sdnqt,    sdnthl,         & ! thermodynamic grid
+                                             uprr,     dnrr                        
      !
      ! entrainment profiles
      real(r8), dimension(nz,clubb_mf_nup) :: entf,     mix               ! thermodynamic grid
      integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
-     integer                              :: k,i,kstart
+     integer                              :: k,i,kstart,ddtop
      real(r8), dimension(clubb_mf_nup)    :: zcb
      real(r8)                             :: zcb_unset,                &
                                              wthv,                     &
@@ -373,6 +388,10 @@ module clubb_mf
      !
      ! to scale surface fluxes
      logical                              :: scalesrf = .false. 
+     !
+     ! minimum downdraft speed
+     real(r8),parameter                   :: mindnw = 1.E-2_r8
+
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -447,6 +466,25 @@ module clubb_mf
      supthl= 0._r8
      upent = 0._r8
      updet = 0._r8
+     upauto= 0._r8
+
+     dnw   = 0._r8
+     dna   = 0._r8
+     dnu   = 0._r8
+     dnv   = 0._r8
+     dnqt  = 0._r8
+     dnthl = 0._r8
+     dnthv = 0._r8
+     dnrr  = 0._r8
+     dnth  = 0._r8
+     dnqc  = 0._r8
+     dnql  = 0._r8
+     dnqi  = 0._r8
+     dnqs  = 0._r8
+     dnlmix= 0._r8
+     sdnqt = 0._r8
+     sdnthl= 0._r8
+     dnw   = 0._r8
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
@@ -733,8 +771,7 @@ module clubb_mf
 
              if (iter_xc==1) then
                if (fixent) then
-                 !mix(k+1,i) = fixent_ent
-                 mix(k+1,i) = 7._r8/zt(k+1)
+                 mix(k+1,i) = fixent_ent
                else
                  ! --------------------------------------------------------- !
                  ! Stochastic entrainmnet calculation                        ! 
@@ -777,9 +814,12 @@ module clubb_mf
              if (do_clubb_mf_precip .and. upqc(k,i) > 0._r8) then
                call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt(k+1,i))
                supthl(k+1,i) = -1._r8*lmixn*supqt(k+1,i)*iexner_zt(k+1)/cpair
+               ! save autoconversion for use in downdrafts 
+               upauto(k+1,i) = supqt(k+1,i)
              else
                supqt(k+1,i)  = 0._r8
                supthl(k+1,i) = 0._r8
+               upauto(k+1,i) = 0._r8
              end if
 
              ! integrate updraft
@@ -925,6 +965,99 @@ module clubb_mf
            end do
          end do
        end if
+
+       ! begin computing downdrafts
+       if (do_clubb_mf_precip .and. fdd > 0._r8) then       
+
+         do i=1,clubb_mf_nup
+ 
+           ddtop = 0
+           do k = 1,nz
+             if (uprr(k,i) > 0._r8) ddtop = k
+           end do
+
+           if (ddtop /= 0) then
+             ! initilaize downdrafts
+             dnw(ddtop,i)   = -1._r8*upw(ddtop,i)
+             dna(ddtop,i)   = upa(ddtop,i)
+             dnu(ddtop,i)   = 0.5_r8*(u(ddtop)+u(ddtop+1)) 
+             dnv(ddtop,i)   = 0.5_r8*(v(ddtop)+v(ddtop+1))
+             dnqt(ddtop,i)  = qt_zm(ddtop)
+             dnthl(ddtop,i) = thl_zm(ddtop)
+             dnthv(ddtop,i) = thv_zm(ddtop)
+             dnrr(ddtop,i)  = -1._r8*dzt(ddtop)*rho_zt(ddtop)*supqt(ddtop,i)*fdd
+
+             call condensation_mf(dnqt(ddtop,i), dnthl(ddtop,i), p_zm(ddtop), iexner_zm(ddtop), &
+                                  dnthv(ddtop,i), dnqc(ddtop,i), dnth(ddtop,i), dnql(ddtop,i), dnqi(ddtop,i), &
+                                  dnqs(ddtop,i), dnlmix(ddtop,i))
+             
+             do k = ddtop-1,1,-1
+
+               ! assume fixed area
+               dna(k,i) = dna(k+1,i)
+
+               ! get rain evaporation
+               qtovqs = min(1._r8,dnqt(k+1,i)/dnqs(k+1,i))
+               sevap = ke*(1._r8 - qtovqs)*sqrt(max(dnrr(k+1,i),0._r8))
+
+               ! limit evaporation to available precip
+               sevap = min(sevap,( dnrr(k+1,i)/(rho_zt(k)*dzt(k)) - upauto(k+1,i)*(1._r8-fdd) ))
+
+               ! compute rain rate
+               dnrr(k,i) = dnrr(k+1,i) &
+                         - rho_zt(k)*dzt(k)*(sevap + upauto(k+1,i)*fdd)
+               dnrr(i,k) = max(dnrr(i,k),0.)
+
+               ! save microphysics tendenices
+               sdnqt(k,i)  = sevap
+               sdnthl(k,i) =  -1._r8*lmixt*sevap*iexner_zt(k)/cpair
+
+               if (fixent) then
+                 entn = fixent_ent
+               else
+                 ! use deterministic mean entrainment
+                 entn = clubb_mf_ent0/dynamic_L0
+               end if
+
+               ! include eturb?
+               entexp  = exp(-entn*eturb*dzt(k))
+               entexpu = exp(-entn*dzt(k)/3._r8)
+
+               ! integrate downward
+               dnu(k,i)   = u(k)  *(1._r8-entexpu) + dnu  (k+1,i)*entexpu
+               dnv(k,i)   = v(k)  *(1._r8-entexpu) + dnv  (k+1,i)*entexpu
+               dnqt(k,i)  = qt(k) *(1._r8-entexp ) + dnqt (k+1,i)*entexp + sdnqt(k,i)
+               dnthl(k,i) = thl(k)*(1._r8-entexp ) + dnthl(k+1,i)*entexp + sdnthl(k,i)
+
+               call condensation_mf(dnqt(k,i), dnthl(k,i), p_zm(k), iexner_zm(k), &
+                                    dnthv(k,i), dnqc(k,i), dnth(k,i), dnql(k,i), dnqi(k,i), &
+                                    dnqs(k,i), dnlmix(k,i))
+
+               ! get buoyancy
+               B = gravit*(0.5_r8*(dnthv(k,i) + dnthv(k+1,i))/thv(k)-1._r8)
+
+               ! compute betad - revised entrainment to reduce donwdraft velocity at surface
+               !betad = wwb*entn+5._r8/((zm(k)+small))*max(1.-exp( zm(k)/z00dn-1. ),0.)
+
+               ! get wn2
+               wp = wb*entn*eturb
+               if (wp==0._r8) then
+                 wn2 = upw(k+1,i)**2._r8+2._r8*wa*B*dzt(k)
+               else
+                 entw = exp(-2._r8*wp*dzt(k))
+                 wn2 = entw*upw(k+1,i)**2._r8+(1._r8-entw)*wa*B/wp
+               end if
+               wn2 = max(wn2,mindnw**2._r8)
+               dnw(k,i) = -1._r8*sqrt(wn2)
+    
+             end do!k
+ 
+           end if
+
+         end do!i
+
+       end if
+       ! end computing downdrafts
 
        ! writing updraft properties for output
        do k=1,nz

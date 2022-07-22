@@ -2062,17 +2062,17 @@ end subroutine clubb_init_cnst
                                            mf_ent_nadv     
 
    ! MF plume level
-   real(r8), dimension(pverp,clubb_mf_nup) ::          mf_upa,        &
-                                                       mf_upw,        &
-                                                       mf_upmf,       &
-                                                       mf_upqt,       &
-                                                       mf_upthl,      &
-                                                       mf_upthv,      &
-                                                       mf_upth,       &
-                                                       mf_upqc,       &
-                                                       mf_upbuoy,     &
-                                                       mf_updet,      &
-                                                       mf_upent
+   real(r8), dimension(pverp,clubb_mf_nup) :: mf_upa,    mf_dna,       &
+                                              mf_upw,    mf_dnw,       &
+                                              mf_upmf,                 &
+                                              mf_upqt,   mf_dnqt,      &
+                                              mf_upthl,  mf_dnthl,     &
+                                              mf_upthv,  mf_dnthv,     &
+                                              mf_upth,   mf_dnth,      &
+                                              mf_upqc,   mf_dnqc,      &
+                                              mf_upbuoy,               &
+                                              mf_updet,                &
+                                              mf_upent
 
    ! CFL limiter vars
    real(r8), parameter                  :: cflval = 1._r8
@@ -2955,14 +2955,14 @@ end subroutine clubb_init_cnst
                                          th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                               wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
                               mf_cape_output(i),                                              & ! output - plume diagnostics
-                              mf_upa,                                                         & ! output - plume diagnostics
-                              mf_upw,                                                         & ! output - plume diagnostics
+                              mf_upa,    mf_dna,                                              & ! output - plume diagnostics
+                              mf_upw,    mf_dnw,                                              & ! output - plume diagnostics
                               mf_upmf,                                                        & ! output - plume diagnostics
-                              mf_upqt,                                                        & ! output - plume diagnostics
-                              mf_upthl,                                                       & ! output - plume diagnostics
-                              mf_upthv,                                                       & ! output - plume diagnostics
-                              mf_upth,                                                        & ! output - plume diagnostics
-                              mf_upqc,                                                        & ! output - plume diagnostics
+                              mf_upqt,   mf_dnqt,                                             & ! output - plume diagnostics
+                              mf_upthl,  mf_dnthl,                                            & ! output - plume diagnostics
+                              mf_upthv,  mf_dnthv,                                            & ! output - plume diagnostics
+                              mf_upth,   mf_dnth,                                             & ! output - plume diagnostics
+                              mf_upqc,   mf_dnqc,                                             & ! output - plume diagnostics
                               mf_upbuoy,                                                      & ! output - plume diagnostics
                               mf_upent,                                                       & ! output - plume diagnostics
                               mf_updet,                                                       & ! output - plume diagnostics
