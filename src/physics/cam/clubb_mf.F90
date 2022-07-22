@@ -800,14 +800,11 @@ module clubb_mf
              ! TKE enhanced entrainment                                  ! 
              ! switches off when dynamic_L0 > max_L0                     !
              ! --------------------------------------------------------- !
-!+++ARH
-             !if (dynamic_L0 >= clubb_mf_max_L0) then
+             if (dynamic_L0 >= clubb_mf_max_L0) then
                eturb = 1._r8
-             !else
-             !  eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
-             !end if
-             !if (do_aspd) eturb = min(eturb,max_eturb)
-!---ARH
+             else
+               eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+             end if
 
              ! get microphysics, autoconversion
              ! (pls double-check this routine)
