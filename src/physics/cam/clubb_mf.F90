@@ -1001,12 +1001,11 @@ module clubb_mf
                sevap = ke*(1._r8 - qtovqs)*sqrt(max(dnrr(k+1,i),0._r8))
 
                ! limit evaporation to available precip
-               sevap = min(sevap,( dnrr(k+1,i)/(rho_zt(k)*dzt(k)) - upauto(k+1,i)*(1._r8-fdd) ))
+               sevap = min(sevap,( dnrr(k+1,i)/(rho_zt(k)*dzt(k)) - upauto(k+1,i)*fdd ))
 
                ! compute rain rate
                dnrr(k,i) = dnrr(k+1,i) &
                          - rho_zt(k)*dzt(k)*(sevap + upauto(k+1,i)*fdd)
-               dnrr(i,k) = max(dnrr(i,k),0.)
 
                ! save microphysics tendenices
                sdnqt(k,i)  = sevap
