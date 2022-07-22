@@ -892,21 +892,6 @@ module clubb_mf
        enddo
 
        ! --------------------------------------------------------- !
-       ! Limit total convective area                               ! 
-       ! (in future compute a mass conserving detrainment rate)    !
-       ! --------------------------------------------------------- !
-       do k=1,nz-1
-         do i=1,clubb_mf_nup
-           !
-           ac(k) = ac(k) + upa(k,i)
-           !
-         end do
-         if (ac(k) > amax) then
-           upa(k,:) = upa(k,:)*amax/ac(k)
-         end if
-       end do
-
-       ! --------------------------------------------------------- !
        ! AS.pd limiter                                             ! 
        ! (likley incosistent with buoyancy sorting algorithm)      !
        ! --------------------------------------------------------- !
@@ -933,6 +918,21 @@ module clubb_mf
 !         end do
 !       end if
 !---ARH
+
+       ! --------------------------------------------------------- !
+       ! Limit total convective area                               ! 
+       ! (in future compute a mass conserving detrainment rate)    !
+       ! --------------------------------------------------------- !
+       do k=1,nz-1
+         do i=1,clubb_mf_nup
+           !
+           ac(k) = ac(k) + upa(k,i)
+           !
+         end do
+         if (ac(k) > amax) then
+           upa(k,:) = upa(k,:)*amax/ac(k)
+         end if
+       end do
 
        ! downward sweep for rain evaporation, snow melting 
        if (do_clubb_mf_precip) then
