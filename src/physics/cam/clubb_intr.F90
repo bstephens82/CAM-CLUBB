@@ -1338,6 +1338,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft entrainment rate (EDMF)' )
       call addfld ( 'edmf_updet'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft dettrainment rate (EDMF)' )
       call addfld ( 'edmf_upbuoy'   , (/  'ilev', 'nens' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
+      call addfld ( 'edmf_dnw'      , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume downdraft vertical velocity (EDMF)' )
     end if 
 
     call addfld ('QT_macmic'           , (/ 'ilev', 'ncyc' /), 'A', 'kg/kg'   , 'QT at macro/micro substep')
@@ -2033,6 +2034,11 @@ end subroutine clubb_init_cnst
                                                               mf_upent_output,     &
                                                               mf_updet_output,     &
                                                               mf_upbuoy_output
+   ! MF plume level outputs
+   real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_dnw_flip
+   ! MF plume level outputs to outfld
+   real(r8), dimension(pcols,pverp*clubb_mf_nup) ::           mf_dnw_output
+
    ! MF Plume
    real(r8), pointer                    :: tpert(:)
    real(r8), dimension(pverp)           :: mf_dry_a,   mf_moist_a,     &
@@ -2556,6 +2562,8 @@ end subroutine clubb_init_cnst
    mf_L0_output(:)          = 0._r8
    mf_cape_output(:)        = 0._r8
    mf_cfl_output(:)         = 0._r8
+   mf_dnw_output(:,:)       = 0._r8
+   mf_dnw_flip(:,:,:)       = 0._r8
 
    !  Loop over all columns in lchnk to advance CLUBB core
    do i=1,ncol   ! loop over columns
@@ -3300,6 +3308,7 @@ end subroutine clubb_init_cnst
            mf_upent_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_upent(k,:clubb_mf_nup)
            mf_updet_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_updet(k,:clubb_mf_nup)
            mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup)    = mf_upbuoy(k,:clubb_mf_nup)
+           mf_dnw_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_dnw(k,:clubb_mf_nup)
          end if
 
       enddo
@@ -3322,6 +3331,7 @@ end subroutine clubb_init_cnst
           mf_upent_output(i,pverp*(k-1)+1:pverp*k) = mf_upent_flip(i,:pverp,k)
           mf_updet_output(i,pverp*(k-1)+1:pverp*k) = mf_updet_flip(i,:pverp,k)
           mf_upbuoy_output(i,pverp*(k-1)+1:pverp*k)  = mf_upbuoy_flip(i,:pverp,k)
+          mf_dnw_output(i,pverp*(k-1)+1:pverp*k)   = mf_dnw_flip(i,:pverp,k)
         end do
       end if
 
@@ -4126,6 +4136,7 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_upbuoy'   , mf_upbuoy_output,          pcols, lchnk )
      call outfld( 'edmf_upent'    , mf_upent_output,           pcols, lchnk )
      call outfld( 'edmf_updet'    , mf_updet_output,           pcols, lchnk )
+     call outfld( 'edmf_dnw'      , mf_dnw_output,             pcols, lchnk )
      call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
