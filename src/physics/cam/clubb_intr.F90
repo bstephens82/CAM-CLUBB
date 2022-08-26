@@ -1310,16 +1310,19 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_S_AWQV'   , (/ 'ilev' /), 'A', 'kgm/kgs' , 'Sum of a_i*w_i*q_vi (EDMF)' )
       call addfld ( 'edmf_S_AWU'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*u_i (EDMF)' )
       call addfld ( 'edmf_S_AWV'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*v_i (EDMF)' )
-      call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux (EDMF)' )
-      call addfld ( 'edmf_thvflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thv flux (EDMF)' )
-      call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux (EDMF)' )
+      call addfld ( 'edmf_thlforcup', (/ 'lev' /),  'A', 'K/s'     , 'thl updraft forcing (EDMF)' )
+      call addfld ( 'edmf_qtforcup' , (/ 'lev' /),  'A', 'kg/kg/s' , 'qt updraft forcing (EDMF)' )
+      call addfld ( 'edmf_thlforcdn', (/ 'lev' /),  'A', 'K/s'     , 'thl downdraft forcing (EDMF)' )
+      call addfld ( 'edmf_qtforcdn' , (/ 'lev' /),  'A', 'kg/kg/s' , 'qt downdraft forcing (EDMF)' )
       call addfld ( 'edmf_thlforc'  , (/ 'lev' /),  'A', 'K/s'     , 'thl forcing (EDMF)' )
       call addfld ( 'edmf_qtforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qt forcing (EDMF)' )
-      call addfld ( 'edmf_thflx'    , (/ 'ilev' /), 'A', 'K m/s'   , 'th flux (EDMF)' )
-      call addfld ( 'edmf_qvflx'    , (/ 'ilev' /), 'A', 'kg/kg m/s' , 'qv flux (EDMF)' )
-      call addfld ( 'edmf_thforc'   , (/ 'lev' /),  'A', 'K/s'     , 'th forcing (EDMF)' )
-      call addfld ( 'edmf_qvforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qv forcing (EDMF)' )
-      call addfld ( 'edmf_qcforc'   , (/ 'lev' /),  'A', 'kg/kg/s' , 'qc forcing (EDMF)' )
+      call addfld ( 'edmf_thlflxup' , (/ 'ilev' /), 'A', 'K m/s'    , 'thl updraft flux (EDMF)' )
+      call addfld ( 'edmf_qtflxup'  , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt updraft flux (EDMF)' )
+      call addfld ( 'edmf_thlflxdn' , (/ 'ilev' /), 'A', 'K m/s'    , 'thl downdraft flux (EDMF)' )
+      call addfld ( 'edmf_qtflxdn'  , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt downdraft flux (EDMF)' )
+      call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thl flux (EDMF)' )
+      call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt flux (EDMF)' )
+      call addfld ( 'edmf_thvflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thv flux (EDMF)' )
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
       call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
       call addfld ( 'edmf_ent'      , (/ 'lev' /),  'A', '1/m'     , 'ensemble mean entrainment (EDMF)' )
@@ -1349,9 +1352,9 @@ end subroutine clubb_init_cnst
     call addfld ('WPRTP_CLUBB_macmic'  , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Moisture Flux at macro/micro substep')
     call addfld ('WPTHVP_CLUBB_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Buoyancy Flux at macro/micro substep')
     if (do_clubb_mf) then
-      call addfld ( 'edmf_thlflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'thl flux (EDMF) at macro/micro substep' )
-      call addfld ( 'edmf_thvflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'thv flux (EDMF) at macro/micro substep' )
-      call addfld ( 'edmf_qtflx_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'qt flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_thlflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'K m/s'  , 'thl flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_thvflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'K m/s'  , 'thv flux (EDMF) at macro/micro substep' )
+      call addfld ( 'edmf_qtflx_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'kg/kg m/s' , 'qt flux (EDMF) at macro/micro substep' )
     end if
 
     !  Initialize statistics, below are dummy variables
@@ -1473,16 +1476,19 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_S_AWQT'   , 1, ' ')
          call add_default( 'edmf_S_AWU'    , 1, ' ')
          call add_default( 'edmf_S_AWV'    , 1, ' ')
+         call add_default( 'edmf_thlflxup' , 1, ' ')
+         call add_default( 'edmf_qtflxup'  , 1, ' ')
+         call add_default( 'edmf_thlflxdn' , 1, ' ')
+         call add_default( 'edmf_qtflxdn'  , 1, ' ')
          call add_default( 'edmf_thlflx'   , 1, ' ')
          call add_default( 'edmf_thvflx'   , 1, ' ')
          call add_default( 'edmf_qtflx'    , 1, ' ')
+         call add_default( 'edmf_thlforcup', 1, ' ')
+         call add_default( 'edmf_qtforcup' , 1, ' ')
+         call add_default( 'edmf_thlforcdn', 1, ' ')
+         call add_default( 'edmf_qtforcdn' , 1, ' ')
          call add_default( 'edmf_thlforc'  , 1, ' ')
          call add_default( 'edmf_qtforc'   , 1, ' ')
-         call add_default( 'edmf_thflx'    , 1, ' ')
-         call add_default( 'edmf_qvflx'    , 1, ' ')
-         call add_default( 'edmf_thforc'   , 1, ' ')
-         call add_default( 'edmf_qvforc'   , 1, ' ')
-         call add_default( 'edmf_qcforc'   , 1, ' ')
          call add_default( 'edmf_rcm'      , 1, ' ')
          call add_default( 'edmf_cloudfrac', 1, ' ')
          call add_default( 'edmf_ent'      , 1, ' ')
@@ -1991,24 +1997,25 @@ end subroutine clubb_init_cnst
                                            mf_dry_v_output,   mf_moist_v_output,   &
                                                               mf_moist_qc_output,  &
                                            s_ae_output,       s_aw_output,         &
+                                           s_awthlup_output,  s_awqtup_output,     &
+                                           s_awthldn_output,  s_awqtdn_output,     &
                                            s_awthl_output,    s_awqt_output,       &
-                                           s_awql_output,     s_awqi_output,       &
-                                           s_awth_output,     s_awqv_output,       &
                                            s_awu_output,      s_awv_output,        &
-                                           mf_thflx_output,   mf_qvflx_output,     &
+                                           mf_thlflxup_output,mf_qtflxup_output,   &
+                                           mf_thlflxdn_output,mf_qtflxdn_output,   &
                                            mf_thlflx_output,  mf_qtflx_output,     &
                                            mf_thvflx_output,                       &
-                                           mf_rcm_output,                          &
-                                           mf_precc_output
+                                           mf_rcm_output,     mf_precc_output
    !
    real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
                                            mf_cape_output,    mf_cfl_output
    !
    ! MF outputs to outfld
-   real(r8), dimension(pcols,pver)      :: mf_thlforc_output, mf_qtforc_output,    & ! thermodynamic grid
-                                           mf_thforc_output,  mf_qvforc_output,    & ! thermodynamic grid
-                                           mf_qcforc_output,  mf_ent_output,       & ! thermodynamic grid
-                                           mf_qc_output,      mf_cloudfrac_output    ! thermodynamic grid
+   real(r8), dimension(pcols,pver)      :: mf_thlforcup_output, mf_qtforcup_output,  & ! thermodynamic grid
+                                           mf_thlforcdn_output, mf_qtforcdn_output,  & ! thermodynamic grid
+                                           mf_thlforc_output,   mf_qtforc_output,    & ! thermodynamic grid
+                                           mf_ent_output,                            & ! thermodynamic grid
+                                           mf_qc_output,        mf_cloudfrac_output    ! thermodynamic grid
 
    ! MF plume level outputs
    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_upa_flip,         &
@@ -2048,23 +2055,32 @@ end subroutine clubb_init_cnst
                                            mf_dry_u,   mf_moist_u,     &
                                            mf_dry_v,   mf_moist_v,     &
                                                        mf_moist_qc,    &
-                                           mf_sqt,     mf_sthl,        &
-                                                       mf_precc,       &
-                                           s_ae,       s_aw,           &
+                                           s_ae,       s_ac,           &
+                                           s_aup,      s_adn,          &
+                                           s_aw,                       &
+                                           s_awup,     s_awdn,         &
+                                           s_awthlup,  s_awqtup,       &
+                                           s_awthldn,  s_awqtdn,       &
                                            s_awthl,    s_awqt,         &
-                                           s_awql,     s_awqi,         &
-                                           s_awth,     s_awqv,         &
-                                           s_awu,      s_awv,          &
-                                           mf_thflx,   mf_qvflx,       &
-                                           mf_thlflx,  mf_qtflx,       &
-                                           mf_thvflx,  mf_qcflx,       &
-                                           mf_thforc,  mf_qvforc,      &
-                                           mf_qcforc,                  &
-                                           mf_qc,      mf_cloudfrac,   &
-                                           mf_qc_nadv, mf_cloudfrac_nadv, &
-                                           mf_qc_zt,   mf_cloudfrac_zt,&
-                                           mf_rcm,     mf_rcm_nadv,    &
-                                           mf_thlforc_nadv,mf_qtforc_nadv, &
+                                           s_awu,      s_awv,          &          
+                                           mf_sqtup,   mf_sthlup,      &
+                                           mf_sqtdn,   mf_sthldn,      &
+                                           mf_sqt,     mf_sthl,        &
+                                                       mf_precc       
+      
+   real(r8), dimension(pverp)           :: mf_thlflxup,      mf_qtflxup,       &
+                                           mf_thlflxdn,      mf_qtflxdn,       &
+                                           mf_thlflx,        mf_qtflx,         &
+                                           mf_thvflx,                          &
+                                           mf_thlforcup,     mf_qtforcup,      &
+                                           mf_thlforcdn,     mf_qtforcdn,      &
+                                           mf_thlforcup_nadv,mf_qtforcup_nadv, &
+                                           mf_thlforcdn_nadv,mf_qtforcdn_nadv, &
+                                           mf_thlforc_nadv,  mf_qtforc_nadv,   &
+                                           mf_qc,            mf_cloudfrac,     &
+                                           mf_qc_nadv,       mf_cloudfrac_nadv,&
+                                           mf_qc_zt,         mf_cloudfrac_zt,  &
+                                           mf_rcm,           mf_rcm_nadv,      &
                                            mf_ent_nadv     
 
    ! MF plume level
@@ -2514,12 +2530,12 @@ end subroutine clubb_init_cnst
    mf_precc_output(:,:)     = 0._r8
    s_ae_output(:,:)         = 0._r8
    s_aw_output(:,:)         = 0._r8
+   s_awthlup_output(:,:)    = 0._r8
+   s_awqtup_output(:,:)     = 0._r8
+   s_awthldn_output(:,:)    = 0._r8
+   s_awqtdn_output(:,:)     = 0._r8
    s_awthl_output(:,:)      = 0._r8
    s_awqt_output(:,:)       = 0._r8
-   s_awql_output(:,:)       = 0._r8
-   s_awqi_output(:,:)       = 0._r8
-   s_awth_output(:,:)       = 0._r8
-   s_awqv_output(:,:)       = 0._r8
    s_awu_output(:,:)        = 0._r8
    s_awv_output(:,:)        = 0._r8
    mf_upa_output(:,:)       = 0._r8
@@ -2544,16 +2560,19 @@ end subroutine clubb_init_cnst
    mf_upbuoy_flip(:,:,:)    = 0._r8
    mf_upent_flip(:,:,:)     = 0._r8
    mf_updet_flip(:,:,:)     = 0._r8
+   mf_thlflxup_output(:,:)  = 0._r8
+   mf_qtflxup_output(:,:)   = 0._r8
+   mf_thlflxdn_output(:,:)  = 0._r8
+   mf_qtflxdn_output(:,:)   = 0._r8
    mf_thlflx_output(:,:)    = 0._r8
-   mf_thvflx_output(:,:)    = 0._r8
    mf_qtflx_output(:,:)     = 0._r8
-   mf_thflx_output(:,:)     = 0._r8
-   mf_qvflx_output(:,:)     = 0._r8
+   mf_thvflx_output(:,:)    = 0._r8
+   mf_thlforcup_output(:,:) = 0._r8
+   mf_qtforcup_output(:,:)  = 0._r8
+   mf_thlforcdn_output(:,:) = 0._r8
+   mf_qtforcdn_output(:,:)  = 0._r8
    mf_thlforc_output(:,:)   = 0._r8
    mf_qtforc_output(:,:)    = 0._r8
-   mf_thforc_output(:,:)    = 0._r8
-   mf_qvforc_output(:,:)    = 0._r8
-   mf_qcforc_output(:,:)    = 0._r8
    mf_rcm_output(:,:)       = 0._r8
    mf_cloudfrac_output(:,:) = 0._r8
    mf_ent_output(:,:)       = 0._r8
@@ -2904,6 +2923,10 @@ end subroutine clubb_init_cnst
         mf_rcm_nadv(:pverp)       = 0._r8
         mf_cloudfrac_nadv(:pverp) = 0._r8
 
+        mf_thlforcup_nadv(:pverp) = 0._r8
+        mf_qtforcup_nadv(:pverp)  = 0._r8
+        mf_thlforcdn_nadv(:pverp) = 0._r8
+        mf_qtforcdn_nadv(:pverp)  = 0._r8
         mf_thlforc_nadv(:pverp)   = 0._r8
         mf_qtforc_nadv(:pverp)    = 0._r8
         mf_ent_nadv(:pverp)       = 0._r8
@@ -2981,17 +3004,22 @@ end subroutine clubb_init_cnst
                               mf_dry_u,  mf_moist_u,                                          & ! output - plume diagnostics
                               mf_dry_v,  mf_moist_v,                                          & ! output - plume diagnostics
                                          mf_moist_qc,                                         & ! output - plume diagnostics
-                              mf_sqt,    mf_sthl,                                             & ! output - plume diagnostics
-                                         mf_precc,                                            & ! output - plume diagnostics
-                              s_ae,      s_aw,                                                & ! output - plume diagnostics
-                              s_awthl,   s_awqt,                                              & ! output - plume diagnostics
-                              s_awql,    s_awqi,                                              & ! output - plume diagnostics
-                              s_awth,    s_awqv,                                              & ! output - plume diagnostics
-                              s_awu,     s_awv,                                               & ! output - plume diagnostics
-                              mf_thflx,  mf_qvflx,                                            & ! output - plume diagnostics
-                              mf_thvflx, mf_qcflx,                                            & ! output - plume diagnostics
-                              mf_thlflx, mf_qtflx,                                            & ! output - variables needed for solver
-                              mf_ztop,   mf_L0 )
+                              s_ae,                                                           & ! output - plume diagnostics
+                              s_ac,        s_aup,      s_adn,                                 & ! output - plume diagnostics
+                              s_aw,        s_awup,     s_awdn,                                & ! output - plume diagnostics
+                              s_awthlup,   s_awqtup,                                          & ! output - plume diagnostics
+                              s_awthldn,   s_awqtdn,                                          & ! output - plume diagnostics
+                              s_awthl,     s_awqt,                                            & ! output - plume diagnostics
+                              s_awu,       s_awv,                                             & ! output - plume diagnostics
+                              mf_thlflxup, mf_qtflxup,                                        & ! output - plume diagnostics
+                              mf_thlflxdn, mf_qtflxdn,                                        & ! output - plume diagnostics
+                              mf_thlflx,   mf_qtflx,                                          & ! output - variables needed for solver
+                              mf_thvflx,                                                      & ! output - plume diagnostics
+                              mf_sqtup,    mf_sthlup,                                         & ! output - plume diagnostics
+                              mf_sqtdn,    mf_sthldn,                                         & ! output - plume diagnostics
+                              mf_sqt,      mf_sthl,                                           & ! output - variables needed for solver
+                              mf_precc,                                                       & ! output - plume diagnostics
+                              mf_ztop,     mf_L0 )
 
            ! CFL limiter
            s_aw(1)   = 0._r8
@@ -3009,6 +3037,10 @@ end subroutine clubb_init_cnst
                lambda = -1._r8*rtm_in(k)/(mf_sqt(k)*dtime)
                mf_sqt(k) = lambda*mf_sqt(k)
                mf_sthl(k) = lambda*mf_sthl(k)
+               mf_sqtup(k) = lambda*mf_sqtup(k)
+               mf_sthlup(k) = lambda*mf_sthlup(k)
+               mf_sqtdn(k) = lambda*mf_sqtdn(k)
+               mf_sthldn(k) = lambda*mf_sthldn(k)
              end if
            end do
 
@@ -3021,10 +3053,13 @@ end subroutine clubb_init_cnst
            ! pass MF turbulent advection term as CLUBB explicit forcing term
            rtm_forcing  = 0._r8
            thlm_forcing = 0._r8
-           mf_thforc = 0._r8
-           mf_qvforc = 0._r8
-           mf_qcforc = 0._r8
+           mf_qtforcup  = 0._r8
+           mf_thlforcup = 0._r8
+           mf_qtforcdn  = 0._r8
+           mf_thlforcdn = 0._r8
+
            do k=2,pverp
+
              rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1))) &
                                + mf_sqt(k)
@@ -3033,14 +3068,21 @@ end subroutine clubb_init_cnst
                                ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1))) &
                                + mf_sthl(k)
 
-             mf_thforc(k)   = mf_thforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_thflx(k)) - (rho_ds_zm(k-1) * mf_thflx(k-1)))
+             mf_qtforcup(k)  = mf_qtforcup(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
+                              ((rho_ds_zm(k) * mf_qtflxup(k)) - (rho_ds_zm(k-1) * mf_qtflxup(k-1))) &
+                               + mf_sqtup(k)
 
-             mf_qvforc(k)   = mf_qvforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_qvflx(k)) - (rho_ds_zm(k-1) * mf_qvflx(k-1)))
+             mf_thlforcup(k) = mf_thlforcup(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
+                              ((rho_ds_zm(k) * mf_thlflxup(k)) - (rho_ds_zm(k-1) * mf_thlflxup(k-1))) &
+                               + mf_sthlup(k)
 
-             mf_qcforc(k)   = mf_qcforc(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_qcflx(k)) - (rho_ds_zm(k-1) * mf_qcflx(k-1)))
+             mf_qtforcdn(k)  = mf_qtforcdn(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
+                              ((rho_ds_zm(k) * mf_qtflxdn(k)) - (rho_ds_zm(k-1) * mf_qtflxdn(k-1))) &
+                               + mf_sqtdn(k)
+
+             mf_thlforcdn(k) = mf_thlforcdn(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
+                              ((rho_ds_zm(k) * mf_thlflxdn(k)) - (rho_ds_zm(k-1) * mf_thlflxdn(k-1))) &
+                               + mf_sthldn(k)
 
            end do
 
@@ -3058,8 +3100,13 @@ end subroutine clubb_init_cnst
            mf_ztop_nadv   = mf_ztop_nadv + mf_ztop
            mf_ztopm1_nadv = mf_ztopm1_nadv + mf_ztopm1 
 
+           mf_thlforcup_nadv(:pverp) = mf_thlforcup_nadv(:pverp) + mf_thlforcup(:pverp)
+           mf_qtforcup_nadv(:pverp)  = mf_qtforcup_nadv(:pverp) + mf_qtforcup(:pverp)
+           mf_thlforcdn_nadv(:pverp) = mf_thlforcdn_nadv(:pverp) + mf_thlforcdn(:pverp)
+           mf_qtforcdn_nadv(:pverp)  = mf_qtforcdn_nadv(:pverp) + mf_qtforcdn(:pverp)
            mf_thlforc_nadv(:pverp) = mf_thlforc_nadv(:pverp) + thlm_forcing(:pverp)
            mf_qtforc_nadv(:pverp)  = mf_qtforc_nadv(:pverp) + rtm_forcing(:pverp)
+
            mf_ent_nadv(:pverp)     = mf_ent_nadv(:pverp) + s_awu(:pverp)
            
            max_cfl_nadv = MAX(max_cfl,max_cfl_nadv)
@@ -3155,8 +3202,12 @@ end subroutine clubb_init_cnst
         prec_sh(i)           = mf_precc_nadv/REAL(nadv)
         snow_sh(i)           = mf_snow_nadv/REAL(nadv)
 
-        mf_thlforc_nadv(:pverp) = mf_thlforc_nadv(:pverp)/REAL(nadv)
-        mf_qtforc_nadv(:pverp)  = mf_qtforc_nadv(:pverp)/REAL(nadv)
+        mf_thlforcup_nadv(:pverp) = mf_thlforcup_nadv(:pverp)/REAL(nadv)
+        mf_qtforcup_nadv(:pverp)  = mf_qtforcup_nadv(:pverp)/REAL(nadv)
+        mf_thlforcdn_nadv(:pverp) = mf_thlforcdn_nadv(:pverp)/REAL(nadv)
+        mf_qtforcdn_nadv(:pverp)  = mf_qtforcdn_nadv(:pverp)/REAL(nadv)
+        mf_thlforc_nadv(:pverp)   = mf_thlforc_nadv(:pverp)/REAL(nadv)
+        mf_qtforc_nadv(:pverp)    = mf_qtforc_nadv(:pverp)/REAL(nadv)
 
         mf_ent_nadv(:pverp) = mf_ent_nadv(:pverp)/REAL(nadv)
       end if
@@ -3266,32 +3317,39 @@ end subroutine clubb_init_cnst
            mf_dry_v_output(i,pverp-k+1)     = mf_dry_v(k)
            mf_moist_v_output(i,pverp-k+1)   = mf_moist_v(k)
            mf_moist_qc_output(i,pverp-k+1)  = mf_moist_qc(k)
-           mf_thlflx_output(i,pverp-k+1)    = mf_thlflx(k)
-           mf_thvflx_output(i,pverp-k+1)    = mf_thvflx(k)
-           mf_qtflx_output(i,pverp-k+1)     = mf_qtflx(k)
+
            s_ae_output(i,pverp-k+1)         = s_ae(k)
            s_aw_output(i,pverp-k+1)         = s_aw(k)
+
+           s_awthlup_output(i,pverp-k+1)    = s_awthlup(k)
+           s_awqtup_output(i,pverp-k+1)     = s_awqtup(k)
+           s_awthldn_output(i,pverp-k+1)    = s_awthldn(k)
+           s_awqtdn_output(i,pverp-k+1)     = s_awqtdn(k)
            s_awthl_output(i,pverp-k+1)      = s_awthl(k)
-           s_awth_output(i,pverp-k+1)       = s_awth(k)
-           s_awqv_output(i,pverp-k+1)       = s_awqv(k)
            s_awqt_output(i,pverp-k+1)       = s_awqt(k)
-           s_awql_output(i,pverp-k+1)       = s_awql(k)
-           s_awqi_output(i,pverp-k+1)       = s_awqi(k)
+
            s_awu_output(i,pverp-k+1)        = s_awu(k)
            s_awv_output(i,pverp-k+1)        = s_awv(k)
+
+           mf_thlflxup_output(i,pverp-k+1)  = mf_thlflxup(k)
+           mf_qtflxup_output(i,pverp-k+1)   = mf_qtflxup(k)
+           mf_thlflxdn_output(i,pverp-k+1)  = mf_thlflxdn(k)
+           mf_qtflxdn_output(i,pverp-k+1)   = mf_qtflxdn(k)
            mf_thlflx_output(i,pverp-k+1)    = mf_thlflx(k)
            mf_qtflx_output(i,pverp-k+1)     = mf_qtflx(k)
-           mf_thflx_output(i,pverp-k+1)     = mf_thflx(k)
-           mf_qvflx_output(i,pverp-k+1)     = mf_qvflx(k)
+           mf_thvflx_output(i,pverp-k+1)    = mf_thvflx(k)
+
            mf_rcm_output(i,pverp-k+1)       = mf_rcm(k)
            mf_precc_output(i,pverp-k+1)     = mf_precc(k)
 
            if (k.ne.1) then
+             mf_thlforcup_output(i,pverp-k+1)          = mf_thlforcup_nadv(k)
+             mf_qtforcup_output(i,pverp-k+1)           = mf_qtforcup_nadv(k)
+             mf_thlforcdn_output(i,pverp-k+1)          = mf_thlforcdn_nadv(k)
+             mf_qtforcdn_output(i,pverp-k+1)           = mf_qtforcdn_nadv(k)
              mf_thlforc_output(i,pverp-k+1)            = mf_thlforc_nadv(k)
              mf_qtforc_output(i,pverp-k+1)             = mf_qtforc_nadv(k)
-             mf_thforc_output(i,pverp-k+1)             = mf_thforc(k)
-             mf_qvforc_output(i,pverp-k+1)             = mf_qvforc(k)
-             mf_qcforc_output(i,pverp-k+1)             = mf_qcforc(k)
+
              mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac_zt(k)
              mf_ent_output(i,pverp-k+1)                = mf_ent_nadv(k)
              mf_qc_output(i,pverp-k+1)                 = mf_qc_zt(k)
@@ -3816,16 +3874,23 @@ end subroutine clubb_init_cnst
    
    do k=1,pverp
       do i=1,ncol
-         wpthlp_output(i,k)  = (wpthlp(i,k)-(apply_const*wpthlp_const))*rho(i,k)*cpair !  liquid water potential temperature flux
-         wprtp_output(i,k)   = (wprtp(i,k)-(apply_const*wprtp_const))*rho(i,k)*latvap  !  total water mixig ratio flux
+!+++ARH
+         !wpthlp_output(i,k)  = (wpthlp(i,k)-(apply_const*wpthlp_const))*rho(i,k)*cpair !  liquid water potential temperature flux
+         !wprtp_output(i,k)   = (wprtp(i,k)-(apply_const*wprtp_const))*rho(i,k)*latvap  !  total water mixig ratio flux
+         wpthlp_output(i,k)  = wpthlp(i,k)
+         wprtp_output(i,k)   = wprtp(i,k)
+!+++ARH
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
          tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
          wpthvp(i,k)         = wpthvp(i,k)*rho(i,k)*cpair
          if (do_clubb_mf) then
-           mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair
-           mf_thvflx_output(i,k) = mf_thvflx_output(i,k)*rho(i,k)*cpair
-           mf_qtflx_output(i,k)  = mf_qtflx_output(i,k)*rho(i,k)*latvap
+           ! comment out for kinemtatic fluxes 
+!+++ARH
+           !mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair
+           !mf_thvflx_output(i,k) = mf_thvflx_output(i,k)*rho(i,k)*cpair
+           !mf_qtflx_output(i,k)  = mf_qtflx_output(i,k)*rho(i,k)*latvap
+!---ARH
            mf_precc_output(i,k)  = mf_precc_output(i,k)/rhoh2o
          end if
       enddo
@@ -4106,22 +4171,23 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_precc'    , mf_precc_output,           pcols, lchnk )
      call outfld( 'edmf_S_AE'     , s_ae_output,               pcols, lchnk )
      call outfld( 'edmf_S_AW'     , s_aw_output,               pcols, lchnk )
-     call outfld( 'edmf_S_AWTH'   , s_awth_output,             pcols, lchnk )
      call outfld( 'edmf_S_AWTHL'  , s_awthl_output,            pcols, lchnk )
      call outfld( 'edmf_S_AWQT'   , s_awqt_output,             pcols, lchnk )
-     call outfld( 'edmf_S_AWQV'   , s_awqv_output,             pcols, lchnk )
      call outfld( 'edmf_S_AWU'    , s_awu_output,              pcols, lchnk )
      call outfld( 'edmf_S_AWV'    , s_awv_output,              pcols, lchnk )
-     call outfld( 'edmf_thlflx'   , mf_thlflx_output,          pcols, lchnk )
-     call outfld( 'edmf_thvflx'   , mf_thvflx_output,          pcols, lchnk )
-     call outfld( 'edmf_qtflx'    , mf_qtflx_output,           pcols, lchnk )
+     call outfld( 'edmf_thlforcup', mf_thlforcup_output,       pcols, lchnk )
+     call outfld( 'edmf_qtforcup' , mf_qtforcup_output,        pcols, lchnk )
+     call outfld( 'edmf_thlforcdn', mf_thlforcdn_output,       pcols, lchnk )
+     call outfld( 'edmf_qtforcdn' , mf_qtforcdn_output,        pcols, lchnk )
      call outfld( 'edmf_thlforc'  , mf_thlforc_output,         pcols, lchnk )
      call outfld( 'edmf_qtforc'   , mf_qtforc_output,          pcols, lchnk )
-     call outfld( 'edmf_thflx'    , mf_thflx_output,           pcols, lchnk )
-     call outfld( 'edmf_qvflx'    , mf_qvflx_output,           pcols, lchnk )
-     call outfld( 'edmf_thforc'   , mf_thforc_output,          pcols, lchnk )
-     call outfld( 'edmf_qvforc'   , mf_qvforc_output,          pcols, lchnk )
-     call outfld( 'edmf_qcforc'   , mf_qcforc_output,          pcols, lchnk )
+     call outfld( 'edmf_thlflxup' , mf_thlflxup_output,        pcols, lchnk )
+     call outfld( 'edmf_qtflxup'  , mf_qtflxup_output,         pcols, lchnk )
+     call outfld( 'edmf_thlflxdn' , mf_thlflxdn_output,        pcols, lchnk )
+     call outfld( 'edmf_qtflxdn'  , mf_qtflxdn_output,         pcols, lchnk )
+     call outfld( 'edmf_thlflx'   , mf_thlflx_output,          pcols, lchnk )
+     call outfld( 'edmf_qtflx'    , mf_qtflx_output,           pcols, lchnk )
+     call outfld( 'edmf_thvflx'   , mf_thvflx_output,          pcols, lchnk )
      call outfld( 'edmf_rcm'      , mf_rcm_output,             pcols, lchnk )
      call outfld( 'edmf_cloudfrac', mf_cloudfrac_output,       pcols, lchnk )
      call outfld( 'edmf_ent'      , mf_ent_output,             pcols, lchnk )
