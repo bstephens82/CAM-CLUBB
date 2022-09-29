@@ -509,7 +509,6 @@ module clubb_mf
      dnlmix= 0._r8
      sdnqt = 0._r8
      sdnthl= 0._r8
-     dnw   = 0._r8
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
@@ -566,6 +565,7 @@ module clubb_mf
        facthvu=1._r8
        if (scalesrf) then
          ! scale surface fluxes
+         ! (req'd for conservation if not running with zero-flux b.c.'s)
          srfwqtu = 0._r8
          srfwthvu = 0._r8
          srfarea = 0._r8
