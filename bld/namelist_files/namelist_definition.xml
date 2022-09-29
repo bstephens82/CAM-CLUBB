@@ -3939,6 +3939,11 @@ Real: limiter on entrainmnet length scale + threshold to diable TKE enhanced ent
 Default: 10.e3
 </entry>
 
+<entry id="clubb_mf_fdd" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Fraction of autoconversion partitioned to downdrafts (zero means no downdrafts)
+Default: 0.0
+
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"
