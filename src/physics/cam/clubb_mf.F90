@@ -523,6 +523,9 @@ module clubb_mf
      zcb       = zcb_unset
 
      convh = max(pblh,pblhmin)
+!+++ARH
+     convh = max(pblh,ztopm1)
+!---ARH
      wthv = wthl+zvir*ths*wqt
 
      ! if surface buoyancy is positive then do mass-flux
