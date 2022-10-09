@@ -129,7 +129,7 @@ module clubb_mf
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                                        ths,  wthl,    wqt,       pblh,              & ! input
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
-                           mcape,                                                   & ! output
+                           mcape,      ddcp,                                        & ! output
                            upa,     dna,                                            & ! output
                            upw,     dnw,                                            & ! output
                            upmf,                                                    & ! output
@@ -211,7 +211,7 @@ module clubb_mf
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
      real(r8), intent(in)                :: ths
-     real(r8), intent(inout)             :: ztopm1
+     real(r8), intent(inout)             :: ztopm1,ddcp
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
@@ -258,7 +258,7 @@ module clubb_mf
                                             precc
 
      real(r8), intent(out)               :: ztop,    dynamic_L0,  &
-                                            mcape
+                                            mcape   
      ! =============================================================================== !
      ! INTERNAL VARIABLES
      !
@@ -291,9 +291,9 @@ module clubb_mf
      integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
-     integer                              :: k,i,kstart,ddtop
+     integer                              :: k,i,kstart,ddtop,kcb
      real(r8), dimension(clubb_mf_nup)    :: zcb
-     real(r8)                             :: zcb_unset,                &
+     real(r8)                             :: zcb_unset, ddint,iddcp,   &
                                              wthv,                     &
                                              wstar,  qstar,   thvstar, & 
                                              sigmaw, sigmaqt, sigmathv,&
@@ -303,7 +303,8 @@ module clubb_mf
                                              entexp, entexpu, entw,    & ! thermodynamic grid
                                              Mn,                       & ! momentum grid
                                              eturb,  det,     lmixt,   & ! thermodynamic grid
-                                             qtovqs, sevap,            & ! thermodynamic grid
+                                             qtovqs, sevap,   taum1,   & ! thermodynamic grid
+                                             sqtint, sthlint, alphint, &
                                              betathl,betaqt,           & ! thermodynamic grid        
                                              thln,   thvn,    thn,     & ! momentum grid
                                              qtn,    qsn,              & ! momentum grid
@@ -376,7 +377,8 @@ module clubb_mf
      real(r8),parameter                   :: ke = 2.5e-4_r8
      !
      ! height here downdrafts feel the surface
-     real(r8),parameter                   :: z00dn = 1.e3_r8
+     real(r8),parameter                   :: z00dn = 1.e3_r8, &
+                                             tinynum = 1.e-7_r8
      !
      ! to fix entrainmnet rate
      logical                              :: fixent = .false.
@@ -522,95 +524,14 @@ module clubb_mf
      zcb_unset = 9999999._r8
      zcb       = zcb_unset
 
-     convh = max(pblh,pblhmin)
-!+++ARH
-     convh = max(pblh,ztopm1)
-!---ARH
+     ! surface buoyancy flux
      wthv = wthl+zvir*ths*wqt
 
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
        ! --------------------------------------------------------- !
-       ! Construct PDF at the surface from surface fluxes          ! 
-       ! and initialize plume thv, qt, w                           !
-       ! --------------------------------------------------------- !
-
-       wstar   = max( wstarmin, (gravit/thv(1)*wthv*convh)**(1._r8/3._r8) )
-       qstar   = wqt / wstar
-       thvstar = wthv / wstar
-
-       sigmaw   = alphw * wstar
-       sigmaqt  = alphqt * abs(qstar)
-       sigmathv = alphthv * abs(thvstar)
-
-       wmin = sigmaw * pwmin
-       wmax = sigmaw * pwmax
-
-       do i=1,clubb_mf_nup
-         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
-         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
-
-         upw(1,i) = 0.5_r8 * (wlv+wtv)
-         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
-                    - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
-
-         upmf(1,i)= rho_zm(1)*upa(1,i)*upw(1,i)
-
-         upu(1,i) = u(1)
-         upv(1,i) = v(1)
-
-         upqt(1,i)  = cwqt * upw(1,i) * sigmaqt/sigmaw
-         upthv(1,i) = cwthv * upw(1,i) * sigmathv/sigmaw
-       enddo
-
-       facqtu=1._r8
-       facthvu=1._r8
-       if (scalesrf) then
-         ! scale surface fluxes
-         ! (req'd for conservation if not running with zero-flux b.c.'s)
-         srfwqtu = 0._r8
-         srfwthvu = 0._r8
-         srfarea = 0._r8
-         do i=1,clubb_mf_nup
-             srfwqtu=srfwqtu+upqt(1,i)*upw(1,i)*upa(1,i)
-             srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
-             srfarea = srfarea+upa(1,i)
-         end do
-         facqtu=srfarea*wqt/srfwqtu
-         facthvu=srfarea*wthv/srfwthvu
-       end if
-
-       do i=1,clubb_mf_nup
-
-         betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
-         betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
-
-         upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
-         upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
-
-         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
-         upth(1,i)  = upthl(1,i)
-
-         ! get cloud, lowest momentum level 
-         if (do_condensation) then
-           call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
-                                thvn, qcn, thn, qln, qin, qsn, lmixn)
-           upthv(1,i) = thvn
-           upqc(1,i)  = qcn
-           upql(1,i)  = qln
-           upqi(1,i)  = qin
-           upqs(1,i)  = qsn
-           upth(1,i)  = thn
-           if (qcn > 0._r8) zcb(i) = zm(1)
-         else
-           ! assume no cldliq
-           upqc(1,i)  = 0._r8
-         end if
-       end do
-
-       ! --------------------------------------------------------- !
-       ! Calculate dynamic_L based on value of namelist            ! 
+       ! Calculate ztop and dynamic_L based on value of namelist   ! 
        ! should probably make into a subroutine                    !
        ! --------------------------------------------------------- !
 
@@ -682,7 +603,7 @@ module clubb_mf
          !end do
          !mcape = mcape/REAL(clubb_mf_nup)
          mcape = max(cape(1),25._r8)
-  
+
          if (clubb_mf_Lopt==4) then
            ztop = max(zt(lel(1)+1),convh)
          else if (clubb_mf_Lopt==5) then
@@ -703,6 +624,91 @@ module clubb_mf
        ! limiter to avoid division by zero
        dynamic_L0 = max(min_L0,dynamic_L0)
        dynamic_L0 = min(clubb_mf_max_L0,dynamic_L0)
+
+       ! --------------------------------------------------------- !
+       ! Initialize using Deardorff convective velocity scale      ! 
+       ! --------------------------------------------------------- !
+
+       convh = max(pblh,pblhmin)
+       !convh = max(pblh,ztop)
+       wstar = max( wstarmin, (gravit/thv(1)*wthv*convh)**(1._r8/3._r8) )
+
+       ! --------------------------------------------------------- !
+       ! Construct tri-variate PDF at the surface from wstar       ! 
+       ! and initialize plume thv, qt, w                           !
+       ! --------------------------------------------------------- !
+
+       qstar   = wqt / wstar
+       thvstar = wthv / wstar
+
+       sigmaw   = alphw * wstar
+       sigmaqt  = alphqt * abs(qstar)
+       sigmathv = alphthv * abs(thvstar)
+
+       wmin = sigmaw * pwmin
+       wmax = sigmaw * pwmax
+
+       do i=1,clubb_mf_nup
+         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
+         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
+
+         upw(1,i) = 0.5_r8 * (wlv+wtv)
+         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
+                    - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
+
+         upmf(1,i)= rho_zm(1)*upa(1,i)*upw(1,i)
+
+         upu(1,i) = u(1)
+         upv(1,i) = v(1)
+
+         upqt(1,i)  = cwqt * upw(1,i) * sigmaqt/sigmaw
+         upthv(1,i) = cwthv * upw(1,i) * sigmathv/sigmaw
+       enddo
+
+       facqtu=1._r8
+       facthvu=1._r8
+       if (scalesrf) then
+         ! scale surface fluxes
+         ! (req'd for conservation if not running with zero-flux b.c.'s)
+         srfwqtu = 0._r8
+         srfwthvu = 0._r8
+         srfarea = 0._r8
+         do i=1,clubb_mf_nup
+             srfwqtu=srfwqtu+upqt(1,i)*upw(1,i)*upa(1,i)
+             srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
+             srfarea = srfarea+upa(1,i)
+         end do
+         facqtu=srfarea*wqt/srfwqtu
+         facthvu=srfarea*wthv/srfwthvu
+       end if
+
+       do i=1,clubb_mf_nup
+
+         betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+
+         upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
+         upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
+
+         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
+         upth(1,i)  = upthl(1,i)
+
+         ! get cloud, lowest momentum level 
+         if (do_condensation) then
+           call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
+                                thvn, qcn, thn, qln, qin, qsn, lmixn)
+           upthv(1,i) = thvn
+           upqc(1,i)  = qcn
+           upql(1,i)  = qln
+           upqi(1,i)  = qin
+           upqs(1,i)  = qsn
+           upth(1,i)  = thn
+           if (qcn > 0._r8) zcb(i) = zm(1)
+         else
+           ! assume no cldliq
+           upqc(1,i)  = 0._r8
+         end if
+       end do
 
        ! --------------------------------------------------------- !
        ! Stochastic entrainmnet calculation                        ! 
@@ -870,7 +876,7 @@ module clubb_mf
              un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
              vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
 
-             ! convert source terms to a tendency
+             ! convert source terms to a tendency (convert from S*dz/w to S)
              supqt(k+1,i) = supqt(k+1,i)*upw(k,i)/dzt(k+1)
              upauto(k+1,i) = supqt(k+1,i)
              supthl(k+1,i) = supthl(k+1,i)*upw(k,i)/dzt(k+1)
@@ -990,38 +996,41 @@ module clubb_mf
              ! Kay initializes using negative of the updraft velocity
              ! this causes anomalouly large downdrafts at the initializaiton level
              ! I am intializing with zero velocity as that is more physically defensible
-             dnw(ddtop,i)   = 0._r8
+             dnw(ddtop,i)   = -1._r8*mindnw !upw(ddtop,i) ! 0._r8
              dna(ddtop,i)   = upa(ddtop,i)
              dnu(ddtop,i)   = 0.5_r8*(u(ddtop)+u(ddtop+1)) 
              dnv(ddtop,i)   = 0.5_r8*(v(ddtop)+v(ddtop+1))
              dnqt(ddtop,i)  = qt_zm(ddtop)
              dnthl(ddtop,i) = thl_zm(ddtop)
              dnthv(ddtop,i) = thv_zm(ddtop)
+
+             ! get rain generated in the updraft, appropriate it to the downdraft
              dnrr(ddtop,i)  = -1._r8*dzt(ddtop)*rho_zt(ddtop)*upauto(ddtop,i)*clubb_mf_fdd
 
-             call condensation_mf(dnqt(ddtop,i), dnthl(ddtop,i), p_zm(ddtop), iexner_zm(ddtop), &
-                                  dnthv(ddtop,i), dnqc(ddtop,i), dnth(ddtop,i), dnql(ddtop,i), dnqi(ddtop,i), &
-                                  dnqs(ddtop,i), dnlmix(ddtop,i))
-             
+             ! downdraft qsat
+             call qsat(dnthl(ddtop,i)/iexner_zm(ddtop),p_zm(ddtop),es,dnqs(ddtop,i))
+
              do k = ddtop-1,1,-1
 
-               ! assume fixed area
+               ! assume fixed area with height
                dna(k,i) = dna(k+1,i)
 
-               ! get rain evaporation
-               qtovqs = min(1._r8,dnqt(k+1,i)/dnqs(k+1,i))
-               sevap = ke*(1._r8 - qtovqs)*sqrt(max(dnrr(k+1,i),0._r8))
+               ! get rain evaporation in integrated form
+               taum1 = ke*sqrt(dnrr(k+1,i))/dnqs(k+1,i)
+               alphint = exp(dzt(k+1)*taum1/dnw(k+1,i))
+               sqtint = max( (dnqs(k+1,i) - dnqt(k+1,i))*(1._r8 - alphint) ,0._r8)
 
-               ! limit evaporation to available precip
-               sevap = min(sevap,( dnrr(k+1,i)/(rho_zt(k+1)*dzt(k+1)) - upauto(k+1,i)*clubb_mf_fdd ))
+               ! limit to available rain
+               sqtint = min( sqtint, -1._r8*dnrr(k+1,i) / (rho_zt(k+1)*dzt(k+1)*dnw(k+1,i)) )
+               sthlint = -1._r8*latvap*sqtint*iexner_zt(k+1)/cpair
 
-               ! compute rain rate
-               dnrr(k,i) = dnrr(k+1,i) &
-                         - rho_zt(k+1)*dzt(k+1)*(sevap + upauto(k+1,i)*clubb_mf_fdd)
+               ! get rain evaporation in tendency form
+               sdnqt(k,i) = max( (dnqs(k+1,i) - dnqt(k+1,i))*taum1, 0._r8 )
+               sdnthl(k,i) = -1._r8*latvap*sevap*iexner_zt(k+1)/cpair
 
-               ! save microphysics tendenices
-               sdnqt(k,i)  = sevap
-               sdnthl(k,i) = -1._r8*dnlmix(k+1,i)*sevap*iexner_zt(k+1)/cpair
+               ! compute rain rate (rain above - evaporation + appropriate updraft rain)
+               dnrr(k,i) = max( dnrr(k+1,i) &
+                                - rho_zt(k+1)*dzt(k+1)*(sdnqt(k,i) + upauto(k+1,i)*clubb_mf_fdd) , 0._r8 ) 
 
                if (fixent) then
                  entn = fixent_ent
@@ -1031,18 +1040,24 @@ module clubb_mf
                end if
 
                ! include eturb?
-               entexp  = exp(-entn*eturb*dzt(k+1))
-               entexpu = exp(-entn*dzt(k+1)/3._r8)
+               entexp  = exp(-1._r8*entn*eturb*dzt(k+1))
+               entexpu = exp(-1._r8*entn*dzt(k+1)/3._r8)
 
                ! integrate downward
                dnu(k,i)   = u(k+1)  *(1._r8-entexpu) + dnu  (k+1,i)*entexpu
                dnv(k,i)   = v(k+1)  *(1._r8-entexpu) + dnv  (k+1,i)*entexpu
-               dnqt(k,i)  = qt(k+1) *(1._r8-entexp ) + dnqt (k+1,i)*entexp + sdnqt(k,i)
-               dnthl(k,i) = thl(k+1)*(1._r8-entexp ) + dnthl(k+1,i)*entexp + sdnthl(k,i)
+               dnqt(k,i)  = qt(k+1) *(1._r8-entexp ) + dnqt (k+1,i)*entexp + sqtint
+               dnthl(k,i) = thl(k+1)*(1._r8-entexp ) + dnthl(k+1,i)*entexp + sthlint
+               !dnu(k,i)   = dnu  (k+1,i) + (dnu  (k+1,i)-  u(k+1))*(1._r8-entexpu)
+               !dnv(k,i)   = dnv  (k+1,i) + (dnv  (k+1,i)-  v(k+1))*(1._r8-entexpu)
+               !dnqt(k,i)  = dnqt (k+1,i) + (dnqt (k+1,i)- qt(k+1))*(1._r8-entexp ) + sqtint
+               !dnthl(k,i) = dnthl(k+1,i) + (dnthl(k+1,i)-thl(k+1))*(1._r8-entexp ) + sthlint
 
-               call condensation_mf(dnqt(k,i), dnthl(k,i), p_zm(k), iexner_zm(k), &
-                                    dnthv(k,i), dnqc(k,i), dnth(k,i), dnql(k,i), dnqi(k,i), &
-                                    dnqs(k,i), dnlmix(k,i))
+               ! get qsat
+               call qsat(dnthl(k,i)/iexner_zm(k),p_zm(k),es,dnqs(k,i))
+
+               ! get virtual temperature
+               dnthv(k,i) = dnthl(k,i)*(1._r8+zvir*dnqt(k,i))
 
                ! get buoyancy
                ! (midpoint k is surrounded by interface k and k-1,
@@ -1052,7 +1067,8 @@ module clubb_mf
                ! get wn2
                ! Kay uses the following eqn for wp, but I don't undestand it
                !wp = wb*entn+5._r8/(zm(k)+1.e-7_r8)*max(1._r8-exp( zm(k)/z00dn-1._r8 ),0._r8)
-               wp = wb*entn*eturb
+               wp = wb*entn*eturb  &
+                    + 1._r8/( 2._r8*zm(k)+tinynum ) * max( 1._r8 - exp( zm(k)/z00dn-1._r8), 0._r8 )
                if (wp==0._r8) then
                  wn2 = dnw(k+1,i)**2._r8-2._r8*wa*B*dzt(k+1)
                else
@@ -1061,13 +1077,6 @@ module clubb_mf
                end if
                wn2 = max(wn2,mindnw**2._r8)
                dnw(k,i) = -1._r8*sqrt(wn2)
-
-               ! zero out initialized downdraft level ddtop
-               ! (including the ddtop values leads to unrealistic 
-               ! ensemble mean fluxes due to dnw(ddtop,:) = -upw(ddtop,:))
-               !if (k.eq.(ddtop-1)) then
-               !  dnw(ddtop,i) = 0._r8
-               !end if
 
              end do!k
  
@@ -1226,6 +1235,68 @@ module clubb_mf
          ! height of the plume ensemble
          if (ac(k) > 0._r8) ztopm1 = zm(k)
        end do
+
+       ! --------------------------------------------------------- !
+       ! bulk downdraft velocity for coldpool parameterization     ! 
+       ! --------------------------------------------------------- !
+
+!       ! find cloud base
+!       kcb = 0
+!       do k=1,nz
+!         if (moist_qc(k) > 0._r8) then
+!           kcb = k
+!           exit  
+!         end if
+!       end do
+!
+!       ! reset ddcp
+!       ddcp = 0._r8
+!       if (kcb == 0) then
+!         continue
+!       else if (kcb == 1) then
+!         ddcp = ddcp + awdn(k)
+!         continue
+!       else
+!         ddint = 0._r8
+!         do k=1,kcb-1
+!           ddint = ddint + awdn(k)*dzt(k+1)
+!         end do
+!         ddcp = ddcp + -1._r8*ddint/zm(kcb)
+!       end if
+
+       ! reset ddcp
+       ddcp = 0._r8
+       do i=1,clubb_mf_nup
+         ! find cloud base
+         kcb = 0
+         do k=1,nz
+           if (upqc(k,i) > 0._r8) then
+             kcb = k
+             exit
+           end if
+         end do
+ 
+         ! reset iddcp
+         iddcp = 0._r8
+         if (kcb == 0) then
+           continue
+         else if (kcb == 1) then
+           iddcp = iddcp + dna(k,i)*dnw(k,i)
+           continue
+         else
+           ddint = 0._r8
+           do k=1,kcb-1
+             ddint = ddint + dna(k,i)*dnw(k,i)*dzt(k+1)
+           end do
+           iddcp = iddcp + -1._r8*ddint/zm(kcb)
+         end if
+         ddcp = ddcp + iddcp 
+
+       end do
+!+++ARH
+       if (masterproc) write(iulog,*) 'ddcp=',ddcp,' wstar=',wstar
+       ddcp = ddcp/wstar
+!---ARH
 
        ! --------------------------------------------------------- !
        ! downward sweep to get ensemble mean precip                ! 

@@ -289,9 +289,17 @@ module clubb_intr
     prec_sh_idx, &
     snow_sh_idx
 
-  integer :: ztopm1_idx
-  integer :: ztopm2_idx
+  integer :: ztopmn_idx
+  integer :: ztopma_idx
   integer :: ztopm1_macmic_idx
+  integer :: ddcp_idx
+  integer :: ddcp_macmic_idx
+  integer :: ddcpmn_idx
+
+!+++ARH
+  integer, parameter :: ndd=8
+  integer, parameter :: nud=8
+!---ARH
 
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
@@ -436,9 +444,12 @@ module clubb_intr
       call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
       call pbuf_add_field('edmf_qtflx_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wprtp_macmic_idx)
       call pbuf_add_field('edmf_thvflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
-      call pbuf_add_field('ZTOPM1'             ,'global' ,  dtype_r8, (/pcols/), ztopm1_idx)
-      call pbuf_add_field('ZTOPM2'             ,'global' ,  dtype_r8, (/pcols/), ztopm2_idx)
+      call pbuf_add_field('ZTOPMN'             ,'global' ,  dtype_r8, (/nud,pcols/), ztopmn_idx)
+      call pbuf_add_field('ZTOPMA'             ,'global' ,  dtype_r8, (/pcols/), ztopma_idx)
       call pbuf_add_field('ZTOP_MACMIC'        ,'physpkg',  dtype_r8, (/pcols/), ztopm1_macmic_idx)
+      call pbuf_add_field('DDCP'               ,'global' ,  dtype_r8, (/pcols/), ddcp_idx)
+      call pbuf_add_field('DDCP_MACMIC'        ,'physpkg',  dtype_r8, (/pcols/), ddcp_macmic_idx)
+      call pbuf_add_field('DDCPMN'             ,'global' ,  dtype_r8, (/ndd,pcols/), ddcpmn_idx)
     end if
 
 #endif 
@@ -1234,6 +1245,8 @@ end subroutine clubb_init_cnst
     call addfld ('THLP2_ZT_CLUBB',   (/ 'ilev' /), 'A', 'K^2',      'Temperature Variance on zt grid')
     call addfld ('RTPTHLP_CLUBB',    (/ 'ilev' /), 'A', 'K g/kg',   'Temp. Moist. Covariance')
     call addfld ('RCM_CLUBB',        (/ 'ilev' /), 'A', 'g/kg',     'Cloud Water Mixing Ratio')
+    call addfld ('RTM_CLUBB',        (/ 'lev' /),  'A', 'kg/kg',     'Total Water Mixing Ratio')
+    call addfld ('THLM_CLUBB',       (/ 'lev' /),  'A', 'K',         'Liquid Water Potential Temperature')
     call addfld ('WPRCP_CLUBB',      (/ 'ilev' /), 'A', 'W/m2',     'Liquid Water Flux')
     call addfld ('CLOUDFRAC_CLUBB',  (/ 'lev' /),  'A', 'fraction', 'Cloud Fraction')
     call addfld ('RCMINLAYER_CLUBB', (/ 'ilev' /), 'A', 'g/kg',     'Cloud Water in Layer')
@@ -1323,10 +1336,13 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thl flux (EDMF)' )
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt flux (EDMF)' )
       call addfld ( 'edmf_thvflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thv flux (EDMF)' )
+      call addfld ( 'edmf_sqtup'    , (/ 'ilev' /), 'A', 'kg/kg/s' , 'Plume updraft microphysics tendency (EDMF)' )
+      call addfld ( 'edmf_sqtdn'    , (/ 'ilev' /), 'A', 'kg/kg/s' , 'Plume downdraft microphysics tendency (EDMF)' )
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
       call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
       call addfld ( 'edmf_ent'      , (/ 'lev' /),  'A', '1/m'     , 'ensemble mean entrainment (EDMF)' )
       call addfld ( 'edmf_ztop'     ,  horiz_only,  'A', 'm'       , 'edmf ztop',       flag_xyfill=.True.)
+      call addfld ( 'edmf_ddcp'     ,  horiz_only,  'A', 'm/s'     , 'edmf ddcp',       flag_xyfill=.True.)
       call addfld ( 'edmf_L0'       ,  horiz_only,  'A', 'm'       , 'edmf dynamic L0', flag_xyfill=.True.)
       call addfld ( 'edmf_cfl'      ,  horiz_only,  'A', 'unitless', 'max flux cfl number (EDMF)' )
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
@@ -1340,8 +1356,10 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_upqc'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft condensate mixing ratio (EDMF)' )
       call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft entrainment rate (EDMF)' )
       call addfld ( 'edmf_updet'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft dettrainment rate (EDMF)' )
-      call addfld ( 'edmf_upbuoy'   , (/  'ilev', 'nens' /), 'A', 'm/s2'    , 'Plume updraft buoyancy (EDMF)' )
+      call addfld ( 'edmf_upbuoy'   , (/  'ilev', 'nens' /), 'A', 'm/s2'   , 'Plume updraft buoyancy (EDMF)' )
       call addfld ( 'edmf_dnw'      , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume downdraft vertical velocity (EDMF)' )
+      call addfld ( 'edmf_dnthl'    , (/ 'ilev', 'nens' /), 'A', 'K'       , 'Plume downdraft liquid potential temperature (EDMF)' )
+      call addfld ( 'edmf_dnqt'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume downdraft total water mixing ratio (EDMF)' )
     end if 
 
     call addfld ('QT_macmic'           , (/ 'ilev', 'ncyc' /), 'A', 'kg/kg'   , 'QT at macro/micro substep')
@@ -1398,6 +1416,8 @@ end subroutine clubb_init_cnst
        call add_default('THLP2_ZT_CLUBB',   1, ' ')
        call add_default('RTPTHLP_CLUBB',    1, ' ')
        call add_default('RCM_CLUBB',        1, ' ')
+       call add_default('RTM_CLUBB',        1, ' ')
+       call add_default('THLM_CLUBB',       1, ' ')
        call add_default('WPRCP_CLUBB',      1, ' ')
        call add_default('CLOUDFRAC_CLUBB',  1, ' ')
        call add_default('RCMINLAYER_CLUBB', 1, ' ')
@@ -1489,10 +1509,13 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_qtforcdn' , 1, ' ')
          call add_default( 'edmf_thlforc'  , 1, ' ')
          call add_default( 'edmf_qtforc'   , 1, ' ')
+         call add_default( 'edmf_sqtup'    , 1, ' ')
+         call add_default( 'edmf_sqtdn'    , 1, ' ')
          call add_default( 'edmf_rcm'      , 1, ' ')
          call add_default( 'edmf_cloudfrac', 1, ' ')
          call add_default( 'edmf_ent'      , 1, ' ')
          call add_default( 'edmf_ztop'     , 1, ' ')
+         call add_default( 'edmf_ddcp'     , 1, ' ')
          call add_default( 'edmf_L0'       , 1, ' ')
          call add_default( 'edmf_cape'     , 1, ' ')
        end if
@@ -1570,9 +1593,12 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf2d, rtpthlp_mc_zt_idx, 0.0_r8)
 
        if (do_clubb_mf) then
-         call pbuf_set_field(pbuf2d, ztopm1_idx, 0.0_r8)
-         call pbuf_set_field(pbuf2d, ztopm2_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ztopmn_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ztopma_idx, 0.0_r8)
          call pbuf_set_field(pbuf2d, ztopm1_macmic_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ddcp_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ddcp_macmic_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, ddcpmn_idx, 0.0_r8)
        end if
 
     endif
@@ -1962,9 +1988,13 @@ end subroutine clubb_init_cnst
    real(r8),pointer :: prec_sh(:)   ! total precipitation from MF
    real(r8),pointer :: snow_sh(:)   ! snow from MF
 
-   real(r8), pointer :: ztopm1(:)
-   real(r8), pointer :: ztopm2(:)
+   real(r8), pointer :: ztopmn(:,:)
+   real(r8), pointer :: ztopma(:)
    real(r8), pointer :: ztopm1_macmic(:)
+
+   real(r8), pointer :: ddcp(:)
+   real(r8), pointer :: ddcp_macmic(:)
+   real(r8), pointer :: ddcpmn(:,:)
 
    real(r8), pointer :: qt_macmic(:,:)
    real(r8), pointer :: thl_macmic(:,:)
@@ -2008,13 +2038,15 @@ end subroutine clubb_init_cnst
                                            mf_rcm_output,     mf_precc_output
    !
    real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
-                                           mf_cape_output,    mf_cfl_output
+                                           mf_cape_output,    mf_cfl_output,       &
+                                           mf_ddcp_output
    !
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforcup_output, mf_qtforcup_output,  & ! thermodynamic grid
                                            mf_thlforcdn_output, mf_qtforcdn_output,  & ! thermodynamic grid
                                            mf_thlforc_output,   mf_qtforc_output,    & ! thermodynamic grid
                                            mf_ent_output,                            & ! thermodynamic grid
+                                           mf_sqtup_output,     mf_sqtdn_output,     & ! thermodynamic grid
                                            mf_qc_output,        mf_cloudfrac_output    ! thermodynamic grid
 
    ! MF plume level outputs
@@ -2042,9 +2074,14 @@ end subroutine clubb_init_cnst
                                                               mf_updet_output,     &
                                                               mf_upbuoy_output
    ! MF plume level outputs
-   real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_dnw_flip
+   real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_dnw_flip,         &
+                                                              mf_dnthl_flip,       &
+                                                              mf_dnqt_flip
+
    ! MF plume level outputs to outfld
-   real(r8), dimension(pcols,pverp*clubb_mf_nup) ::           mf_dnw_output
+   real(r8), dimension(pcols,pverp*clubb_mf_nup) ::           mf_dnw_output,       &
+                                                              mf_dnthl_output,     &
+                                                              mf_dnqt_output
 
    ! MF Plume
    real(r8), pointer                    :: tpert(:)
@@ -2107,7 +2144,10 @@ end subroutine clubb_init_cnst
    real(r8)                             :: mf_ztop,    mf_ztop_nadv,   &
                                            mf_ztopm1,  mf_ztopm1_nadv, &
                                            mf_precc_nadv, mf_snow_nadv,&
-                                           mf_L0,         mf_L0_nadv
+                                           mf_L0,      mf_L0_nadv,     &
+                                           mf_ddcp,    mf_ddcp_nadv
+   real(r8), parameter                  :: ddalph = 1.4E3_r8
+   real(r8), parameter                  :: ddtau  = 14400._r8
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
    real(r8), dimension(pcols,pver)      :: mq,        mqsat
@@ -2282,9 +2322,13 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, mf_wpthvp_macmic_idx, mf_thvflx_macmic)
      call pbuf_get_field(pbuf, tpert_idx, tpert)
 
-     call pbuf_get_field(pbuf, ztopm1_idx, ztopm1)
-     call pbuf_get_field(pbuf, ztopm2_idx, ztopm2)
+     call pbuf_get_field(pbuf, ztopmn_idx, ztopmn)
+     call pbuf_get_field(pbuf, ztopma_idx, ztopma)
      call pbuf_get_field(pbuf, ztopm1_macmic_idx, ztopm1_macmic)
+
+     call pbuf_get_field(pbuf, ddcp_idx, ddcp)
+     call pbuf_get_field(pbuf, ddcp_macmic_idx, ddcp_macmic)
+     call pbuf_get_field(pbuf, ddcpmn_idx, ddcpmn)
 
      ! SVP
      do k = 1, pver
@@ -2573,16 +2617,23 @@ end subroutine clubb_init_cnst
    mf_qtforcdn_output(:,:)  = 0._r8
    mf_thlforc_output(:,:)   = 0._r8
    mf_qtforc_output(:,:)    = 0._r8
+   mf_sqtup_output(:,:)     = 0._r8
+   mf_sqtdn_output(:,:)     = 0._r8
    mf_rcm_output(:,:)       = 0._r8
    mf_cloudfrac_output(:,:) = 0._r8
    mf_ent_output(:,:)       = 0._r8
    mf_qc_output(:,:)        = 0._r8
    mf_ztop_output(:)        = 0._r8
+   mf_ddcp_output(:)        = 0._r8
    mf_L0_output(:)          = 0._r8
    mf_cape_output(:)        = 0._r8
    mf_cfl_output(:)         = 0._r8
    mf_dnw_output(:,:)       = 0._r8
+   mf_dnthl_output(:,:)     = 0._r8
+   mf_dnqt_output(:,:)      = 0._r8
    mf_dnw_flip(:,:,:)       = 0._r8
+   mf_dnthl_flip(:,:,:)     = 0._r8
+   mf_dnqt_flip(:,:,:)      = 0._r8
 
    !  Loop over all columns in lchnk to advance CLUBB core
    do i=1,ncol   ! loop over columns
@@ -2910,8 +2961,10 @@ end subroutine clubb_init_cnst
         mf_ztop_nadv   = 0._r8
         mf_ztopm1      = 0._r8
         mf_ztopm1_nadv = 0._r8
+        mf_ddcp_nadv   = 0._r8
 
         if (macmic_it==1) ztopm1_macmic(i) = 0._r8
+        if (macmic_it==1) ddcp_macmic(i) = 0._r8
 
         mf_precc_nadv             = 0._r8
         mf_snow_nadv              = 0._r8
@@ -2969,8 +3022,10 @@ end subroutine clubb_init_cnst
              thv_ds_zm = zt2zm_api( thv_ds_zt  )
            end if
 
-           mf_ztopm1 = ztopm1(i)
+           !mf_ztopm1 = ztopm1(i)
            !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
+           mf_ztopm1 = ztopma(i) 
+           mf_ddcp = ddcp(i)
 
            rhinv = 0._r8
            if (rhlev(i) >= 1._r8) rhlev(i) = 0.990_r8
@@ -2985,7 +3040,7 @@ end subroutine clubb_init_cnst
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
                                          th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                               wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
-                              mf_cape_output(i),                                              & ! output - plume diagnostics
+                              mf_cape_output(i),      mf_ddcp,                                & ! output - plume diagnostics
                               mf_upa,    mf_dna,                                              & ! output - plume diagnostics
                               mf_upw,    mf_dnw,                                              & ! output - plume diagnostics
                               mf_upmf,                                                        & ! output - plume diagnostics
@@ -3099,6 +3154,7 @@ end subroutine clubb_init_cnst
            mf_L0_nadv     = mf_L0_nadv + mf_L0
            mf_ztop_nadv   = mf_ztop_nadv + mf_ztop
            mf_ztopm1_nadv = mf_ztopm1_nadv + mf_ztopm1 
+           mf_ddcp_nadv   = mf_ddcp_nadv + mf_ddcp
 
            mf_thlforcup_nadv(:pverp) = mf_thlforcup_nadv(:pverp) + mf_thlforcup(:pverp)
            mf_qtforcup_nadv(:pverp)  = mf_qtforcup_nadv(:pverp) + mf_qtforcup(:pverp)
@@ -3185,15 +3241,43 @@ end subroutine clubb_init_cnst
       enddo  ! end time loop
 
       if (do_clubb_mf) then
+        ! average over nadv
         mf_L0_nadv   = mf_L0_nadv/REAL(nadv)
         mf_ztop_nadv = mf_ztop_nadv/REAL(nadv)
-
         mf_ztopm1_nadv = mf_ztopm1_nadv/REAL(nadv)
+        mf_ddcp_nadv = mf_ddcp_nadv/REAL(nadv)
+
+        ! accumulate in buffer
         ztopm1_macmic(i) = ztopm1_macmic(i) + mf_ztopm1_nadv
+        ddcp_macmic(i) = ddcp_macmic(i) + mf_ddcp_nadv
+
         if (macmic_it == cld_macmic_num_steps) then
-          ztopm2(i) = ztopm1(i)        
-          ztopm1(i) = ztopm1_macmic(i)/REAL(cld_macmic_num_steps)
-          !if (masterproc) write(100+iam,*) "nstep, updated ztopm1, ztopm2, ", get_nstep(), ztopm1(i), ztopm2(i)
+
+          if (nud == 1) then
+            ztopma(i) = ztopm1_macmic(i)/REAL(cld_macmic_num_steps)
+          else
+            ztopmn(2:nud,i) = ztopmn(1:nud-1,i)
+            ztopmn(1,i) = ztopm1_macmic(i)/REAL(cld_macmic_num_steps)
+            ztopma(i) = 0._r8
+            do t=1,nud
+              ztopma(i) = ztopma(i) + ztopmn(t,i)
+            end do
+            ztopma(i) = ztopma(i)/REAL(nud)
+          end if
+
+          if (ndd == 1) then
+            ddcp(i) = ddcp_macmic(i)/REAL(cld_macmic_num_steps)
+          else
+            ddcpmn(2:ndd,i) = ddcpmn(1:ndd-1,i)
+            ddcpmn(1,i) = ddcp_macmic(i)/REAL(cld_macmic_num_steps) 
+            ddcp(i) = 0._r8
+            do t=1,ndd
+              ddcp(i) = ddcp(i) + ddcpmn(t,i)
+            end do
+            ddcp(i) = ddcp(i)/REAL(ndd)
+          end if
+          ddcp(i) = ddalph*ddcp(i)
+
         end if
  
         mf_qc(:pverp)        = mf_qc_nadv(:pverp)/REAL(nadv)
@@ -3331,6 +3415,8 @@ end subroutine clubb_init_cnst
            s_awu_output(i,pverp-k+1)        = s_awu(k)
            s_awv_output(i,pverp-k+1)        = s_awv(k)
 
+           mf_sqtup_output(i,pverp-k+1)     = mf_sqtup(k)
+           mf_sqtdn_output(i,pverp-k+1)     = mf_sqtdn(k)
            mf_thlflxup_output(i,pverp-k+1)  = mf_thlflxup(k)
            mf_qtflxup_output(i,pverp-k+1)   = mf_qtflxup(k)
            mf_thlflxdn_output(i,pverp-k+1)  = mf_thlflxdn(k)
@@ -3367,6 +3453,8 @@ end subroutine clubb_init_cnst
            mf_updet_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_updet(k,:clubb_mf_nup)
            mf_upbuoy_flip(i,pverp-k+1,:clubb_mf_nup)    = mf_upbuoy(k,:clubb_mf_nup)
            mf_dnw_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_dnw(k,:clubb_mf_nup)
+           mf_dnthl_flip(i,pverp-k+1,:clubb_mf_nup)     = mf_dnthl(k,:clubb_mf_nup)
+           mf_dnqt_flip(i,pverp-k+1,:clubb_mf_nup)      = mf_dnqt(k,:clubb_mf_nup)
          end if
 
       enddo
@@ -3377,6 +3465,7 @@ end subroutine clubb_init_cnst
         mf_ztop_output(i) = mf_ztop_nadv
         mf_L0_output(i)   = mf_L0_nadv
         mf_cfl_output(i)  = max_cfl_nadv
+        mf_ddcp_output(i) = ddcp(i)
         do k=1,clubb_mf_nup
           mf_upa_output(i,pverp*(k-1)+1:pverp*k)   = mf_upa_flip(i,:pverp,k)
           mf_upw_output(i,pverp*(k-1)+1:pverp*k)   = mf_upw_flip(i,:pverp,k)
@@ -3388,8 +3477,10 @@ end subroutine clubb_init_cnst
           mf_upqc_output(i,pverp*(k-1)+1:pverp*k)  = mf_upqc_flip(i,:pverp,k)
           mf_upent_output(i,pverp*(k-1)+1:pverp*k) = mf_upent_flip(i,:pverp,k)
           mf_updet_output(i,pverp*(k-1)+1:pverp*k) = mf_updet_flip(i,:pverp,k)
-          mf_upbuoy_output(i,pverp*(k-1)+1:pverp*k)  = mf_upbuoy_flip(i,:pverp,k)
+          mf_upbuoy_output(i,pverp*(k-1)+1:pverp*k)= mf_upbuoy_flip(i,:pverp,k)
           mf_dnw_output(i,pverp*(k-1)+1:pverp*k)   = mf_dnw_flip(i,:pverp,k)
+          mf_dnthl_output(i,pverp*(k-1)+1:pverp*k) = mf_dnthl_flip(i,:pverp,k)
+          mf_dnqt_output(i,pverp*(k-1)+1:pverp*k)  = mf_dnqt_flip(i,:pverp,k)
         end do
       end if
 
@@ -4108,6 +4199,9 @@ end subroutine clubb_init_cnst
      temp2dp(:ncol,:) = rcm(:ncol,:) * 1000._r8
      call outfld( 'RCM_CLUBB',        temp2dp,                 pcols, lchnk )
 
+     call outfld( 'RTM_CLUBB',        rtm(:,1:pver),         pcols, lchnk )
+     call outfld( 'THLM_CLUBB',       thlm(:,1:pver),        pcols, lchnk )
+
      temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
      call outfld( 'WPRCP_CLUBB',      temp2dp,                 pcols, lchnk )
 
@@ -4203,7 +4297,12 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_upent'    , mf_upent_output,           pcols, lchnk )
      call outfld( 'edmf_updet'    , mf_updet_output,           pcols, lchnk )
      call outfld( 'edmf_dnw'      , mf_dnw_output,             pcols, lchnk )
+     call outfld( 'edmf_dnthl'    , mf_dnthl_output,           pcols, lchnk )
+     call outfld( 'edmf_dnqt'     , mf_dnqt_output,            pcols, lchnk )
+     call outfld( 'edmf_sqtup'    , mf_sqtup_output,           pcols, lchnk )
+     call outfld( 'edmf_sqtdn'    , mf_sqtdn_output,           pcols, lchnk )
      call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
+     call outfld( 'edmf_ddcp'     , mf_ddcp_output,            pcols, lchnk )
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
      call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
