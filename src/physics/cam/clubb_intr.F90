@@ -2146,7 +2146,7 @@ end subroutine clubb_init_cnst
                                            mf_precc_nadv, mf_snow_nadv,&
                                            mf_L0,      mf_L0_nadv,     &
                                            mf_ddcp,    mf_ddcp_nadv
-   real(r8), parameter                  :: ddalph = 1.2e3 !1.4E3_r8
+   real(r8), parameter                  :: ddalph = 1.4E3_r8
    real(r8), parameter                  :: ddtau  = 14400._r8
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
