@@ -2146,7 +2146,7 @@ end subroutine clubb_init_cnst
                                            mf_precc_nadv, mf_snow_nadv,&
                                            mf_L0,      mf_L0_nadv,     &
                                            mf_ddcp,    mf_ddcp_nadv
-   real(r8), parameter                  :: ddalph = 1.4E3_r8
+   real(r8), parameter                  :: ddalph = 1.2e3 !1.4E3_r8
    real(r8), parameter                  :: ddtau  = 14400._r8
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
@@ -3022,8 +3022,6 @@ end subroutine clubb_init_cnst
              thv_ds_zm = zt2zm_api( thv_ds_zt  )
            end if
 
-           !mf_ztopm1 = ztopm1(i)
-           !mf_ztopm1 = 0.5_r8*(ztopm1(i) + ztopm2(i))
            mf_ztopm1 = ztopma(i) 
            mf_ddcp = ddcp(i)
 

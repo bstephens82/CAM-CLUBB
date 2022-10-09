@@ -293,8 +293,8 @@ module clubb_mf
      ! other variables
      integer                              :: k,i,kstart,ddtop,kcb
      real(r8), dimension(clubb_mf_nup)    :: zcb
-     real(r8)                             :: zcb_unset, ddint,iddcp,   &
-                                             wthv,                     &
+     real(r8)                             :: zcb_unset,       cpfac,   &
+                                             wthv,   ddint,   iddcp,   &
                                              wstar,  qstar,   thvstar, & 
                                              sigmaw, sigmaqt, sigmathv,&
                                              convh,  wmin,    wmax,    & 
@@ -356,7 +356,7 @@ module clubb_mf
                                              pwmax = 3._r8
 
      !
-     ! alpha, z-scores after Suselj etal 2019
+     ! alpha relates star qunataties to stddev after Suselj etal 2019
      real(r8),parameter                   :: alphw   = 0.572_r8,       &
                                              alphqt  = 2.890_r8,       &     
                                              alphthv = 2.890_r8
@@ -407,6 +407,9 @@ module clubb_mf
      !
      ! minimum downdraft speed
      real(r8),parameter                   :: mindnw = 1.E-2_r8
+     !
+     ! turn on cold-pool feedbacks
+     logical                              :: coldpool = .false.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -621,17 +624,26 @@ module clubb_mf
          dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
        end if
 
-       ! limiter to avoid division by zero
-       dynamic_L0 = max(min_L0,dynamic_L0)
-       dynamic_L0 = min(clubb_mf_max_L0,dynamic_L0)
-
        ! --------------------------------------------------------- !
        ! Initialize using Deardorff convective velocity scale      ! 
        ! --------------------------------------------------------- !
 
        convh = max(pblh,pblhmin)
-       !convh = max(pblh,ztop)
        wstar = max( wstarmin, (gravit/thv(1)*wthv*convh)**(1._r8/3._r8) )
+
+       ! --------------------------------------------------------- !
+       ! Compute cold pool feedback parameter                      ! 
+       ! --------------------------------------------------------- !
+
+       cpfac = 1._r8
+       if (coldpool) cpfac = max(ddcp/wstar,1._r8)  
+ 
+       ! affect the entrainmnet length scale
+       dynamic_L0 = dynamic_L0 * cpfac
+
+       ! limit max/min
+       dynamic_L0 = max(min_L0,dynamic_L0)
+       dynamic_L0 = min(clubb_mf_max_L0,dynamic_L0)
 
        ! --------------------------------------------------------- !
        ! Construct tri-variate PDF at the surface from wstar       ! 
@@ -641,9 +653,9 @@ module clubb_mf
        qstar   = wqt / wstar
        thvstar = wthv / wstar
 
-       sigmaw   = alphw * wstar
-       sigmaqt  = alphqt * abs(qstar)
-       sigmathv = alphthv * abs(thvstar)
+       sigmaw   = alphw * wstar * cpfac
+       sigmaqt  = alphqt * abs(qstar) * cpfac
+       sigmathv = alphthv * abs(thvstar) * cpfac
 
        wmin = sigmaw * pwmin
        wmax = sigmaw * pwmax
@@ -1240,30 +1252,6 @@ module clubb_mf
        ! bulk downdraft velocity for coldpool parameterization     ! 
        ! --------------------------------------------------------- !
 
-!       ! find cloud base
-!       kcb = 0
-!       do k=1,nz
-!         if (moist_qc(k) > 0._r8) then
-!           kcb = k
-!           exit  
-!         end if
-!       end do
-!
-!       ! reset ddcp
-!       ddcp = 0._r8
-!       if (kcb == 0) then
-!         continue
-!       else if (kcb == 1) then
-!         ddcp = ddcp + awdn(k)
-!         continue
-!       else
-!         ddint = 0._r8
-!         do k=1,kcb-1
-!           ddint = ddint + awdn(k)*dzt(k+1)
-!         end do
-!         ddcp = ddcp + -1._r8*ddint/zm(kcb)
-!       end if
-
        ! reset ddcp
        ddcp = 0._r8
        do i=1,clubb_mf_nup
@@ -1291,12 +1279,8 @@ module clubb_mf
            iddcp = iddcp + -1._r8*ddint/zm(kcb)
          end if
          ddcp = ddcp + iddcp 
-
+         !
        end do
-!+++ARH
-       if (masterproc) write(iulog,*) 'ddcp=',ddcp,' wstar=',wstar
-       ddcp = ddcp/wstar
-!---ARH
 
        ! --------------------------------------------------------- !
        ! downward sweep to get ensemble mean precip                ! 
