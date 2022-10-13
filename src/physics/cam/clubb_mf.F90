@@ -1096,6 +1096,13 @@ module clubb_mf
 
          end do!i
 
+         ! zero out downdraft fluxes for dnw == -mindnw
+         do i=1,clubb_mf_nup
+           do k=1,nz
+             if ( dnw(k,i) == -1._r8*mindnw ) dnw(k,i) = 0._r8
+           end do
+         end do
+
        end if
        ! end computing downdrafts
 
