@@ -1514,6 +1514,7 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_ddcp'     , 1, ' ')
          call add_default( 'edmf_L0'       , 1, ' ')
          call add_default( 'edmf_cape'     , 1, ' ')
+         call add_default( 'edmf_cfl'      , 1, ' ')
        end if
        call add_default( 'QT_macmic'           , 1, ' ')
        call add_default( 'THETAL_macmic'       , 1, ' ')
@@ -2961,7 +2962,7 @@ end subroutine clubb_init_cnst
         if (macmic_it==1) ddcp_macmic(i) = 0._r8
 
 !+++ARH - Temporary hack - pbuf_set_field is apparently not taking?
-        if (is_first_step()) then
+        if (is_first_step() .and. macmic_it==1) then
           ddcp(i) = 0._r8
         end if
 !---ARH
@@ -3078,7 +3079,7 @@ end subroutine clubb_init_cnst
            s_aw(1)   = 0._r8
            max_cfl   = 0._r8
            do k=2,pverp
-             max_cfl = max(max_cfl,dtime*invrs_dzt(k)*max(s_aw(k-1),s_aw(k)))
+             max_cfl = max(max_cfl,dtime*invrs_dzt(k)*max(abs(s_aw(k-1)),abs(s_aw(k))))
            end do
            cflfac = 1._r8
            cfllim = .true.
@@ -3235,6 +3236,12 @@ end subroutine clubb_init_cnst
           !  output arrays to make them conformable to CAM output
           if (l_stats) call stats_end_timestep_clubb(i,out_zt,out_zm,&
                                                      out_radzt,out_radzm,out_sfc)
+
+
+          !  Hard clipping of rtm. Note this will violate mass/energy conservation
+          do k=1,pverp 
+            if (rtm_in(k) < rcm_inout(k)) rtm_in(k) = rcm_inout(k)
+          end do
 
       enddo  ! end time loop
 
