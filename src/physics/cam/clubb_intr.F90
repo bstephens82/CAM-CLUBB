@@ -3144,6 +3144,8 @@ end subroutine clubb_init_cnst
 
         th_sfc = cam_in%ts(i)*invrs_exner_zm(1)
 
+        call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
+                         rrho(i), ustar )
       end if
      
       if (clubb_do_adv) then
@@ -3318,7 +3320,7 @@ end subroutine clubb_init_cnst
                                                       th_zt,      qv_zt,      qc_zt,          & ! input
                                                       thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
-                                         th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+                              ustar,     th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                               wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
                               mf_cape_output(i),      mf_ddcp,                                & ! output - plume diagnostics
                               mf_upa,    mf_dna,                                              & ! output - plume diagnostics

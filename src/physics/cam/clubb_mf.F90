@@ -57,7 +57,8 @@ module clubb_mf
   logical, protected :: do_clubb_mf_diag = .false.
   logical, protected :: do_clubb_mf_rad = .false.
   logical, protected :: do_clubb_mf_coldpool = .false.
-  logical :: do_clubb_mf_precip = .false.
+  logical, protected :: do_clubb_mf_ustar = .false.
+  logical, protected :: do_clubb_mf_precip = .false.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
 
@@ -81,7 +82,7 @@ module clubb_mf
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
-                           clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, &
+                           clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
                            clubb_mf_up_ndt, clubb_mf_cp_ndt
 
     if (masterproc) then
@@ -134,6 +135,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_up_ndt")
     call mpi_bcast(clubb_mf_cp_ndt, 1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cp_ndt")
+    call mpi_bcast(do_clubb_mf_ustar, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_ustar")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -149,7 +152,7 @@ module clubb_mf
                                              th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
-                                       ths,  wthl,    wqt,       pblh,              & ! input
+                           ustar,      ths,  wthl,    wqt,       pblh,              & ! input
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
                            mcape,      ddcp,                                        & ! output
                            upa,     dna,                                            & ! output
@@ -232,7 +235,7 @@ module clubb_mf
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
-     real(r8), intent(in)                :: ths
+     real(r8), intent(in)                :: ths,ustar
      real(r8), intent(inout)             :: ztopm1,ddcp
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
@@ -568,8 +571,14 @@ module clubb_mf
        ! Construct tri-variate PDF at the surface from wstar       ! 
        ! and initialize plume thv, qt, w                           !
        ! --------------------------------------------------------- !
-       qstar   = wqt / wstar
-       thvstar = wthv / wstar
+
+       if (do_clubb_mf_ustar) then
+         qstar   = wqt / max(wstarmin,ustar)
+         thvstar = wthv / max(wstarmin,ustar)
+       else
+         qstar   = wqt / wstar
+         thvstar = wthv / wstar
+       end if
 
        sigmaw   = alphw * wstar * cpfac
        sigmaqt  = alphqt * abs(qstar) * cpfac
@@ -994,11 +1003,6 @@ module clubb_mf
                dnv(k,i)   = v(k+1)  *(1._r8-entexpu) + dnv  (k+1,i)*entexpu
                dnqt(k,i)  = qt(k+1) *(1._r8-entexp ) + dnqt (k+1,i)*entexp + sqtint
                dnthl(k,i) = thl(k+1)*(1._r8-entexp ) + dnthl(k+1,i)*entexp + sthlint
-
-               !dnu(k,i)   = dnu  (k+1,i) + (dnu  (k+1,i)-  u(k+1))*(1._r8-entexpu)
-               !dnv(k,i)   = dnv  (k+1,i) + (dnv  (k+1,i)-  v(k+1))*(1._r8-entexpu)
-               !dnqt(k,i)  = dnqt (k+1,i) + (dnqt (k+1,i)- qt(k+1))*(1._r8-entexp ) + sqtint
-               !dnthl(k,i) = dnthl(k+1,i) + (dnthl(k+1,i)-thl(k+1))*(1._r8-entexp ) + sthlint
 
                ! get qsat
                call qsat(dnthl(k,i)/iexner_zm(k),p_zm(k),es,dnqs(k,i))
