@@ -49,6 +49,7 @@ module clubb_mf
   real(r8) :: clubb_mf_fdd     = 0._r8
   real(r8) :: clubb_mf_ddalph  = 0._r8  
   real(r8) :: clubb_mf_ddbeta  = 0._r8
+  real(r8) :: clubb_mf_pwfac   = 0._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
   integer, protected :: clubb_mf_nup     = 0
@@ -80,7 +81,8 @@ module clubb_mf
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
-                           clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_up_ndt, clubb_mf_cp_ndt
+                           clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, &
+                           clubb_mf_up_ndt, clubb_mf_cp_ndt
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -126,6 +128,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddalph")
     call mpi_bcast(clubb_mf_ddbeta,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddbeta")
+    call mpi_bcast(clubb_mf_pwfac,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwfac")
     call mpi_bcast(clubb_mf_up_ndt, 1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_up_ndt")
     call mpi_bcast(clubb_mf_cp_ndt, 1, mpi_integer, mstrid, mpicom, ierr)
@@ -323,7 +327,7 @@ module clubb_mf
                                              eturb,  det,     lmixt,   & ! thermodynamic grid
                                              qtovqs, sevap,   taum1,   & ! thermodynamic grid
                                              sqtint, sthlint, alphint, &
-                                             betathl,betaqt,           & ! thermodynamic grid        
+                                             qtmp,   betathl, betaqt,  & ! thermodynamic grid        
                                              thln,   thvn,    thn,     & ! momentum grid
                                              qtn,    qsn,              & ! momentum grid
                                              qcn,    qln,     qin,     & ! momentum grid
@@ -1030,11 +1034,20 @@ module clubb_mf
              dnu(ddtop,i)   = 0.5_r8*(u(ddtop)+u(ddtop+1)) 
              dnv(ddtop,i)   = 0.5_r8*(v(ddtop)+v(ddtop+1))
              dnqt(ddtop,i)  = qt_zm(ddtop)
+ 
+             ! no cloud in downdrafts, set to cloud free thl
              dnthl(ddtop,i) = thl_zm(ddtop)
-             dnthv(ddtop,i) = thv_zm(ddtop)
+             dnthv(ddtop,i) = thv_zm(ddtop) ! includes condensate loading (!)
 
              ! get rain generated in the updraft, appropriate it to the downdraft
              dnrr(ddtop,i)  = -1._r8*dzt(ddtop)*rho_zt(ddtop)*upauto(ddtop,i)*clubb_mf_fdd
+
+             if (fixent) then
+               entn = fixent_ent
+             else
+               ! use deterministic mean entrainment
+               entn = clubb_mf_ent0/dynamic_L0
+             end if
 
              ! downdraft qsat
              call qsat(dnthl(ddtop,i)/iexner_zm(ddtop),p_zm(ddtop),es,dnqs(ddtop,i))
@@ -1055,18 +1068,11 @@ module clubb_mf
 
                ! get rain evaporation in tendency form
                sdnqt(k,i) = max( (dnqs(k+1,i) - dnqt(k+1,i))*taum1, 0._r8 )
-               sdnthl(k,i) = -1._r8*latvap*sevap*iexner_zt(k+1)/cpair
+               sdnthl(k,i) = -1._r8*latvap*sdnqt(k,i)*iexner_zt(k+1)/cpair
 
                ! compute rain rate (rain above - evaporation + appropriate updraft rain)
                dnrr(k,i) = max( dnrr(k+1,i) &
                                 - rho_zt(k+1)*dzt(k+1)*(sdnqt(k,i) + upauto(k+1,i)*clubb_mf_fdd) , 0._r8 ) 
-
-               if (fixent) then
-                 entn = fixent_ent
-               else
-                 ! use deterministic mean entrainment
-                 entn = clubb_mf_ent0/dynamic_L0
-               end if
 
                ! include eturb?
                entexp  = exp(-1._r8*entn*eturb*dzt(k+1))
@@ -1077,6 +1083,7 @@ module clubb_mf
                dnv(k,i)   = v(k+1)  *(1._r8-entexpu) + dnv  (k+1,i)*entexpu
                dnqt(k,i)  = qt(k+1) *(1._r8-entexp ) + dnqt (k+1,i)*entexp + sqtint
                dnthl(k,i) = thl(k+1)*(1._r8-entexp ) + dnthl(k+1,i)*entexp + sthlint
+
                !dnu(k,i)   = dnu  (k+1,i) + (dnu  (k+1,i)-  u(k+1))*(1._r8-entexpu)
                !dnv(k,i)   = dnv  (k+1,i) + (dnv  (k+1,i)-  v(k+1))*(1._r8-entexpu)
                !dnqt(k,i)  = dnqt (k+1,i) + (dnqt (k+1,i)- qt(k+1))*(1._r8-entexp ) + sqtint
@@ -1084,6 +1091,36 @@ module clubb_mf
 
                ! get qsat
                call qsat(dnthl(k,i)/iexner_zm(k),p_zm(k),es,dnqs(k,i))
+
+               ! no supersaturation in downdrafts             
+               if (dnqt(k,i) > dnqs(k,i)) then
+                 ! set qt to saturation vapor pressure
+                 dnqt(k,i) = dnqs(k,i)
+
+                 ! find evaporation that gives saturation vapor pressure
+                 sqtint = dnqt(k,i) - (qt(k+1) *(1._r8-entexp ) + dnqt (k+1,i)*entexp)
+ 
+                 ! limit to available rain
+                 sqtint = min( sqtint, -1._r8*dnrr(k+1,i) / (rho_zt(k+1)*dzt(k+1)*dnw(k+1,i)) )
+                 sthlint = -1._r8*latvap*sqtint*iexner_zt(k+1)/cpair
+
+                 ! find new evap tendency
+                 if ((alphint - 1._r8) /= 0._r8) then
+                   qtmp = dnqs(k+1,i) + sqtint/(alphint - 1._r8)
+                   sdnqt(k,i) = max( (dnqs(k+1,i) - qtmp)*taum1, 0._r8 )
+                 else
+                   sdnqt(k,i) = 0._r8
+                 end if
+                 sdnthl(k,i) = -1._r8*latvap*sdnqt(k,i)*iexner_zt(k+1)/cpair
+
+                 ! re-compute thl with new evaporation rate
+                 dnthl(k,i) = thl(k+1)*(1._r8-entexp ) + dnthl(k+1,i)*entexp + sthlint
+
+                 ! adjust rain
+                 dnrr(k,i) = max( dnrr(k+1,i) &
+                                  - rho_zt(k+1)*dzt(k+1)*(sdnqt(k,i) + upauto(k+1,i)*clubb_mf_fdd) , 0._r8 )
+               end if
+     
 
                ! get virtual temperature
                dnthv(k,i) = dnthl(k,i)*(1._r8+zvir*dnqt(k,i))
@@ -1094,10 +1131,8 @@ module clubb_mf
                B = gravit*(dnthv(k,i)/thv(k)-1._r8)
 
                ! get wn2
-               ! Kay uses the following eqn for wp, but I don't undestand it
-               !wp = wb*entn+5._r8/(zm(k)+1.e-7_r8)*max(1._r8-exp( zm(k)/z00dn-1._r8 ),0._r8)
                wp = wb*entn*eturb  &
-                    + 1._r8/( 2._r8*zm(k)+tinynum ) * max( 1._r8 - exp( zm(k)/z00dn-1._r8), 0._r8 )
+                    + clubb_mf_pwfac/( 2._r8*zm(k)+tinynum ) * max( 1._r8 - exp( zm(k)/z00dn-1._r8), 0._r8 )
                if (wp==0._r8) then
                  wn2 = dnw(k+1,i)**2._r8-2._r8*wa*B*dzt(k+1)
                else
@@ -1113,6 +1148,8 @@ module clubb_mf
 
          end do!i
 
+!+++ARH this should be changed to only zero out above the downdraft (dnw<-mindw)
+!+++ARH also this should zero out dna as well
          ! zero out downdraft fluxes for dnw == -mindnw
          do i=1,clubb_mf_nup
            do k=1,nz
@@ -1339,9 +1376,9 @@ module clubb_mf
          qtflxup (k)= awqtup (k) - awup(k)*qt_env (k+1)
 
          ! if no downdrafts, should be zero since awdn should be zero
-         thvflxdn(k)= awthvdn(k) - awdn(k)*thv_env(k-1)
-         thlflxdn(k)= awthldn(k) - awdn(k)*thl_env(k-1)
-         qtflxdn (k)= awqtdn (k) - awdn(k)*qt_env (k-1)
+         thvflxdn(k)= awthvdn(k) - awdn(k)*thv_env(k)
+         thlflxdn(k)= awthldn(k) - awdn(k)*thl_env(k)
+         qtflxdn (k)= awqtdn (k) - awdn(k)*qt_env (k)
 
          thvflx(k)  = thvflxup(k) + thvflxdn(k)
          thlflx(k)  = thlflxup(k) + thlflxdn(k)
