@@ -1414,11 +1414,9 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
       call addfld ( 'edmf_cloudfrac', (/ 'lev' /),  'A', 'fraction', 'grid mean cloud fraction (EDMF)' )
       call addfld ( 'edmf_ent'      , (/ 'lev' /),  'A', '1/m'     , 'ensemble mean entrainment (EDMF)' )
-!+++ARH
       call addfld ( 'edmf_ztop'     ,  horiz_only,  'A', 'm'       , 'edmf ztop',       flag_xyfill=.True.)
       call addfld ( 'edmf_ddcp'     ,  horiz_only,  'A', 'm/s'     , 'edmf ddcp',       flag_xyfill=.True.)
       call addfld ( 'edmf_L0'       ,  horiz_only,  'A', 'm'       , 'edmf dynamic L0', flag_xyfill=.True.)
-!---ARH
       call addfld ( 'edmf_cfl'      ,  horiz_only,  'A', 'unitless', 'max flux cfl number (EDMF)' )
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'nens' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
@@ -4013,7 +4011,7 @@ end subroutine clubb_init_cnst
       if (do_clubb_mf) then
         if (mf_ztop_nadv == 0._r8) mf_ztop_nadv = fillvalue
         if (mf_L0_nadv == 0._r8) mf_L0_nadv = fillvalue
-        mf_ztop_output(i) = mf_ztop_nadv
+        mf_ztop_output(i) = ztopma(i) !mf_ztop_nadv
         mf_L0_output(i)   = mf_L0_nadv
         mf_cfl_output(i)  = max_cfl_nadv
         mf_ddcp_output(i) = ddcp(i) !mf_ddcp_nadv !ddcp(i)
@@ -4846,9 +4844,9 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_dnqt'     , mf_dnqt_output,            pcols, lchnk )
      call outfld( 'edmf_sqtup'    , mf_sqtup_output,           pcols, lchnk )
      call outfld( 'edmf_sqtdn'    , mf_sqtdn_output,           pcols, lchnk )
-     call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
 !+++ARH
      ! macmic_it==1 ensures that this is ddcp aeraged over the prior time-steps
+     if (macmic_it==1) call outfld( 'edmf_ztop'     , mf_ztop_output,            pcols, lchnk )
      if (macmic_it==1) call outfld( 'edmf_ddcp'     , mf_ddcp_output,            pcols, lchnk )
 !---ARH
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
