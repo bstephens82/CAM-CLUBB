@@ -50,6 +50,7 @@ module clubb_mf
   real(r8) :: clubb_mf_ddalph  = 0._r8  
   real(r8) :: clubb_mf_ddbeta  = 0._r8
   real(r8) :: clubb_mf_pwfac   = 0._r8
+  real(r8) :: clubb_mf_ddexp   = 0._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
   integer, protected :: clubb_mf_nup     = 0
@@ -83,7 +84,7 @@ module clubb_mf
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
-                           clubb_mf_up_ndt, clubb_mf_cp_ndt
+                           clubb_mf_ddexp, clubb_mf_up_ndt, clubb_mf_cp_ndt
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -137,6 +138,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cp_ndt")
     call mpi_bcast(do_clubb_mf_ustar, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_ustar")
+    call mpi_bcast(clubb_mf_ddexp,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddexp")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -1081,7 +1084,7 @@ module clubb_mf
                else
                  zsub = zm(ddbot(i)+1)
                  wcb  = dnw(ddbot(i)+1,i)
-                 dnw(k,i) = wcb - (wcb/(zsub**3._r8))*(zsub - zm(k))**3._r8
+                 dnw(k,i) = wcb - (wcb/(zsub**clubb_mf_ddexp))*(zsub - zm(k))**clubb_mf_ddexp
                  dnw(k,i) = min(dnw(k,i),-1._r8*mindnw)
                end if
 
