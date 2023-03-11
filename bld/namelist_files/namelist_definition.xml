@@ -3976,6 +3976,12 @@ If .true. use ustar for initializing the plume ensemble
 Default: .false.
 </entry>
 
+<entry id="do_clubb_mf_mixd" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. use clubbmf mixing depth in place of the PBLH pbuf var
+Default: .false.
+</entry>
+
 <entry id="clubb_mf_up_ndt" type="integer" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Real: number of time-steps for running average of the convective height scale

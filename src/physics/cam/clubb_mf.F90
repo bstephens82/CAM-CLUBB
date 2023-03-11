@@ -59,6 +59,7 @@ module clubb_mf
   logical, protected :: do_clubb_mf_rad = .false.
   logical, protected :: do_clubb_mf_coldpool = .false.
   logical, protected :: do_clubb_mf_ustar = .false.
+  logical, protected :: do_clubb_mf_mixd = .false.
   logical, protected :: do_clubb_mf_precip = .false.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
@@ -84,7 +85,7 @@ module clubb_mf
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
-                           clubb_mf_ddexp, clubb_mf_up_ndt, clubb_mf_cp_ndt
+                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -140,6 +141,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_ustar")
     call mpi_bcast(clubb_mf_ddexp,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddexp")
+    call mpi_bcast(do_clubb_mf_mixd, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_mixd")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -157,7 +160,7 @@ module clubb_mf
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                            ustar,      ths,  wthl,    wqt,       pblh,              & ! input
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
-                           mcape,      ddcp,                                        & ! output
+                           mcape,      ddcp, cbm1,                                  & ! output
                            upa,     dna,                                            & ! output
                            upw,     dnw,                                            & ! output
                            upmf,                                                    & ! output
@@ -239,7 +242,7 @@ module clubb_mf
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
      real(r8), intent(in)                :: ths,ustar
-     real(r8), intent(inout)             :: ztopm1,ddcp
+     real(r8), intent(inout)             :: ztopm1,ddcp,cbm1
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
@@ -320,7 +323,7 @@ module clubb_mf
      ! 
      ! other variables
      integer                              :: k,i,kstart,ddtop,kcb
-     integer,  dimension(clubb_mf_nup)    :: ddbot
+     integer,  dimension(clubb_mf_nup)    :: ddbot,kcbarr
      real(r8), dimension(clubb_mf_nup)    :: zcb
      real(r8)                             :: zcb_unset,       cpfac,   &
                                              wthv,   ddint,   iddcp,   &
@@ -561,15 +564,22 @@ module clubb_mf
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
+       if (do_clubb_mf_mixd) then
+         convh = max(cbm1,pblhmin)
+       else
+         convh = max(pblh,pblhmin)
+       end if
+
        ! --------------------------------------------------------- !
        ! Initialize using Deardorff convective velocity scale      ! 
        ! --------------------------------------------------------- !
-       convh = max(pblh,pblhmin)
+
        wstar = max( wstarmin, (gravit/thv(1)*wthv*convh)**(1._r8/3._r8) )
 
        ! --------------------------------------------------------- !
        ! Compute cold pool feedback parameter                      ! 
        ! --------------------------------------------------------- !
+
        cpfac = 1._r8
        if (do_clubb_mf_coldpool) cpfac = min( (max(ddcp/wstar,1._r8))**clubb_mf_ddbeta, max_cpfac ) 
  
@@ -1258,6 +1268,34 @@ module clubb_mf
          ! height of the plume ensemble
          if (ac(k) > 0._r8) ztopm1 = zm(k)
        end do
+
+       ! --------------------------------------------------------- !
+       ! cloud base / mixing depth calculation                                        ! 
+       ! --------------------------------------------------------- !
+       cbm1 = 0._r8
+       do i=1,clubb_mf_nup
+         kcbarr(i) = 0
+         do k=1,nz
+           if (upqc(k,i) > 0._r8) then
+             kcbarr(i) = k
+             exit
+           end if
+         end do
+
+         ! find height of dry plumes
+         if (kcbarr(i) == 0) then
+           do k=1,nz
+             if (upw(k,i) <= 0._r8) then
+               kcbarr(i) = k
+               exit
+             end if
+           end do
+         end if
+
+         cbm1 = cbm1 + zm(kcbarr(i))
+
+       end do
+       cbm1 = cbm1/REAL(clubb_mf_nup)
 
        ! --------------------------------------------------------- !
        ! bulk downdraft velocity for coldpool parameterization     ! 

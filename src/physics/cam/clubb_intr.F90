@@ -335,6 +335,8 @@ module clubb_intr
   integer :: ddcp_idx
   integer :: ddcp_macmic_idx
   integer :: ddcpmn_idx
+  integer :: cbm1_idx
+  integer :: cbm1_macmic_idx
 
   !  Output arrays for CLUBB statistics    
   real(r8), allocatable, dimension(:,:,:) :: out_zt, out_zm, out_radzt, out_radzm, out_sfc
@@ -489,6 +491,8 @@ module clubb_intr
       call pbuf_add_field('DDCP'               ,'global' ,  dtype_r8, (/pcols/), ddcp_idx)
       call pbuf_add_field('DDCP_MACMIC'        ,'physpkg',  dtype_r8, (/pcols/), ddcp_macmic_idx)
       call pbuf_add_field('DDCPMN'             ,'global' ,  dtype_r8, (/clubb_mf_cp_ndt,pcols/), ddcpmn_idx)
+      call pbuf_add_field('CBM1'               ,'global' ,  dtype_r8, (/pcols/), cbm1_idx)
+      call pbuf_add_field('CBM1_MACMIC'        ,'physpkg',  dtype_r8, (/pcols/), cbm1_macmic_idx)
 !+++ARH
       call pbuf_add_field('up_macmic1' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps*clubb_mf_nup/), up_macmic1_idx)
       call pbuf_add_field('up_macmic2' ,'global',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps*clubb_mf_nup/), up_macmic2_idx)
@@ -1754,6 +1758,8 @@ end subroutine clubb_init_cnst
          call pbuf_set_field(pbuf2d, ddcp_idx, 0.0_r8)
          call pbuf_set_field(pbuf2d, ddcp_macmic_idx, 0.0_r8)
          call pbuf_set_field(pbuf2d, ddcpmn_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, cbm1_idx, 0.0_r8)
+         call pbuf_set_field(pbuf2d, cbm1_macmic_idx, 0.0_r8)
 !+++ARH
          call pbuf_set_field(pbuf2d, up_macmic1_idx, 0.0_r8)
          call pbuf_set_field(pbuf2d, up_macmic2_idx, 0.0_r8)
@@ -2185,6 +2191,9 @@ end subroutine clubb_init_cnst
    real(r8), pointer :: ddcp_macmic(:)
    real(r8), pointer :: ddcpmn(:,:)
 
+   real(r8), pointer :: cbm1(:)
+   real(r8), pointer :: cbm1_macmic(:)
+
 !+++ARH
    real(r8), pointer :: qtm_macmic1(:,:)
    real(r8), pointer :: qtm_macmic2(:,:)
@@ -2375,7 +2384,8 @@ end subroutine clubb_init_cnst
                                            mf_ztopm1,  mf_ztopm1_nadv, &
                                            mf_precc_nadv, mf_snow_nadv,&
                                            mf_L0,      mf_L0_nadv,     &
-                                           mf_ddcp,    mf_ddcp_nadv
+                                           mf_ddcp,    mf_ddcp_nadv,   &
+                                           mf_cbm1,    mf_cbm1_nadv
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
    real(r8), dimension(pcols,pver)      :: mq,        mqsat
@@ -2561,6 +2571,9 @@ end subroutine clubb_init_cnst
      call pbuf_get_field(pbuf, ddcp_idx, ddcp)
      call pbuf_get_field(pbuf, ddcp_macmic_idx, ddcp_macmic)
      call pbuf_get_field(pbuf, ddcpmn_idx, ddcpmn)
+
+     call pbuf_get_field(pbuf, cbm1_idx, cbm1)
+     call pbuf_get_field(pbuf, cbm1_macmic_idx, cbm1_macmic)
 !+++ARH
      call pbuf_get_field(pbuf, up_macmic1_idx, up_macmic1)
      call pbuf_get_field(pbuf, up_macmic2_idx, up_macmic2)
@@ -3237,9 +3250,12 @@ end subroutine clubb_init_cnst
         mf_ztopm1      = 0._r8
         mf_ztopm1_nadv = 0._r8
         mf_ddcp_nadv   = 0._r8
+        mf_cbm1        = 0._r8
+        mf_cbm1_nadv   = 0._r8
 
         if (macmic_it==1) ztopm1_macmic(i) = 0._r8
         if (macmic_it==1) ddcp_macmic(i) = 0._r8
+        if (macmic_it==1) cbm1_macmic(i) = 0._r8
 
 !+++ARH
         if (macmic_it==1) up_macmic1(i,:) = 0._r8
@@ -3340,6 +3356,7 @@ end subroutine clubb_init_cnst
 
            mf_ztopm1 = ztopma(i) 
            mf_ddcp = ddcp(i)
+           mf_cbm1 = cbm1(i)
 
            rhinv = 0._r8
            if (rhlev(i) >= 1._r8) rhlev(i) = 0.990_r8
@@ -3354,7 +3371,7 @@ end subroutine clubb_init_cnst
                                                       th_zm,      qv_zm,      qc_zm,          & ! input
                               ustar,     th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                               wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
-                              mf_cape_output(i),      mf_ddcp,                                & ! output - plume diagnostics
+                              mf_cape_output(i),      mf_ddcp,    mf_cbm1,                    & ! output - plume diagnostics
                               mf_upa,    mf_dna,                                              & ! output - plume diagnostics
                               mf_upw,    mf_dnw,                                              & ! output - plume diagnostics
                               mf_upmf,                                                        & ! output - plume diagnostics
@@ -3469,6 +3486,7 @@ end subroutine clubb_init_cnst
            mf_ztop_nadv   = mf_ztop_nadv + mf_ztop
            mf_ztopm1_nadv = mf_ztopm1_nadv + mf_ztopm1 
            mf_ddcp_nadv   = mf_ddcp_nadv + mf_ddcp
+           mf_cbm1_nadv   = mf_cbm1_nadv + mf_cbm1
 
            mf_thlforcup_nadv(:pverp) = mf_thlforcup_nadv(:pverp) + mf_thlforcup(:pverp)
            mf_qtforcup_nadv(:pverp)  = mf_qtforcup_nadv(:pverp) + mf_qtforcup(:pverp)
@@ -3795,12 +3813,16 @@ end subroutine clubb_init_cnst
         mf_ztop_nadv = mf_ztop_nadv/REAL(nadv)
         mf_ztopm1_nadv = mf_ztopm1_nadv/REAL(nadv)
         mf_ddcp_nadv = mf_ddcp_nadv/REAL(nadv)
+        mf_cbm1_nadv = mf_cbm1_nadv/REAL(nadv)
 
         ! accumulate in buffer
         ztopm1_macmic(i) = ztopm1_macmic(i) + mf_ztopm1_nadv
         ddcp_macmic(i) = ddcp_macmic(i) + mf_ddcp_nadv
+        cbm1_macmic(i) = cbm1_macmic(i) + mf_cbm1_nadv
 
         if (macmic_it == cld_macmic_num_steps) then
+
+          cbm1(i) = cbm1_macmic(i)/REAL(cld_macmic_num_steps)
 
           if (clubb_mf_up_ndt == 1) then
             ztopma(i) = ztopm1_macmic(i)/REAL(cld_macmic_num_steps)
@@ -3825,6 +3847,7 @@ end subroutine clubb_init_cnst
             end do
             ddcp(i) = ddcp(i)/REAL(clubb_mf_cp_ndt)
           end if
+
           ddcp(i) = clubb_mf_ddalph*ddcp(i)
 
         end if
