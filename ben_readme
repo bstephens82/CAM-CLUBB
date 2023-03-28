@@ -1,0 +1,16 @@
+I'm going to try to keep a version of the latest cam_development branch
+and the latest CLUBB external here.
+
+To update cam_development, I think I should just be able to pull from ESCOMP/CAM,
+although I should put the exact command here:
+
+XXX
+
+To update the CLUBB external, it might be possible to write some kind of script 
+that will automatically checkout the latest source code from clubb_release, or
+I can just check out clubb_release and copy the files over.  Or I could keep a 
+copy of clubb_release in my home directory and link the source files over to 
+CAM-CLUBB and prevent the Externals file from updating CLUBB?  There might be 
+several ways to do it.
+
+
