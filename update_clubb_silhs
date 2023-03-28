@@ -4,15 +4,15 @@
 #need some kind of check to make sure externals are already present? 
 
 echo "cloning clubb_release..."
-clone clubb_release /glade/u/home/stepheba/clubb_release_temp
+git clone https://github.com/larson-group/clubb_release.git /glade/u/home/stepheba/clubb_release_temp
 
 echo "removing old clubb and silhs files..."
-rm /glade/u/home/stepheba/CAM-CLUBB/src/physics/clubb/*
-rm /glade/u/home/stepheba/CAM-CLUBB/src/physics/silhs/*
+rm /glade/u/home/stepheba/CAM/src/physics/clubb/*
+rm /glade/u/home/stepheba/CAM/src/physics/silhs/*
 
 echo "copying new clubb and silhs files..."
-cp /glade/u/home/stepheba/clubb_release_temp/src/CLUBB_core/* /glade/u/home/stepheba/CAM-CLUBB/src/physics/clubb/
-cp /glade/u/home/stepheba/clubb_release_temp/src/SILHS/* /glade/u/home/stepheba/CAM-CLUBB/src/physics/silhs/
+cp /glade/u/home/stepheba/clubb_release_temp/src/CLUBB_core/* /glade/u/home/stepheba/CAM/src/physics/clubb/
+cp /glade/u/home/stepheba/clubb_release_temp/src/SILHS/* /glade/u/home/stepheba/CAM/src/physics/silhs/
 
 echo "removing clubb_release..."
 rm -rf /glade/u/home/stepheba/clubb_release_temp
