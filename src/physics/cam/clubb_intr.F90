@@ -1422,6 +1422,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_ztop'     ,  horiz_only,  'A', 'm'       , 'edmf ztop',       flag_xyfill=.True.)
       call addfld ( 'edmf_ddcp'     ,  horiz_only,  'A', 'm/s'     , 'edmf ddcp',       flag_xyfill=.True.)
       call addfld ( 'edmf_L0'       ,  horiz_only,  'A', 'm'       , 'edmf dynamic L0', flag_xyfill=.True.)
+      call addfld ( 'edmf_freq'       ,  horiz_only,  'A', 'unitless', 'edmf frequency mf is active', flag_xyfill=.True.)
       call addfld ( 'edmf_cfl'      ,  horiz_only,  'A', 'unitless', 'max flux cfl number (EDMF)' )
       call addfld ( 'edmf_cape'     ,  horiz_only,  'A', 'J/kg'    , 'ensemble mean CAPE (EDMF)' )
       call addfld ( 'edmf_upa'      , (/ 'ilev', 'nens' /), 'A', 'fraction', 'Plume updraft area fraction (EDMF)' )
@@ -1633,6 +1634,7 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_ztop'     , 1, ' ')
          call add_default( 'edmf_ddcp'     , 1, ' ')
          call add_default( 'edmf_L0'       , 1, ' ')
+         call add_default( 'edmf_freq'       , 1, ' ')
          call add_default( 'edmf_cape'     , 1, ' ')
          call add_default( 'edmf_cfl'     , 1, ' ')
        end if
@@ -2278,7 +2280,7 @@ end subroutine clubb_init_cnst
    !
    real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
                                            mf_cape_output,    mf_cfl_output,       &
-                                           mf_ddcp_output
+                                           mf_ddcp_output,    mf_freq_output
    !
    ! MF outputs to outfld
    real(r8), dimension(pcols,pver)      :: mf_thlforcup_output, mf_qtforcup_output,  & ! thermodynamic grid
@@ -2390,7 +2392,8 @@ end subroutine clubb_init_cnst
                                            mf_precc_nadv, mf_snow_nadv,&
                                            mf_L0,      mf_L0_nadv,     &
                                            mf_ddcp,    mf_ddcp_nadv,   &
-                                           mf_cbm1,    mf_cbm1_nadv
+                                           mf_cbm1,    mf_cbm1_nadv,   &
+                                                       mf_freq_nadv
 
    real(r8), dimension(pcols,pver)      :: esat,      rh
    real(r8), dimension(pcols,pver)      :: mq,        mqsat
@@ -2620,7 +2623,7 @@ end subroutine clubb_init_cnst
      end do
 
      rhlev(:ncol) = 0._r8
-     if (clubb_mf_Lopt==7) then
+     if (clubb_mf_Lopt==7 .or. clubb_mf_Lopt==6) then
        ! Interpolate RH to 500 hPa
        rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
        call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rhlev, &
@@ -2911,6 +2914,7 @@ end subroutine clubb_init_cnst
    mf_ztop_output(:)        = 0._r8
    mf_ddcp_output(:)        = 0._r8
    mf_L0_output(:)          = 0._r8
+   mf_freq_output(:)        = 0._r8
    mf_cape_output(:)        = 0._r8
    mf_cfl_output(:)         = 0._r8
    mf_dnw_output(:,:)       = 0._r8
@@ -3258,6 +3262,7 @@ end subroutine clubb_init_cnst
         mf_ddcp_nadv   = 0._r8
         mf_cbm1        = 0._r8
         mf_cbm1_nadv   = 0._r8
+        mf_freq_nadv   = 0._r8
 
         if (macmic_it==1) ztopm1_macmic(i) = 0._r8
         if (macmic_it==1) ddcp_macmic(i) = 0._r8
@@ -3494,6 +3499,8 @@ end subroutine clubb_init_cnst
            mf_ztopm1_nadv = mf_ztopm1_nadv + mf_ztopm1 
            mf_ddcp_nadv   = mf_ddcp_nadv + mf_ddcp
            mf_cbm1_nadv   = mf_cbm1_nadv + mf_cbm1
+
+           if (mf_ztop > 0._r8) mf_freq_nadv = mf_freq_nadv + 1._r8
 
            mf_thlforcup_nadv(:pverp) = mf_thlforcup_nadv(:pverp) + mf_thlforcup(:pverp)
            mf_qtforcup_nadv(:pverp)  = mf_qtforcup_nadv(:pverp) + mf_qtforcup(:pverp)
@@ -3821,6 +3828,7 @@ end subroutine clubb_init_cnst
         mf_ztopm1_nadv = mf_ztopm1_nadv/REAL(nadv)
         mf_ddcp_nadv = mf_ddcp_nadv/REAL(nadv)
         mf_cbm1_nadv = mf_cbm1_nadv/REAL(nadv)
+        mf_freq_nadv = mf_freq_nadv/REAL(nadv)
 
         ! accumulate in buffer
         ztopm1_macmic(i) = ztopm1_macmic(i) + mf_ztopm1_nadv
@@ -4041,13 +4049,21 @@ end subroutine clubb_init_cnst
 
       if (do_clubb_mf) then
 !+++ARH
+        ! these fillvalues won't average correctly
         !if (mf_ztop_nadv == 0._r8) mf_ztop_nadv = fillvalue
         !if (mf_L0_nadv == 0._r8) mf_L0_nadv = fillvalue
-!---ARH
-        mf_ztop_output(i) = ztopma(i) !mf_ztop_nadv
+
+        !mf_ztop_output(i) = ztopma(i) !mf_ztop_nadv
+        mf_ztop_output(i) = mf_ztop_nadv
+
         mf_L0_output(i)   = mf_L0_nadv
         mf_cfl_output(i)  = max_cfl_nadv
-        mf_ddcp_output(i) = ddcp(i) !mf_ddcp_nadv !ddcp(i)
+
+        !mf_ddcp_output(i) = ddcp(i) !mf_ddcp_nadv !ddcp(i)
+        mf_ddcp_output(i) = mf_ddcp_nadv
+
+        mf_freq_output(i) = mf_freq_nadv
+!---ARH
         do k=1,clubb_mf_nup
           mf_upa_output(i,pverp*(k-1)+1:pverp*k)   = mf_upa_flip(i,:pverp,k)
           mf_upw_output(i,pverp*(k-1)+1:pverp*k)   = mf_upw_flip(i,:pverp,k)
@@ -4884,6 +4900,7 @@ end subroutine clubb_init_cnst
      if (macmic_it==1) call outfld( 'edmf_ddcp'     , mf_ddcp_output,            pcols, lchnk )
 !---ARH
      call outfld( 'edmf_L0'       , mf_L0_output,              pcols, lchnk )
+     call outfld( 'edmf_freq'     , mf_freq_output,            pcols, lchnk )
      call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
      call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
      call outfld( 'ICWMRSH'       , sh_icwmr,                  pcols, lchnk )
