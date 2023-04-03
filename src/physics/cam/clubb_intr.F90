@@ -4040,8 +4040,10 @@ end subroutine clubb_init_cnst
       enddo
 
       if (do_clubb_mf) then
-        if (mf_ztop_nadv == 0._r8) mf_ztop_nadv = fillvalue
-        if (mf_L0_nadv == 0._r8) mf_L0_nadv = fillvalue
+!+++ARH
+        !if (mf_ztop_nadv == 0._r8) mf_ztop_nadv = fillvalue
+        !if (mf_L0_nadv == 0._r8) mf_L0_nadv = fillvalue
+!---ARH
         mf_ztop_output(i) = ztopma(i) !mf_ztop_nadv
         mf_L0_output(i)   = mf_L0_nadv
         mf_cfl_output(i)  = max_cfl_nadv
