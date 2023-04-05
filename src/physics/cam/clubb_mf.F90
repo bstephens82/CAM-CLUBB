@@ -1246,11 +1246,11 @@ module clubb_mf
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
 
            if (k > 1) then
-             sqtup(k)  = sqtup(k)  + 0.5_r8*(upa(k,i)+upa(k-1,i))*supqt(k,i)  
-             sthlup(k) = sthlup(k) + 0.5_r8*(upa(k,i)+upa(k-1,i))*supthl(k,i) 
+             sqtup(k)  = sqtup(k)  + upa(k-1,i)*supqt(k,i)  
+             sthlup(k) = sthlup(k) + upa(k-1,i)*supthl(k,i) 
 
-             sqtdn(k)  = sqtdn(k)  + 0.5_r8*(dna(k,i)+dna(k-1,i))*sdnqt(k,i)
-             sthldn(k) = sthldn(k) + 0.5_r8*(dna(k,i)+dna(k-1,i))*sdnthl(k,i)
+             sqtdn(k)  = sqtdn(k)  + dna(k,i)*sdnqt(k,i)
+             sthldn(k) = sthldn(k) + dna(k,i)*sdnthl(k,i)
            end if
 
          enddo
