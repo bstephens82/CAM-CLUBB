@@ -352,6 +352,9 @@ module restart_physics
      use subcol_utils,        only: is_subcol_on
      use subcol,              only: subcol_read_restart
      use pio,                 only: pio_read_darray
+!+++ARH
+     use scamMod, only: single_column
+!---ARH
      !
      ! Arguments
      !
@@ -388,8 +391,10 @@ module restart_physics
      physgrid = cam_grid_id('physgrid')
 
      call cam_grid_dimensions(physgrid, gdims(1:2))
-
-     if (gdims(2) == 1) then
+!+++ARH
+     !if (gdims(2) == 1) then
+     if (gdims(2) == 1 .and. .not. single_column) then
+!---ARH
        nhdims = 1
      else
        nhdims = 2

@@ -8,7 +8,10 @@ module restart_dynamics
   use prognostics,     only:  u3, v3, t3, q3, &
        pdeld, ps, vort, div, &
        dps, phis, dpsl, dpsm, omga, ptimelevels
-  use scanslt,         only:  lammp, phimp, sigmp, qfcst
+  use scanslt,         only:  lammp, phimp, sigmp, qfcst, &
+!+++ARH
+                              psinitslt
+!---ARH      
 #if ( defined BFB_CAM_SCAM_IOP )
   use iop,             only: dqfx3sav,divq3dsav,divt3dsav,t2sav,betasav,fusav,fvsav
 #endif
@@ -35,9 +38,15 @@ module restart_dynamics
      character(len=namlen) :: name
   end type restart_var_t
 #if ( defined BFB_CAM_SCAM_IOP )
-  integer, parameter :: restartvarcnt = 24
+!+++ARH
+  !integer, parameter :: restartvarcnt = 24
+  integer, parameter :: restartvarcnt = 25
+!---ARH
 #else
-  integer, parameter :: restartvarcnt = 17
+!+++ARH
+  !integer, parameter :: restartvarcnt = 17
+  integer, parameter :: restartvarcnt = 18
+!---ARH
 #endif
   type(var_desc_t) :: timedesc, tmass0desc, fixmasdesc, hw1desc, hw2desc, hw3desc, alphadesc
 
@@ -136,7 +145,10 @@ CONTAINS
 
     vcnt=vcnt+1
     call set_r_var('Q_fcst', 1, vcnt, v4=qfcst )
-
+!+++ARH
+    vcnt=vcnt+1
+    call set_r_var('PSINITSLT', 1, vcnt, v2=psinitslt )
+!---ARH
 
 #if ( defined BFB_CAM_SCAM_IOP )
 !
@@ -155,7 +167,10 @@ CONTAINS
     call set_r_var('T2', 1, vcnt, v3=t2sav )
 
     vcnt=vcnt+1
-    call set_r_var('FU', 1, vcnt, v3=fusav )
+!+++ARH
+    !call set_r_var('FU', 1, vcnt, v3=fusav )
+    call set_rvar('FU', 1, vcnt, v3=fusav )
+!---ARH
 
     vcnt=vcnt+1
     call set_r_var('FV', 1, vcnt, v3=fvsav )
