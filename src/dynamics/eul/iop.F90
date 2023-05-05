@@ -36,10 +36,7 @@ module iop
   use spmd_utils,       only: masterproc
   use string_utils,     only: to_lower
   use time_manager,     only: timemgr_init, get_curr_date, get_curr_calday,&
-                              get_nstep,is_first_step,get_start_date,timemgr_time_inc,&
-!+++ARH
-                              is_first_restart_step
-!---ARH
+                              get_nstep,is_first_step,get_start_date,timemgr_time_inc
   use wrap_nf,          only: wrap_inq_dimid,wrap_get_vara_realx
 !
 ! !PUBLIC TYPES:
@@ -1036,10 +1033,8 @@ subroutine setiopupdate
    save tsec, ntime, bdate
    save last_date, last_sec 
 !------------------------------------------------------------------------------
-!+++ARH
-   !if ( is_first_step() ) then
-   if ( is_first_step() .or. is_first_restart_step() ) then
-!---ARH
+
+   if ( is_first_step() ) then
 !     
 !     Open  IOP dataset
 !     
@@ -1100,13 +1095,6 @@ subroutine setiopupdate
       do i=1,ntime           ! set the first ioptimeidx
          call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(i))
          call get_start_date(yr,mon,day,start_tod)
-!+++ARH
-         if (is_first_restart_step()) then 
-            call get_curr_date(yr,mon,day,start_tod)
-         else
-            call get_start_date(yr,mon,day,start_tod)
-         end if
-!---ARH
          start_ymd = yr*10000 + mon*100 + day
 
          if ( start_ymd > next_date .or. (start_ymd == next_date &
