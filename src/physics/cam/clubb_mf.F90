@@ -61,6 +61,7 @@ module clubb_mf
   logical, protected :: do_clubb_mf_ustar = .false.
   logical, protected :: do_clubb_mf_mixd = .false.
   logical, protected :: do_clubb_mf_precip = .false.
+  logical, protected :: do_clubb_mf_rhtke = .false.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
 
@@ -85,7 +86,7 @@ module clubb_mf
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
-                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt
+                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -143,6 +144,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddexp")
     call mpi_bcast(do_clubb_mf_mixd, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_mixd")
+    call mpi_bcast(do_clubb_mf_rhtke, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_rhtke")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -348,7 +351,7 @@ module clubb_mf
                                              lmixn,   srfarea,         & ! momentum grid
                                              srfwqtu, srfwthvu,        &
                                              facqtu,  facthvu,         &
-                                             zsub,    wcb
+                                             zsub,    wcb,    rh_L0
 
 !     !
 !     ! cape variables
@@ -834,10 +837,12 @@ module clubb_mf
              ! TKE enhanced entrainment                                  ! 
              ! switches off when dynamic_L0 > max_L0                     !
              ! --------------------------------------------------------- !
-             if (dynamic_L0 >= clubb_mf_max_L0) then
-               eturb = 1._r8
+             eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+             if (do_clubb_mf_rhtke) then
+               rh_L0 = 50._r8*(rhinv**3._r8)
+               if (rh_L0 >= 733.34_r8) eturb = 1._r8
              else
-               eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
+               if (dynamic_L0 >= clubb_mf_max_L0) eturb = 1._r8
              end if
              entn = entn * eturb
 

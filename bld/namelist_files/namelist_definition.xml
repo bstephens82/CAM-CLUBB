@@ -3994,6 +3994,12 @@ Real: number of time-steps for running average of cold pool effects
 Default: 1
 </entry>
 
+<entry id="do_clubb_mf_rhtke" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. use relative humidity thresholds to turn off TKE enhanced entrainment
+Default: .false.
+</entry>
+
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"
