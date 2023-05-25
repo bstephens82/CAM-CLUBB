@@ -4572,7 +4572,6 @@ end subroutine clubb_init_cnst
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
          tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
-         wpthvp(i,k)         = wpthvp(i,k)*rho(i,k)*cpair
          if (do_clubb_mf) then
            ! comment out for kinemtatic fluxes 
 !+++ARH
@@ -4800,7 +4799,7 @@ end subroutine clubb_init_cnst
      temp2dp(:ncol,:) = rcm_in_layer(:ncol,:) * 1000._r8
      call outfld( 'RCMINLAYER_CLUBB', temp2dp,                 pcols, lchnk )
 
-     temp2dp(:ncol,:) = wpthvp(:ncol,:)
+     temp2dp(:ncol,:) = wpthvp(:ncol,:)*rho(:ncol,:)*cpair
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
      call outfld( 'PRECSH' , prec_sh(:ncol)  , pcols, lchnk )
