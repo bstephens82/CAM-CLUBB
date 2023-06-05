@@ -1414,6 +1414,12 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thl flux (EDMF)' )
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt flux (EDMF)' )
       call addfld ( 'edmf_thvflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thv flux (EDMF)' )
+      call addfld ( 'edmf_uflxup'   , (/ 'ilev' /), 'A', 'm2/s2'    , 'u updraft flux (EDMF)' )
+      call addfld ( 'edmf_vflxup'   , (/ 'ilev' /), 'A', 'm2/s2'    , 'v updraft flux (EDMF)' )
+      call addfld ( 'edmf_uflxdn'   , (/ 'ilev' /), 'A', 'm2/s2'    , 'u downdraft flux (EDMF)' )
+      call addfld ( 'edmf_vflxdn'   , (/ 'ilev' /), 'A', 'm2/s2'    , 'v downdraft flux (EDMF)' )
+      call addfld ( 'edmf_uflx'     , (/ 'ilev' /), 'A', 'm2/s2'    , 'u flux (EDMF)' )
+      call addfld ( 'edmf_vflx'     , (/ 'ilev' /), 'A', 'm2/s2'    , 'v flux (EDMF)' )
       call addfld ( 'edmf_sqtup'    , (/ 'lev' /), 'A', 'kg/kg/s' , 'Plume updraft microphysics tendency (EDMF)' )
       call addfld ( 'edmf_sqtdn'    , (/ 'lev' /), 'A', 'kg/kg/s' , 'Plume downdraft microphysics tendency (EDMF)' )
       call addfld ( 'edmf_rcm'      , (/ 'ilev' /), 'A', 'kg/kg'   , 'grid mean cloud (EDMF)' )
@@ -1619,6 +1625,12 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_qtflxdn'  , 1, ' ')
          call add_default( 'edmf_thlflx'   , 1, ' ')
          call add_default( 'edmf_thvflx'   , 1, ' ')
+         call add_default( 'edmf_uflxup'   , 1, ' ')
+         call add_default( 'edmf_vflxup'   , 1, ' ')
+         call add_default( 'edmf_uflxdn'   , 1, ' ')
+         call add_default( 'edmf_vflxdn'   , 1, ' ')
+         call add_default( 'edmf_uflx'     , 1, ' ')
+         call add_default( 'edmf_vflx'     , 1, ' ')
          call add_default( 'edmf_qtflx'    , 1, ' ')
          call add_default( 'edmf_thlforcup', 1, ' ')
          call add_default( 'edmf_qtforcup' , 1, ' ')
@@ -2259,23 +2271,23 @@ end subroutine clubb_init_cnst
    logical                           :: apply_to_surface
 
    ! MF outputs to outfld
-   real(r8), dimension(pcols,pverp)     :: mf_dry_a_output,   mf_moist_a_output,   &
-                                           mf_dry_w_output,   mf_moist_w_output,   &
-                                           mf_dry_qt_output,  mf_moist_qt_output,  &
-                                           mf_dry_thl_output, mf_moist_thl_output, &
-                                           mf_dry_u_output,   mf_moist_u_output,   &
-                                           mf_dry_v_output,   mf_moist_v_output,   &
-                                                              mf_moist_qc_output,  &
-                                           s_ae_output,       s_aw_output,         &
-                                           s_awthlup_output,  s_awqtup_output,     &
-                                           s_awthldn_output,  s_awqtdn_output,     &
-                                           s_awthl_output,    s_awqt_output,       &
-                                           s_awu_output,      s_awv_output,        &
-                                           s_aww_output,                           &
-                                           mf_thlflxup_output,mf_qtflxup_output,   &
-                                           mf_thlflxdn_output,mf_qtflxdn_output,   &
-                                           mf_thlflx_output,  mf_qtflx_output,     &
-                                           mf_thvflx_output,                       &
+   real(r8), dimension(pcols,pverp)     :: mf_dry_a_output,   mf_moist_a_output,                                      &
+                                           mf_dry_w_output,   mf_moist_w_output,                                      &
+                                           mf_dry_qt_output,  mf_moist_qt_output,                                     &
+                                           mf_dry_thl_output, mf_moist_thl_output,                                    &
+                                           mf_dry_u_output,   mf_moist_u_output,                                      &
+                                           mf_dry_v_output,   mf_moist_v_output,                                      &
+                                                              mf_moist_qc_output,                                     &
+                                           s_ae_output,       s_aw_output,                                            &
+                                           s_awthlup_output,  s_awqtup_output, s_auwup_output, s_avwup_output,        &
+                                           s_awthldn_output,  s_awqtdn_output, s_auwdn_output, s_avwdn_output,        &
+                                           s_awthl_output,    s_awqt_output,                                          &
+                                           s_awu_output,      s_awv_output,                                           &
+                                           s_aww_output,                                                              &
+                                           mf_thlflxup_output,mf_qtflxup_output, mf_uflxup_output, mf_vflxup_output,  &
+                                           mf_thlflxdn_output,mf_qtflxdn_output, mf_uflxdn_output, mf_vflxdn_output,  &
+                                           mf_thlflx_output,  mf_qtflx_output,   mf_uflx_output,   mf_vflx_output,    &
+                                           mf_thvflx_output,                                                          &
                                            mf_rcm_output,     mf_precc_output
    !
    real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
@@ -2339,8 +2351,8 @@ end subroutine clubb_init_cnst
                                            s_awup,     s_awdn,         &
                                            s_aww,                      &
                                            s_awwup,    s_awwdn,        &
-                                           s_awthlup,  s_awqtup,       &
-                                           s_awthldn,  s_awqtdn,       &
+                                           s_awthlup,  s_awqtup, s_auwup, s_avwup,      &
+                                           s_awthldn,  s_awqtdn, s_auwdn, s_avwdn,      &
                                            s_awthl,    s_awqt,         &
                                            s_awu,      s_awv,          &          
                                            mf_sqtup,   mf_sthlup,      &
@@ -2348,19 +2360,19 @@ end subroutine clubb_init_cnst
                                            mf_sqt,     mf_sthl,        &
                                                        mf_precc       
       
-   real(r8), dimension(pverp)           :: mf_thlflxup,      mf_qtflxup,       &
-                                           mf_thlflxdn,      mf_qtflxdn,       &
-                                           mf_thlflx,        mf_qtflx,         &
-                                           mf_thvflx,                          &
-                                           mf_thlforcup,     mf_qtforcup,      &
-                                           mf_thlforcdn,     mf_qtforcdn,      &
-                                           mf_thlforcup_nadv,mf_qtforcup_nadv, &
-                                           mf_thlforcdn_nadv,mf_qtforcdn_nadv, &
-                                           mf_thlforc_nadv,  mf_qtforc_nadv,   &
-                                           mf_qc,            mf_cloudfrac,     &
-                                           mf_qc_nadv,       mf_cloudfrac_nadv,&
-                                           mf_qc_zt,         mf_cloudfrac_zt,  &
-                                           mf_rcm,           mf_rcm_nadv,      &
+   real(r8), dimension(pverp)           :: mf_thlflxup,      mf_qtflxup,       mf_uflxup,  mf_vflxup,  &
+                                           mf_thlflxdn,      mf_qtflxdn,       mf_uflxdn,  mf_vflxdn,  &
+                                           mf_thlflx,        mf_qtflx,         mf_uflx,    mf_vflx,    &
+                                           mf_thvflx,                                                  &
+                                           mf_thlforcup,     mf_qtforcup,                              &
+                                           mf_thlforcdn,     mf_qtforcdn,                              &
+                                           mf_thlforcup_nadv,mf_qtforcup_nadv,                         &
+                                           mf_thlforcdn_nadv,mf_qtforcdn_nadv,                         &
+                                           mf_thlforc_nadv,  mf_qtforc_nadv,                           &
+                                           mf_qc,            mf_cloudfrac,                             &
+                                           mf_qc_nadv,       mf_cloudfrac_nadv,                        &
+                                           mf_qc_zt,         mf_cloudfrac_zt,                          &
+                                           mf_rcm,           mf_rcm_nadv,                              & 
                                            mf_ent_nadv     
 
    ! MF plume level
@@ -2867,6 +2879,10 @@ end subroutine clubb_init_cnst
    s_awqtdn_output(:,:)     = 0._r8
    s_awthl_output(:,:)      = 0._r8
    s_awqt_output(:,:)       = 0._r8
+   s_auwup_output(:,:)      = 0._r8
+   s_avwup_output(:,:)      = 0._r8
+   s_auwdn_output(:,:)      = 0._r8
+   s_avwdn_output(:,:)      = 0._r8
    s_awu_output(:,:)        = 0._r8
    s_awv_output(:,:)        = 0._r8
    s_aww_output(:,:)        = 0._r8
@@ -2899,6 +2915,12 @@ end subroutine clubb_init_cnst
    mf_thlflx_output(:,:)    = 0._r8
    mf_qtflx_output(:,:)     = 0._r8
    mf_thvflx_output(:,:)    = 0._r8
+   mf_uflxup_output(:,:)    = 0._r8
+   mf_vflxup_output(:,:)    = 0._r8
+   mf_uflxdn_output(:,:)    = 0._r8
+   mf_vflxdn_output(:,:)    = 0._r8
+   mf_uflx_output(:,:)    = 0._r8
+   mf_vflx_output(:,:)    = 0._r8
    mf_thlforcup_output(:,:) = 0._r8
    mf_qtforcup_output(:,:)  = 0._r8
    mf_thlforcdn_output(:,:) = 0._r8
@@ -3405,13 +3427,13 @@ end subroutine clubb_init_cnst
                               s_ac,        s_aup,      s_adn,                                 & ! output - plume diagnostics
                               s_aw,        s_awup,     s_awdn,                                & ! output - plume diagnostics
                               s_aww,       s_awwup,    s_awwdn,                               & ! output - plume diagnostics
-                              s_awthlup,   s_awqtup,                                          & ! output - plume diagnostics
-                              s_awthldn,   s_awqtdn,                                          & ! output - plume diagnostics
+                              s_awthlup,   s_awqtup,   s_auwup, s_avwup,                      & ! output - plume diagnostics
+                              s_awthldn,   s_awqtdn,   s_auwdn, s_avwdn,                      & ! output - plume diagnostics
                               s_awthl,     s_awqt,                                            & ! output - plume diagnostics
                               s_awu,       s_awv,                                             & ! output - plume diagnostics
-                              mf_thlflxup, mf_qtflxup,                                        & ! output - plume diagnostics
-                              mf_thlflxdn, mf_qtflxdn,                                        & ! output - plume diagnostics
-                              mf_thlflx,   mf_qtflx,                                          & ! output - variables needed for solver
+                              mf_thlflxup, mf_qtflxup, mf_uflxup, mf_vflxup,                  & ! output - plume diagnostics
+                              mf_thlflxdn, mf_qtflxdn, mf_uflxdn, mf_vflxdn,                  & ! output - plume diagnostics
+                              mf_thlflx,   mf_qtflx,   mf_uflx,   mf_vflx,                    & ! output - variables needed for solver
                               mf_thvflx,                                                      & ! output - plume diagnostics
                               mf_sqtup,    mf_sthlup,                                         & ! output - plume diagnostics
                               mf_sqtdn,    mf_sthldn,                                         & ! output - plume diagnostics
@@ -3465,6 +3487,12 @@ end subroutine clubb_init_cnst
              thlm_forcing(k) = thlm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                                ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1))) &
                                + mf_sthl(k)
+
+             um_forcing(k)   = um_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
+                               ((rho_ds_zm(k) * mf_uflx(k)) - (rho_ds_zm(k-1) * mf_uflx(k-1)))
+
+             vm_forcing(k)   = vm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
+                               ((rho_ds_zm(k) * mf_vflx(k)) - (rho_ds_zm(k-1) * mf_vflx(k-1)))
 
              mf_qtforcup(k)  = mf_qtforcup(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
                               ((rho_ds_zm(k) * mf_qtflxup(k)) - (rho_ds_zm(k-1) * mf_qtflxup(k-1))) &
@@ -3999,6 +4027,11 @@ end subroutine clubb_init_cnst
            s_awthl_output(i,pverp-k+1)      = s_awthl(k)
            s_awqt_output(i,pverp-k+1)       = s_awqt(k)
 
+           s_auwup_output(i,pverp-k+1)      = s_auwup(k)
+           s_avwup_output(i,pverp-k+1)      = s_avwup(k)
+           s_auwdn_output(i,pverp-k+1)      = s_auwdn(k)
+           s_avwdn_output(i,pverp-k+1)      = s_auwdn(k)
+
            s_awu_output(i,pverp-k+1)        = s_awu(k)
            s_awv_output(i,pverp-k+1)        = s_awv(k)
            s_aww_output(i,pverp-k+1)        = s_aww(k)
@@ -4010,6 +4043,13 @@ end subroutine clubb_init_cnst
            mf_thlflx_output(i,pverp-k+1)    = mf_thlflx(k)
            mf_qtflx_output(i,pverp-k+1)     = mf_qtflx(k)
            mf_thvflx_output(i,pverp-k+1)    = mf_thvflx(k)
+
+           mf_uflxup_output(i,pverp-k+1)    = mf_uflxup(k)
+           mf_vflxup_output(i,pverp-k+1)    = mf_vflxup(k)
+           mf_uflxdn_output(i,pverp-k+1)    = mf_uflxdn(k)
+           mf_vflxdn_output(i,pverp-k+1)    = mf_vflxdn(k)
+           mf_uflx_output(i,pverp-k+1)      = mf_uflx(k)
+           mf_vflx_output(i,pverp-k+1)      = mf_vflx(k)
 
            mf_rcm_output(i,pverp-k+1)       = mf_rcm(k)
            mf_precc_output(i,pverp-k+1)     = mf_precc(k)
@@ -4875,6 +4915,12 @@ end subroutine clubb_init_cnst
      call outfld( 'edmf_qtflx'    , mf_qtflx_output,           pcols, lchnk )
      call outfld( 'edmf_thvflx'   , mf_thvflx_output,          pcols, lchnk )
      call outfld( 'edmf_rcm'      , mf_rcm_output,             pcols, lchnk )
+     call outfld( 'edmf_uflxup'   , mf_uflxup_output,          pcols, lchnk )
+     call outfld( 'edmf_vflxup'   , mf_vflxup_output,          pcols, lchnk )
+     call outfld( 'edmf_uflxdn'   , mf_uflxdn_output,          pcols, lchnk )
+     call outfld( 'edmf_vflxdn'   , mf_vflxdn_output,          pcols, lchnk )
+     call outfld( 'edmf_uflx'     , mf_uflx_output,            pcols, lchnk )
+     call outfld( 'edmf_vflx'     , mf_vflx_output,            pcols, lchnk )
      call outfld( 'edmf_cloudfrac', mf_cloudfrac_output,       pcols, lchnk )
      call outfld( 'edmf_ent'      , mf_ent_output,             pcols, lchnk )
      call outfld( 'edmf_upa'      , mf_upa_output,             pcols, lchnk )
