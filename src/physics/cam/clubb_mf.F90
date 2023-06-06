@@ -1249,10 +1249,10 @@ module clubb_mf
            awwup(k) = awwup(k) + upa(k,i)*upw(k,i)*upw(k,i)
            awwdn(k) = awwdn(k) + dna(k,i)*dnw(k,i)*dnw(k,i)
 
-           awuup(k) = awuup(k) + upa(k,i)*upu(k,i)*upw(k,i)
-           awudn(k) = awudn(k) + dna(k,i)*dnu(k,i)*dnw(k,i)
-           awvup(k) = awvup(k) + upa(k,i)*upv(k,i)*upw(k,i)
-           awvdn(k) = awvdn(k) + dna(k,i)*dnv(k,i)*dnw(k,i)
+           awuup(k) = awuup(k) + upa(k,i)*upw(k,i)*upu(k,i)
+           awudn(k) = awudn(k) + dna(k,i)*dnw(k,i)*dnu(k,i)
+           awvup(k) = awvup(k) + upa(k,i)*upw(k,i)*upv(k,i)
+           awvdn(k) = awvdn(k) + dna(k,i)*dnw(k,i)*dnv(k,i)
 
            awthvdn(k)= awthvdn(k)+ dna(k,i)*dnw(k,i)*dnthv(k,i)
            awthldn(k)= awthldn(k)+ dna(k,i)*dnw(k,i)*dnthl(k,i)
@@ -1405,16 +1405,16 @@ module clubb_mf
          thlflxup(k)= awthlup(k) - awup(k)*thl_env(k+1)
          qtflxup (k)= awqtup (k) - awup(k)*qt_env (k+1)
 
-         uflxup  (k)= uflxup (k) - awuup(k)*u(k+1)
-         vflxup  (k)= vflxup (k) - awvup(k)*v(k+1)
+         uflxup  (k)= awuup(k) - awup(k)*u(k+1)
+         vflxup  (k)= awvup(k) - awup(k)*v(k+1)
 
          ! if no downdrafts, should be zero since awdn should be zero
          thvflxdn(k)= awthvdn(k) - awdn(k)*thv_env(k)
          thlflxdn(k)= awthldn(k) - awdn(k)*thl_env(k)
          qtflxdn (k)= awqtdn (k) - awdn(k)*qt_env (k)
 
-         uflxdn  (k)= uflxdn (k) - awudn(k)*u(k)
-         vflxdn  (k)= vflxdn (k) - awvdn(k)*v(k)
+         uflxdn  (k)= awudn(k) - awdn(k)*u(k)
+         vflxdn  (k)= awvdn(k) - awdn(k)*v(k)
 
          thvflx(k)  = thvflxup(k) + thvflxdn(k)
          thlflx(k)  = thlflxup(k) + thlflxdn(k)
