@@ -186,8 +186,8 @@ module clubb_mf
                            ac,      aup,     adn,                                   &
                            aw,      awup,    awdn,                                  & 
                            aww,     awwup,   awwdn,                                 &
-                           awthlup, awqtup,  auwup, avwup,                          & ! output
-                           awthldn, awqtdn,  auwdn, avwdn,                          & ! output
+                           awthlup, awqtup,  awuup, awvup,                          & ! output
+                           awthldn, awqtdn,  awudn, awvdn,                          & ! output
                            awthl,   awqt,                                           & ! output
                            awu,     awv,                                            & ! output
                            thlflxup,qtflxup, uflxup, vflxup,                        & ! output
@@ -280,8 +280,8 @@ module clubb_mf
                                             ac,      aup,     adn,             &
                                             aw,      awup,    awdn,            &
                                             aww,     awwup,  awwdn,            &
-                                            awthlup, awqtup, auwup, avwup,     & ! momentum grid
-                                            awthldn, awqtdn, auwdn, avwdn,     & ! momentum grid
+                                            awthlup, awqtup, awuup, awvup,     & ! momentum grid
+                                            awthldn, awqtdn, awudn, awvdn,     & ! momentum grid
                                             awthl,   awqt,                     & ! momentum grid
                                             awu,     awv,                      & ! momentum grid
                                             thlflxup,qtflxup, uflxup, vflxup,  & ! momentum grid
@@ -480,10 +480,10 @@ module clubb_mf
      aww       = 0._r8
      awwup     = 0._r8
      awwdn     = 0._r8
-     auwup     = 0._r8
-     avwup     = 0._r8
-     auwdn     = 0._r8
-     avwdn     = 0._r8
+     awuup     = 0._r8
+     awvup     = 0._r8
+     awudn     = 0._r8
+     awvdn     = 0._r8
      awthvup   = 0._r8
      awthvdn   = 0._r8
      awthlup   = 0._r8
@@ -1249,10 +1249,10 @@ module clubb_mf
            awwup(k) = awwup(k) + upa(k,i)*upw(k,i)*upw(k,i)
            awwdn(k) = awwdn(k) + dna(k,i)*dnw(k,i)*dnw(k,i)
 
-           auwup(k) = auwup(k) + upa(k,i)*upu(k,i)*upw(k,i)
-           auwdn(k) = auwdn(k) + dna(k,i)*dnu(k,i)*dnw(k,i)
-           avwup(k) = avwup(k) + upa(k,i)*upv(k,i)*upw(k,i)
-           avwdn(k) = avwdn(k) + dna(k,i)*dnv(k,i)*dnw(k,i)
+           awuup(k) = awuup(k) + upa(k,i)*upu(k,i)*upw(k,i)
+           awudn(k) = awudn(k) + dna(k,i)*dnu(k,i)*dnw(k,i)
+           awvup(k) = awvup(k) + upa(k,i)*upv(k,i)*upw(k,i)
+           awvdn(k) = awvdn(k) + dna(k,i)*dnv(k,i)*dnw(k,i)
 
            awthvdn(k)= awthvdn(k)+ dna(k,i)*dnw(k,i)*dnthv(k,i)
            awthldn(k)= awthldn(k)+ dna(k,i)*dnw(k,i)*dnthl(k,i)
@@ -1261,9 +1261,6 @@ module clubb_mf
            awthvup(k)= awthvup(k)+ upa(k,i)*upw(k,i)*upthv(k,i)
            awthlup(k)= awthlup(k)+ upa(k,i)*upw(k,i)*upthl(k,i)
            awqtup(k) = awqtup(k) + upa(k,i)*upw(k,i)*upqt(k,i) 
-
-           awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
-           awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
 
            if (k > 1) then
              sqtup(k)  = sqtup(k)  + upa(k-1,i)*supqt(k,i)  
@@ -1277,6 +1274,8 @@ module clubb_mf
 
          aw (k) = awup(k)+ awdn(k)
          aww(k) = awwup(k)+ awwdn(k)
+         awu(k) = awuup(k)+ awudn(k)
+         awv(k) = awvup(k)+ awvdn(k)
          sqt(k) = sqtup(k) + sqtdn(k)
          sthl(k)= sthlup(k) + sthldn(k)
 
@@ -1406,16 +1405,16 @@ module clubb_mf
          thlflxup(k)= awthlup(k) - awup(k)*thl_env(k+1)
          qtflxup (k)= awqtup (k) - awup(k)*qt_env (k+1)
 
-         uflxup  (k)= uflxup (k) - awup(k)*u(k+1)
-         vflxup  (k)= vflxup (k) - awup(k)*v(k+1)
+         uflxup  (k)= uflxup (k) - awuup(k)*u(k+1)
+         vflxup  (k)= vflxup (k) - awvup(k)*v(k+1)
 
          ! if no downdrafts, should be zero since awdn should be zero
          thvflxdn(k)= awthvdn(k) - awdn(k)*thv_env(k)
          thlflxdn(k)= awthldn(k) - awdn(k)*thl_env(k)
          qtflxdn (k)= awqtdn (k) - awdn(k)*qt_env (k)
 
-         uflxdn  (k)= uflxdn (k) - awdn(k)*u(k)
-         vflxdn  (k)= vflxdn (k) - awdn(k)*v(k)
+         uflxdn  (k)= uflxdn (k) - awudn(k)*u(k)
+         vflxdn  (k)= vflxdn (k) - awvdn(k)*v(k)
 
          thvflx(k)  = thvflxup(k) + thvflxdn(k)
          thlflx(k)  = thlflxup(k) + thlflxdn(k)

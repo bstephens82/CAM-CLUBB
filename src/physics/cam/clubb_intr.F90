@@ -2279,8 +2279,8 @@ end subroutine clubb_init_cnst
                                            mf_dry_v_output,   mf_moist_v_output,                                      &
                                                               mf_moist_qc_output,                                     &
                                            s_ae_output,       s_aw_output,                                            &
-                                           s_awthlup_output,  s_awqtup_output, s_auwup_output, s_avwup_output,        &
-                                           s_awthldn_output,  s_awqtdn_output, s_auwdn_output, s_avwdn_output,        &
+                                           s_awthlup_output,  s_awqtup_output, s_awuup_output, s_awvup_output,        &
+                                           s_awthldn_output,  s_awqtdn_output, s_awudn_output, s_awvdn_output,        &
                                            s_awthl_output,    s_awqt_output,                                          &
                                            s_awu_output,      s_awv_output,                                           &
                                            s_aww_output,                                                              &
@@ -2351,8 +2351,8 @@ end subroutine clubb_init_cnst
                                            s_awup,     s_awdn,         &
                                            s_aww,                      &
                                            s_awwup,    s_awwdn,        &
-                                           s_awthlup,  s_awqtup, s_auwup, s_avwup,      &
-                                           s_awthldn,  s_awqtdn, s_auwdn, s_avwdn,      &
+                                           s_awthlup,  s_awqtup, s_awuup, s_awvup,      &
+                                           s_awthldn,  s_awqtdn, s_awudn, s_awvdn,      &
                                            s_awthl,    s_awqt,         &
                                            s_awu,      s_awv,          &          
                                            mf_sqtup,   mf_sthlup,      &
@@ -2879,10 +2879,10 @@ end subroutine clubb_init_cnst
    s_awqtdn_output(:,:)     = 0._r8
    s_awthl_output(:,:)      = 0._r8
    s_awqt_output(:,:)       = 0._r8
-   s_auwup_output(:,:)      = 0._r8
-   s_avwup_output(:,:)      = 0._r8
-   s_auwdn_output(:,:)      = 0._r8
-   s_avwdn_output(:,:)      = 0._r8
+   s_awuup_output(:,:)      = 0._r8
+   s_awvup_output(:,:)      = 0._r8
+   s_awudn_output(:,:)      = 0._r8
+   s_awvdn_output(:,:)      = 0._r8
    s_awu_output(:,:)        = 0._r8
    s_awv_output(:,:)        = 0._r8
    s_aww_output(:,:)        = 0._r8
@@ -3427,8 +3427,8 @@ end subroutine clubb_init_cnst
                               s_ac,        s_aup,      s_adn,                                 & ! output - plume diagnostics
                               s_aw,        s_awup,     s_awdn,                                & ! output - plume diagnostics
                               s_aww,       s_awwup,    s_awwdn,                               & ! output - plume diagnostics
-                              s_awthlup,   s_awqtup,   s_auwup, s_avwup,                      & ! output - plume diagnostics
-                              s_awthldn,   s_awqtdn,   s_auwdn, s_avwdn,                      & ! output - plume diagnostics
+                              s_awthlup,   s_awqtup,   s_awuup, s_awvup,                      & ! output - plume diagnostics
+                              s_awthldn,   s_awqtdn,   s_awudn, s_awvdn,                      & ! output - plume diagnostics
                               s_awthl,     s_awqt,                                            & ! output - plume diagnostics
                               s_awu,       s_awv,                                             & ! output - plume diagnostics
                               mf_thlflxup, mf_qtflxup, mf_uflxup, mf_vflxup,                  & ! output - plume diagnostics
@@ -4027,10 +4027,10 @@ end subroutine clubb_init_cnst
            s_awthl_output(i,pverp-k+1)      = s_awthl(k)
            s_awqt_output(i,pverp-k+1)       = s_awqt(k)
 
-           s_auwup_output(i,pverp-k+1)      = s_auwup(k)
-           s_avwup_output(i,pverp-k+1)      = s_avwup(k)
-           s_auwdn_output(i,pverp-k+1)      = s_auwdn(k)
-           s_avwdn_output(i,pverp-k+1)      = s_auwdn(k)
+           s_awuup_output(i,pverp-k+1)      = s_awuup(k)
+           s_awvup_output(i,pverp-k+1)      = s_awvup(k)
+           s_awudn_output(i,pverp-k+1)      = s_awudn(k)
+           s_awvdn_output(i,pverp-k+1)      = s_awvdn(k)
 
            s_awu_output(i,pverp-k+1)        = s_awu(k)
            s_awv_output(i,pverp-k+1)        = s_awv(k)
