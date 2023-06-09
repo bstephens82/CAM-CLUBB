@@ -226,6 +226,7 @@ module clubb_intr
   real(r8) :: clubb_Richardson_num_min = unset_r8
   real(r8) :: clubb_Richardson_num_max = unset_r8
   real(r8) :: clubb_a3_coef_min = unset_r8
+  real(r8) :: clubb_a_const = unset_r8
 
   
   integer :: &
@@ -354,7 +355,9 @@ module clubb_intr
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
                                           ! eliminates spurious drying tendencies at model top  
-    clubb_l_intr_sfc_flux_smooth = .false.  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
+    clubb_l_intr_sfc_flux_smooth = .false., &  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
+    clubb_l_use_wp3_lim_with_smth_Heaviside, &
+    clubb_l_modify_limiters_for_cnvg_test
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -843,6 +846,8 @@ end subroutine clubb_init_cnst
          clubb_l_use_thvm_in_bv_freq, &
          clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
          clubb_l_use_tke_in_wp3_pr_turb_term, &
+         clubb_l_use_wp3_lim_with_smth_Heaviside, &
+         clubb_l_modify_limiters_for_cnvg_test, &
          clubb_l_vary_convect_depth, &
          clubb_l_vert_avg_closure, &
          clubb_mult_coef, &
@@ -901,6 +906,7 @@ end subroutine clubb_init_cnst
          clubb_Richardson_num_min, &
          clubb_Richardson_num_max, &
          clubb_a3_coef_min, &
+         clubb_a_const, &
          clubb_l_use_precip_frac, &
          clubb_l_C2_cloud_frac, &
          clubb_l_diffuse_rtm_and_thlm, &
@@ -975,7 +981,9 @@ end subroutine clubb_init_cnst
                                              clubb_l_vary_convect_depth, & ! Out
                                              clubb_l_use_tke_in_wp3_pr_turb_term, & ! Out
                                              clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! Out
+                                             clubb_l_use_wp3_lim_with_smth_Heaviside, & ! Out
                                              clubb_l_smooth_Heaviside_tau_wpxp, & ! Out
+                                             clubb_l_modify_limiters_for_cnvg_test, & ! Out
                                              clubb_l_enable_relaxed_clipping, & ! Out
                                              clubb_l_linearize_pbl_winds, & ! Out
                                              clubb_l_mono_flux_lim_thlm, & ! Out
@@ -1246,6 +1254,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Richardson_num_max")
     call mpi_bcast(clubb_a3_coef_min,                   1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a3_coef_min")
+    call mpi_bcast(clubb_a_const,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a_const")
 
     call mpi_bcast(clubb_l_use_C7_Richardson,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_C7_Richardson")
@@ -1468,6 +1478,7 @@ end subroutine clubb_init_cnst
     if(clubb_Richardson_num_min == unset_r8) call endrun(sub//": FATAL: clubb_c1 is not set")
     if(clubb_Richardson_num_max == unset_r8) call endrun(sub//": FATAL: clubb_c1 is not set")
     if(clubb_a3_coef_min == unset_r8) call endrun(sub//": FATAL: clubb_c1 is not set")
+    if(clubb_a_const == unset_r8) call endrun(sub//": FATAL: clubb_c_const is not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) & 
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
@@ -1518,8 +1529,10 @@ end subroutine clubb_init_cnst
                                                  clubb_l_e3sm_config, & ! In
                                                  clubb_l_vary_convect_depth, & ! In
                                                  clubb_l_use_tke_in_wp3_pr_turb_term, & ! In
-                                                 clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! In 
+                                                 clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! In
+                                                 clubb_l_use_wp3_lim_with_smth_Heaviside, & ! Out 
                                                  clubb_l_smooth_Heaviside_tau_wpxp, & ! In
+                                                 clubb_l_modify_limiters_for_cnvg_test, & ! Out
                                                  clubb_l_enable_relaxed_clipping, & ! In
                                                  clubb_l_linearize_pbl_winds, & ! In
                                                  clubb_l_mono_flux_lim_thlm, & ! In
@@ -1615,7 +1628,8 @@ end subroutine clubb_init_cnst
          iCx_max, &
          iRichardson_num_min, &
          iRichardson_num_max, &
-         ia3_coef_min
+         ia3_coef_min, &
+         ia_const
 
     use clubb_api_module, only: &
          print_clubb_config_flags_api, &
@@ -1698,7 +1712,7 @@ end subroutine clubb_init_cnst
       C_invrs_tau_shear, C_invrs_tau_N2, C_invrs_tau_N2_wp2, &
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min
+      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const
 
     !----- Begin Code -----
 
@@ -1853,7 +1867,7 @@ end subroutine clubb_init_cnst
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                Cx_min, Cx_max, Richardson_num_min, &
-               Richardson_num_max, a3_coef_min )
+               Richardson_num_max, a3_coef_min, a_const )
 
     call read_parameters_api( -99, "", &
                               C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -1879,7 +1893,7 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, &
-                              Richardson_num_max, a3_coef_min, &
+                              Richardson_num_max, a3_coef_min, a_const, &
                               clubb_params )
 
     clubb_params(iC2rtthl) = clubb_C2rtthl
@@ -1978,6 +1992,7 @@ end subroutine clubb_init_cnst
     clubb_params(iRichardson_num_min) = clubb_Richardson_num_min
     clubb_params(iRichardson_num_max) = clubb_Richardson_num_max
     clubb_params(ia3_coef_min) = clubb_a3_coef_min
+    clubb_params(ia_const) = clubb_a_const
    
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
