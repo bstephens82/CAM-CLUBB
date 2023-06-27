@@ -3356,6 +3356,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_richardson_num_max');
    add_default($nl, 'clubb_a3_coef_min');
    add_default($nl, 'clubb_a_const');
+   add_default($nl, 'clubb_c11c');
 
    #CLUBB+MF options
    add_default($nl, 'do_clubb_mf');
