@@ -6,7 +6,7 @@ module cloud_rad_props
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field, &
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, &
      pbuf_old_tim_idx
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag
 use cam_abortutils,   only: endrun
@@ -75,7 +75,7 @@ real(r8), allocatable :: abs_lw_ice(:,:)
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init(pbuf2d)
+subroutine cloud_rad_props_init()
 
    use netcdf
    use spmd_utils,     only: masterproc
@@ -87,8 +87,6 @@ subroutine cloud_rad_props_init(pbuf2d)
    use constituents,   only: cnst_get_ind
    use slingo,         only: slingo_rad_props_init
    use ebert_curry,    only: ec_rad_props_init, scalefactor
-
-   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    character(len=256) :: liquidfile 
    character(len=256) :: icefile 
@@ -122,12 +120,6 @@ subroutine cloud_rad_props_init(pbuf2d)
    i_icswp  = pbuf_get_index('ICSWP',errcode=err)
    i_icgrauwp  = pbuf_get_index('ICGRAUWP',errcode=err) ! Available when using MG3
    i_degrau    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
-
-   call pbuf_set_field(pbuf2d, i_dei,       0.0_r8)
-   call pbuf_set_field(pbuf2d, i_des,       0.0_r8)
-   if (i_degrau > 0) then
-      call pbuf_set_field(pbuf2d, i_degrau, 0.0_r8)
-   end if
 
    ! old optics
    call cnst_get_ind('CLDICE', ixcldice)

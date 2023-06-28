@@ -5872,7 +5872,6 @@ end subroutine clubb_init_cnst
       enddo
     enddo
    
-<<<<<<< HEAD
    rcm_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = rcm(:ncol,:pverp)
    cldfrac_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = cloud_frac(:ncol,:pverp)
    wpthlp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wpthlp_output(:ncol,:pverp)
@@ -5884,20 +5883,12 @@ end subroutine clubb_init_cnst
      mf_thvflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_thvflx_output(:ncol,:pverp)
    end if
 
-   ! --------------------------------------------------------------------------------- ! 
-   !  Diagnose some quantities that are computed in macrop_tend here.                  !
-   !  These are inputs required for the microphysics calculation.                      !
-   !                                                                                   !
-   !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM CLUBB CLOUD FRACTION      !
-   ! --------------------------------------------------------------------------------- ! 
-=======
     ! --------------------------------------------------------------------------------- ! 
     !  Diagnose some quantities that are computed in macrop_tend here.                  !
     !  These are inputs required for the microphysics calculation.                      !
     !                                                                                   !
     !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM CLUBB CLOUD FRACTION      !
     ! --------------------------------------------------------------------------------- ! 
->>>>>>> ESCOMP/cam_development
  
     !  initialize variables 
     alst(:,:) = 0.0_r8
@@ -5919,7 +5910,6 @@ end subroutine clubb_init_cnst
  
     do k=1,pver-1
       do i=1,ncol
-<<<<<<< HEAD
          !  diagnose the deep convective cloud fraction, as done in macrophysics based on the 
          !  deep convective mass flux, read in from pbuf.  Since shallow convection is never 
          !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
@@ -5944,24 +5934,6 @@ end subroutine clubb_init_cnst
          !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud 
          !  from CLUBB plus the deep convective cloud fraction
          concld(i,k) = min(cloud_frac(i,k)-alst(i,k)+deepcu(i,k)+shalcu(i,k),0.80_r8)
-=======
-        !  diagnose the deep convective cloud fraction, as done in macrophysics based on the 
-        !  deep convective mass flux, read in from pbuf.  Since shallow convection is never 
-        !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
-        !  fraction is purely from deep convection scheme.  
-        deepcu(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
-        shalcu(i,k) = 0._r8
-       
-        if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
-          deepcu(i,k) = 0._r8
-        endif
-             
-        !  using the deep convective cloud fraction, and CLUBB cloud fraction (variable 
-        !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
-        !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud 
-        !  from CLUBB plus the deep convective cloud fraction
-        concld(i,k) = min(cloud_frac(i,k)-alst(i,k)+deepcu(i,k),0.80_r8)
->>>>>>> ESCOMP/cam_development
       enddo
     enddo
    
@@ -6037,11 +6009,7 @@ end subroutine clubb_init_cnst
    !  be outputting the shallow convective cloud fraction 
     do k=1,pver
       do i=1,ncol
-<<<<<<< HEAD
          cloud_frac(i,k) = min(ast(i,k)+deepcu(i,k)+shalcu(i,k),1.0_r8)
-=======
-        cloud_frac(i,k) = min(ast(i,k)+deepcu(i,k),1.0_r8)
->>>>>>> ESCOMP/cam_development
       enddo
     enddo
    
