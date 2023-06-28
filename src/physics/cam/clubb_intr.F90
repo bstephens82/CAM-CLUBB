@@ -2846,7 +2846,7 @@ end subroutine clubb_init_cnst
     real(kind=time_precision)                 :: time_elapsed                ! time keep track of stats          [s]
     integer :: stats_nsamp, stats_nout           ! Stats sampling and output intervals for CLUBB [timestep]
 
-    real(r8) :: rtm_integral_1, rtm_integral_update, rtm_integral_forcing, , rtm_integral_vtend, rtm_integral_ltend !BAS do we need the last two?
+    real(r8) :: rtm_integral_1, rtm_integral_update, rtm_integral_forcing, rtm_integral_vtend, rtm_integral_ltend !BAS do we need the last two?
 
     ! ---------------------------------------------------- !
     !                    Pointers                          !
@@ -2959,7 +2959,6 @@ end subroutine clubb_init_cnst
                                             s_awthlup_output,  s_awqtup_output, s_awuup_output, s_awvup_output,        &
                                             s_awthldn_output,  s_awqtdn_output, s_awudn_output, s_awvdn_output,        &
                                             s_awthl_output,    s_awqt_output,       &
-!                                            s_awql_output,     s_awqi_output,       & !BAS need this?
                                             s_awu_output,      s_awv_output,        &
                                             s_aww_output,                                                              &
                                             mf_thlflxup_output,mf_qtflxup_output, mf_uflxup_output, mf_vflxup_output,  &
@@ -3531,213 +3530,114 @@ end subroutine clubb_init_cnst
    call tropopause_findChemTrop(state, troplev)
 
    ! Initialize EDMF outputs
-   mf_dry_a_output(:,:)     = 0._r8
-   mf_moist_a_output(:,:)   = 0._r8
-   mf_dry_w_output(:,:)     = 0._r8
-   mf_moist_w_output(:,:)   = 0._r8
-   mf_dry_qt_output(:,:)    = 0._r8
-   mf_moist_qt_output(:,:)  = 0._r8
-   mf_dry_thl_output(:,:)   = 0._r8
-   mf_moist_thl_output(:,:) = 0._r8
-   mf_dry_u_output(:,:)     = 0._r8
-   mf_moist_u_output(:,:)   = 0._r8
-   mf_dry_v_output(:,:)     = 0._r8
-   mf_moist_v_output(:,:)   = 0._r8
-   mf_moist_qc_output(:,:)  = 0._r8
-   mf_precc_output(:,:)     = 0._r8
-   s_ae_output(:,:)         = 0._r8
-   s_aw_output(:,:)         = 0._r8
-   s_awthlup_output(:,:)    = 0._r8
-   s_awqtup_output(:,:)     = 0._r8
-   s_awthldn_output(:,:)    = 0._r8
-   s_awqtdn_output(:,:)     = 0._r8
-   s_awthl_output(:,:)      = 0._r8
-   s_awqt_output(:,:)       = 0._r8
-   s_awuup_output(:,:)      = 0._r8
-   s_awvup_output(:,:)      = 0._r8
-   s_awudn_output(:,:)      = 0._r8
-   s_awvdn_output(:,:)      = 0._r8
-   s_awu_output(:,:)        = 0._r8
-   s_awv_output(:,:)        = 0._r8
-   s_aww_output(:,:)        = 0._r8
-   mf_upa_output(:,:)       = 0._r8
-   mf_upw_output(:,:)       = 0._r8
-   mf_upmf_output(:,:)      = 0._r8
-   mf_upqt_output(:,:)      = 0._r8
-   mf_upthl_output(:,:)     = 0._r8
-   mf_upthv_output(:,:)     = 0._r8
-   mf_upth_output(:,:)      = 0._r8
-   mf_upqc_output(:,:)      = 0._r8
-   mf_upbuoy_output(:,:)    = 0._r8
-   mf_upent_output(:,:)     = 0._r8
-   mf_updet_output(:,:)     = 0._r8
-   mf_upa_flip(:,:,:)       = 0._r8
-   mf_upw_flip(:,:,:)       = 0._r8
-   mf_upmf_flip(:,:,:)      = 0._r8
-   mf_upqt_flip(:,:,:)      = 0._r8
-   mf_upthl_flip(:,:,:)     = 0._r8
-   mf_upthv_flip(:,:,:)     = 0._r8
-   mf_upth_flip(:,:,:)      = 0._r8
-   mf_upqc_flip(:,:,:)      = 0._r8
-   mf_upbuoy_flip(:,:,:)    = 0._r8
-   mf_upent_flip(:,:,:)     = 0._r8
-   mf_updet_flip(:,:,:)     = 0._r8
-   mf_thlflxup_output(:,:)  = 0._r8
-   mf_qtflxup_output(:,:)   = 0._r8
-   mf_thlflxdn_output(:,:)  = 0._r8
-   mf_qtflxdn_output(:,:)   = 0._r8
-   mf_thlflx_output(:,:)    = 0._r8
-   mf_qtflx_output(:,:)     = 0._r8
-   mf_thvflx_output(:,:)    = 0._r8
-   mf_uflxup_output(:,:)    = 0._r8
-   mf_vflxup_output(:,:)    = 0._r8
-   mf_uflxdn_output(:,:)    = 0._r8
-   mf_vflxdn_output(:,:)    = 0._r8
-   mf_uflx_output(:,:)    = 0._r8
-   mf_vflx_output(:,:)    = 0._r8
-   mf_thlforcup_output(:,:) = 0._r8
-   mf_qtforcup_output(:,:)  = 0._r8
-   mf_thlforcdn_output(:,:) = 0._r8
-   mf_qtforcdn_output(:,:)  = 0._r8
-   mf_thlforc_output(:,:)   = 0._r8
-   mf_qtforc_output(:,:)    = 0._r8
-   mf_sqtup_output(:,:)     = 0._r8
-   mf_sqtdn_output(:,:)     = 0._r8
-   mf_rcm_output(:,:)       = 0._r8
-   mf_cloudfrac_output(:,:) = 0._r8
-   mf_ent_output(:,:)       = 0._r8
-   mf_qc_output(:,:)        = 0._r8
-   mf_ztop_output(:)        = 0._r8
-   mf_ddcp_output(:)        = 0._r8
-   mf_L0_output(:)          = 0._r8
-   mf_freq_output(:)        = 0._r8
-   mf_cape_output(:)        = 0._r8
-   mf_cfl_output(:)         = 0._r8
-   mf_dnw_output(:,:)       = 0._r8
-   mf_dnthl_output(:,:)     = 0._r8
-   mf_dnqt_output(:,:)      = 0._r8
-   mf_dnw_flip(:,:,:)       = 0._r8
-   mf_dnthl_flip(:,:,:)     = 0._r8
-   mf_dnqt_flip(:,:,:)      = 0._r8
-
-   !  Loop over all columns in lchnk to advance CLUBB core
-   do i=1,ncol   ! loop over columns
-
-      !  Determine Coriolis force at given latitude.  This is never used
-      !  when CLUBB is implemented in a host model, therefore just set
-      !  to zero.
-      fcor = 0._r8 
-
-      !  Define the CLUBB momentum grid (in height, units of m)
-      do k=1,nlev+1
-         zi_g(k) = state1%zi(i,pverp-k+1)-state1%zi(i,pver+1)
-      enddo 
-
-      !  Define the CLUBB thermodynamic grid (in units of m)
-      do k=1,nlev
-         zt_g(k+1) = state1%zm(i,pver-k+1)-state1%zi(i,pver+1)
-      end do
-
-      do k=1,pver
-         dz_g(k) = state1%zi(i,k)-state1%zi(i,k+1)  ! compute thickness
-      enddo
- 
-      !  Thermodynamic ghost point is below surface 
-      zt_g(1) = -1._r8*zt_g(2)
-
-      !  Set the elevation of the surface
-      sfc_elevation = state1%zi(i,pver+1)
-      
-      !  Set the grid size
-      host_dx = grid_dx(i)
-      host_dy = grid_dy(i)
-
-      !  Compute thermodynamic stuff needed for CLUBB on thermo levels.  
-      !  Inputs for the momentum levels are set below setup_clubb core
-      do k=1,nlev
-         p_in_Pa(k+1)         = state1%pmid(i,pver-k+1)                              ! Pressure profile
-         exner(k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
-         rho_ds_zt(k+1)       = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(pver-k+1))
-         invrs_rho_ds_zt(k+1) = 1._r8/(rho_ds_zt(k+1))                               ! Inverse ds rho at thermo
-         rho_in(k+1)          = rho_ds_zt(k+1)                                       ! rho on thermo 
-         thv_ds_zt(k+1)       = thv(i,pver-k+1)                                      ! thetav on thermo
-         th_zt(k+1)           = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)
-         qv_zt(k+1)           = state1%q(i,pver-k+1,ixq)
-         rfrzm(k+1)           = state1%q(i,pver-k+1,ixcldice)   
-         radf(k+1)            = radf_clubb(i,pver-k+1)
-         qrl_clubb(k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
-      enddo
-
-      !  Below computes the same stuff for the ghost point.  May or may
-      !  not be needed, just to be safe to avoid NaN's
-      rho_ds_zt(1)       = rho_ds_zt(2)
-      invrs_rho_ds_zt(1) = invrs_rho_ds_zt(2)
-      rho_in(1)          = rho_ds_zt(2)
-      thv_ds_zt(1)       = thv_ds_zt(2)
-      rho_zt(:)          = rho_in(:)
-      p_in_Pa(1)         = p_in_Pa(2)
-      exner(1)           = exner(2)
-      rfrzm(1)           = rfrzm(2)
-      radf(1)            = radf(2)
-      qrl_clubb(1)       = qrl_clubb(2)
-      th_zt(1)           = th_zt(2)
-      qv_zt(1)           = qv_zt(2)
-
-      !  Compute mean w wind on thermo grid, convert from omega to w 
-      wm_zt(1) = 0._r8
-      do k=1,nlev
-         wm_zt(k+1) = -1._r8*state1%omega(i,pver-k+1)/(rho_in(k+1)*gravit)
-      enddo
-    enddo
-
-    call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq)
-
-    call tropopause_findChemTrop(state, troplev)
-
-    ! Initialize EDMF outputs
-    if (do_clubb_mf) then
-      mf_dry_a_output(:,:)     = 0._r8
-      mf_moist_a_output(:,:)   = 0._r8
-      mf_dry_w_output(:,:)     = 0._r8
-      mf_moist_w_output(:,:)   = 0._r8
-      mf_dry_qt_output(:,:)    = 0._r8
-      mf_moist_qt_output(:,:)  = 0._r8
-      mf_dry_thl_output(:,:)   = 0._r8
-      mf_moist_thl_output(:,:) = 0._r8
-      mf_dry_u_output(:,:)     = 0._r8
-      mf_moist_u_output(:,:)   = 0._r8
-      mf_dry_v_output(:,:)     = 0._r8
-      mf_moist_v_output(:,:)   = 0._r8
-      mf_moist_qc_output(:,:)  = 0._r8
-      s_ae_output(:,:)         = 0._r8
-      s_aw_output(:,:)         = 0._r8
-      s_awthl_output(:,:)      = 0._r8
-      s_awqt_output(:,:)       = 0._r8
-      s_awql_output(:,:)       = 0._r8
-      s_awqi_output(:,:)       = 0._r8
-      s_awu_output(:,:)        = 0._r8
-      s_awv_output(:,:)        = 0._r8
-      mf_thlflx_output(:,:)    = 0._r8
-      mf_qtflx_output(:,:)     = 0._r8
+   if (do_clubb_mf) then 
+     mf_dry_a_output(:,:)     = 0._r8
+     mf_moist_a_output(:,:)   = 0._r8
+     mf_dry_w_output(:,:)     = 0._r8
+     mf_moist_w_output(:,:)   = 0._r8
+     mf_dry_qt_output(:,:)    = 0._r8
+     mf_moist_qt_output(:,:)  = 0._r8
+     mf_dry_thl_output(:,:)   = 0._r8
+     mf_moist_thl_output(:,:) = 0._r8
+     mf_dry_u_output(:,:)     = 0._r8
+     mf_moist_u_output(:,:)   = 0._r8
+     mf_dry_v_output(:,:)     = 0._r8
+     mf_moist_v_output(:,:)   = 0._r8
+     mf_moist_qc_output(:,:)  = 0._r8
+     mf_precc_output(:,:)     = 0._r8
+     s_ae_output(:,:)         = 0._r8
+     s_aw_output(:,:)         = 0._r8
+     s_awthlup_output(:,:)    = 0._r8
+     s_awqtup_output(:,:)     = 0._r8
+     s_awthldn_output(:,:)    = 0._r8
+     s_awqtdn_output(:,:)     = 0._r8
+     s_awthl_output(:,:)      = 0._r8
+     s_awqt_output(:,:)       = 0._r8
+     s_awuup_output(:,:)      = 0._r8
+     s_awvup_output(:,:)      = 0._r8
+     s_awudn_output(:,:)      = 0._r8
+     s_awvdn_output(:,:)      = 0._r8
+     s_awu_output(:,:)        = 0._r8
+     s_awv_output(:,:)        = 0._r8
+     s_aww_output(:,:)        = 0._r8
+     mf_upa_output(:,:)       = 0._r8
+     mf_upw_output(:,:)       = 0._r8
+     mf_upmf_output(:,:)      = 0._r8
+     mf_upqt_output(:,:)      = 0._r8
+     mf_upthl_output(:,:)     = 0._r8
+     mf_upthv_output(:,:)     = 0._r8
+     mf_upth_output(:,:)      = 0._r8
+     mf_upqc_output(:,:)      = 0._r8
+     mf_upbuoy_output(:,:)    = 0._r8
+     mf_upent_output(:,:)     = 0._r8
+     mf_updet_output(:,:)     = 0._r8
+     mf_upa_flip(:,:,:)       = 0._r8
+     mf_upw_flip(:,:,:)       = 0._r8
+     mf_upmf_flip(:,:,:)      = 0._r8
+     mf_upqt_flip(:,:,:)      = 0._r8
+     mf_upthl_flip(:,:,:)     = 0._r8
+     mf_upthv_flip(:,:,:)     = 0._r8
+     mf_upth_flip(:,:,:)      = 0._r8
+     mf_upqc_flip(:,:,:)      = 0._r8
+     mf_upbuoy_flip(:,:,:)    = 0._r8
+     mf_upent_flip(:,:,:)     = 0._r8
+     mf_updet_flip(:,:,:)     = 0._r8
+     mf_thlflxup_output(:,:)  = 0._r8
+     mf_qtflxup_output(:,:)   = 0._r8
+     mf_thlflxdn_output(:,:)  = 0._r8
+     mf_qtflxdn_output(:,:)   = 0._r8
+     mf_thlflx_output(:,:)    = 0._r8
+     mf_qtflx_output(:,:)     = 0._r8
+     mf_thvflx_output(:,:)    = 0._r8
+     mf_uflxup_output(:,:)    = 0._r8
+     mf_vflxup_output(:,:)    = 0._r8
+     mf_uflxdn_output(:,:)    = 0._r8
+     mf_vflxdn_output(:,:)    = 0._r8
+     mf_uflx_output(:,:)    = 0._r8
+     mf_vflx_output(:,:)    = 0._r8
+     mf_thlforcup_output(:,:) = 0._r8
+     mf_qtforcup_output(:,:)  = 0._r8
+     mf_thlforcdn_output(:,:) = 0._r8
+     mf_qtforcdn_output(:,:)  = 0._r8
+     mf_thlforc_output(:,:)   = 0._r8
+     mf_qtforc_output(:,:)    = 0._r8
+     mf_sqtup_output(:,:)     = 0._r8
+     mf_sqtdn_output(:,:)     = 0._r8
+     mf_rcm_output(:,:)       = 0._r8
+     mf_cloudfrac_output(:,:) = 0._r8
+     mf_ent_output(:,:)       = 0._r8
+     mf_qc_output(:,:)        = 0._r8
+     mf_ztop_output(:)        = 0._r8
+     mf_ddcp_output(:)        = 0._r8
+     mf_L0_output(:)          = 0._r8
+     mf_freq_output(:)        = 0._r8
+     mf_cape_output(:)        = 0._r8
+     mf_cfl_output(:)         = 0._r8
+     mf_dnw_output(:,:)       = 0._r8
+     mf_dnthl_output(:,:)     = 0._r8
+     mf_dnqt_output(:,:)      = 0._r8
+     mf_dnw_flip(:,:,:)       = 0._r8
+     mf_dnthl_flip(:,:,:)     = 0._r8
+     mf_dnqt_flip(:,:,:)      = 0._r8
     end if
-   
+
     call t_startf("clubb_tend_cam_i_loop")
 
     ! Determine Coriolis force at given latitude. This is never used
     ! when CLUBB is implemented in a host model, therefore just set
     ! to zero.
-    fcor(:) = 0._r8 
+    fcor(:) = 0._r8
 
     ! Define the CLUBB momentum grid (in height, units of m)
     do k=1, nlev+1
-      do i=1, ncol 
+      do i=1, ncol
         zi_g(i,k) = state1%zi(i,pverp-k+1)-state1%zi(i,pver+1)
-      end do 
+      end do
     end do
 
     ! Define the CLUBB thermodynamic grid (in units of m)
     do k=1, nlev
-      do i=1, ncol  
+      do i=1, ncol
         zt_g(i,k+1) = state1%zm(i,pver-k+1)-state1%zi(i,pver+1)
       end do
     end do
@@ -3747,18 +3647,18 @@ end subroutine clubb_init_cnst
         dz_g(i,k) = state1%zi(i,k)-state1%zi(i,k+1)  ! compute thickness
       end do
     end do
-    
-    !  Thermodynamic ghost point is below surface 
+
+    !  Thermodynamic ghost point is below surface
     do i=1, ncol
       zt_g(i,1) = -1._r8*zt_g(i,2)
     end do
-    
+
     do i=1, ncol
       !  Set the elevation of the surface
       sfc_elevation(i) = state1%zi(i,pver+1)
     end do
 
-    !  Compute thermodynamic stuff needed for CLUBB on thermo levels.  
+    !  Compute thermodynamic stuff needed for CLUBB on thermo levels.
     !  Inputs for the momentum levels are set below setup_clubb core
     do k=1,nlev
       do i=1, ncol
@@ -3767,7 +3667,7 @@ end subroutine clubb_init_cnst
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
 
         ! full state (moist) variables
-        p_in_Pa(i,k+1)         = state1%pmid(i,pver-k+1)                              
+        p_in_Pa(i,k+1)         = state1%pmid(i,pver-k+1)
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
         thv(i,k+1)             = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)*(1._r8+zvir*state1%q(i,pver-k+1,ixq) &
                                    -state1%q(i,pver-k+1,ixcldliq))
@@ -3776,13 +3676,13 @@ end subroutine clubb_init_cnst
         ! exception - setting this to moist thv
         thv_ds_zt(i,k+1)       = thv(i,k+1)
 
-        rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
+        rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
         qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdeldry(i,pver-k+1))
       end do
     end do
-    
-    !  Compute mean w wind on thermo grid, convert from omega to w 
+
+    !  Compute mean w wind on thermo grid, convert from omega to w
     do k=1,nlev
       do i=1,ncol
         wm_zt(i,k+1) = -1._r8*(state1%omega(i,pver-k+1)-state1%omega(i,pver))/(rho_zt(i,k+1)*gravit)
@@ -3804,7 +3704,8 @@ end subroutine clubb_init_cnst
       qrl_clubb(i,1)       = qrl_clubb(i,2)
       wm_zt(i,1)           = wm_zt(i,2)
     end do
-  
+
+    
     ! ------------------------------------------------- !
     ! Begin case specific code for SCAM cases.          !
     ! This section of code block is NOT called in       !
@@ -4282,12 +4183,11 @@ end subroutine clubb_init_cnst
 
         rtm_zm_in(1:ncol,:)  = zt2zm_api( pverp+1-top_lev, ncol, gr, rtm_in(1:ncol,:) )
         thlm_zm_in(1:ncol,:) = zt2zm_api( pverp+1-top_lev, ncol, gr, thlm_in(1:ncol,:) )
+        th_zm(1:ncol,:)      = zt2zm_api( pverp+1-top_lev, ncol, gr, th_zt(1:ncol,:) )
+        qv_zm(1:ncol,:)      = zt2zm_api( pverp+1-top_lev, ncol, gr, qv_zt(1:ncol,:) )
+        qc_zm(1:ncol,:)      = zt2zm_api( pverp+1-top_lev, ncol, gr, qc_zt(1:ncol,:) )
 
     ! BAS update these (and all zt2zm_api etc)
-           th_zm      = zt2zm_api( th_zt )
-           qv_zm      = zt2zm_api( qv_zt )
-           qc_zm      = zt2zm_api( qc_zt )
-
            if (t>1) then
              ! update thv if clubb is subcycled
              thv_ds_zt(:pverp) = thlm_in(:pverp) &
@@ -4305,52 +4205,53 @@ end subroutine clubb_init_cnst
            if (rhlev(i) >= 1._r8) rhlev(i) = 0.990_r8
            if (rhlev(i) > 0._r8) rhinv = 1._r8 / ( (1._r8/rhlev(i)) - 1._r8 )
 
-     ! BAS need to do loop over ncol?
-           call integrate_mf( pverp,                                                          & ! input
-                              rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
-                              rho_zt,    dzt,         zt_g,       p_in_Pa,    invrs_exner_zt, & ! input
-                              um_in,     vm_in,       thlm_in,    rtm_in,     thv_ds_zt,      & ! input
-                                                      th_zt,      qv_zt,      qc_zt,          & ! input
-                                                      thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
-                                                      th_zm,      qv_zm,      qc_zm,          & ! input
-                              ustar,     th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
-                              wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
-                              mf_cape_output(i),      mf_ddcp,    mf_cbm1,                    & ! output - plume diagnostics
-                              mf_upa,    mf_dna,                                              & ! output - plume diagnostics
-                              mf_upw,    mf_dnw,                                              & ! output - plume diagnostics
-                              mf_upmf,                                                        & ! output - plume diagnostics
-                              mf_upqt,   mf_dnqt,                                             & ! output - plume diagnostics
-                              mf_upthl,  mf_dnthl,                                            & ! output - plume diagnostics
-                              mf_upthv,  mf_dnthv,                                            & ! output - plume diagnostics
-                              mf_upth,   mf_dnth,                                             & ! output - plume diagnostics
-                              mf_upqc,   mf_dnqc,                                             & ! output - plume diagnostics
-                              mf_upbuoy,                                                      & ! output - plume diagnostics
-                              mf_upent,                                                       & ! output - plume diagnostics
-                              mf_updet,                                                       & ! output - plume diagnostics
-                              mf_dry_a,  mf_moist_a,                                          & ! output - plume diagnostics
-                              mf_dry_w,  mf_moist_w,                                          & ! output - plume diagnostics
-                              mf_dry_qt, mf_moist_qt,                                         & ! output - plume diagnostics
-                              mf_dry_thl,mf_moist_thl,                                        & ! output - plume diagnostics
-                              mf_dry_u,  mf_moist_u,                                          & ! output - plume diagnostics
-                              mf_dry_v,  mf_moist_v,                                          & ! output - plume diagnostics
-                                         mf_moist_qc,                                         & ! output - plume diagnostics
-                              s_ae,                                                           & ! output - plume diagnostics
-                              s_ac,        s_aup,      s_adn,                                 & ! output - plume diagnostics
-                              s_aw,        s_awup,     s_awdn,                                & ! output - plume diagnostics
-                              s_aww,       s_awwup,    s_awwdn,                               & ! output - plume diagnostics
-                              s_awthlup,   s_awqtup,   s_awuup, s_awvup,                      & ! output - plume diagnostics
-                              s_awthldn,   s_awqtdn,   s_awudn, s_awvdn,                      & ! output - plume diagnostics
-                              s_awthl,     s_awqt,                                            & ! output - plume diagnostics
-                              s_awu,       s_awv,                                             & ! output - plume diagnostics
-                              mf_thlflxup, mf_qtflxup, mf_uflxup, mf_vflxup,                  & ! output - plume diagnostics
-                              mf_thlflxdn, mf_qtflxdn, mf_uflxdn, mf_vflxdn,                  & ! output - plume diagnostics
-                              mf_thlflx,   mf_qtflx,   mf_uflx,   mf_vflx,                    & ! output - variables needed for solver
-                              mf_thvflx,                                                      & ! output - plume diagnostics
-                              mf_sqtup,    mf_sthlup,                                         & ! output - plume diagnostics
-                              mf_sqtdn,    mf_sthldn,                                         & ! output - plume diagnostics
-                              mf_sqt,      mf_sthl,                                           & ! output - variables needed for solver
-                              mf_precc,                                                       & ! output - plume diagnostics
-                              mf_ztop,     mf_L0 )
+        do i=1, ncol
+          call integrate_mf( pverp,                                                          & ! input
+                             rho_zm,    dzm,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
+                             rho_zt,    dzt,         zt_g,       p_in_Pa,    invrs_exner_zt, & ! input
+                             um_in,     vm_in,       thlm_in,    rtm_in,     thv_ds_zt,      & ! input
+                                                     th_zt,      qv_zt,      qc_zt,          & ! input
+                                                     thlm_zm_in, rtm_zm_in,  thv_ds_zm,      & ! input
+                                                     th_zm,      qv_zm,      qc_zm,          & ! input
+                             ustar,     th_sfc,      wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+                             wpthlp_in, tke_in,      tpert(i),   mf_ztopm1,  rhinv,          & ! input                     
+                             mf_cape_output(i),      mf_ddcp,    mf_cbm1,                    & ! output - plume diagnostics
+                             mf_upa,    mf_dna,                                              & ! output - plume diagnostics
+                             mf_upw,    mf_dnw,                                              & ! output - plume diagnostics
+                             mf_upmf,                                                        & ! output - plume diagnostics
+                             mf_upqt,   mf_dnqt,                                             & ! output - plume diagnostics
+                             mf_upthl,  mf_dnthl,                                            & ! output - plume diagnostics
+                             mf_upthv,  mf_dnthv,                                            & ! output - plume diagnostics
+                             mf_upth,   mf_dnth,                                             & ! output - plume diagnostics
+                             mf_upqc,   mf_dnqc,                                             & ! output - plume diagnostics
+                             mf_upbuoy,                                                      & ! output - plume diagnostics
+                             mf_upent,                                                       & ! output - plume diagnostics
+                             mf_updet,                                                       & ! output - plume diagnostics
+                             mf_dry_a,  mf_moist_a,                                          & ! output - plume diagnostics
+                             mf_dry_w,  mf_moist_w,                                          & ! output - plume diagnostics
+                             mf_dry_qt, mf_moist_qt,                                         & ! output - plume diagnostics
+                             mf_dry_thl,mf_moist_thl,                                        & ! output - plume diagnostics
+                             mf_dry_u,  mf_moist_u,                                          & ! output - plume diagnostics
+                             mf_dry_v,  mf_moist_v,                                          & ! output - plume diagnostics
+                                        mf_moist_qc,                                         & ! output - plume diagnostics
+                             s_ae,                                                           & ! output - plume diagnostics
+                             s_ac,        s_aup,      s_adn,                                 & ! output - plume diagnostics
+                             s_aw,        s_awup,     s_awdn,                                & ! output - plume diagnostics
+                             s_aww,       s_awwup,    s_awwdn,                               & ! output - plume diagnostics
+                             s_awthlup,   s_awqtup,   s_awuup, s_awvup,                      & ! output - plume diagnostics
+                             s_awthldn,   s_awqtdn,   s_awudn, s_awvdn,                      & ! output - plume diagnostics
+                             s_awthl,     s_awqt,                                            & ! output - plume diagnostics
+                             s_awu,       s_awv,                                             & ! output - plume diagnostics
+                             mf_thlflxup, mf_qtflxup, mf_uflxup, mf_vflxup,                  & ! output - plume diagnostics
+                             mf_thlflxdn, mf_qtflxdn, mf_uflxdn, mf_vflxdn,                  & ! output - plume diagnostics
+                             mf_thlflx,   mf_qtflx,   mf_uflx,   mf_vflx,                    & ! output - variables needed for solver
+                             mf_thvflx,                                                      & ! output - plume diagnostics
+                             mf_sqtup,    mf_sthlup,                                         & ! output - plume diagnostics
+                             mf_sqtdn,    mf_sthldn,                                         & ! output - plume diagnostics
+                             mf_sqt,      mf_sthl,                                           & ! output - variables needed for solver
+                             mf_precc,                                                       & ! output - plume diagnostics
+                             mf_ztop,     mf_L0 )
+        end do
 
            ! CFL limiter
            s_aw(1)   = 0._r8
@@ -4384,65 +4285,49 @@ end subroutine clubb_init_cnst
 
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
-!        do i=1, ncol
-!          rtm_forcing(i,1) = 0._r8
-!          thlm_forcing(i,1)= 0._r8
-!        end do
-!
-!        do k=2,pverp
-!          do i=1, ncol
-!            rtm_forcing(i,k)  = rtm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * &
-!                              ((rho_ds_zm(i,k) * mf_qtflx(i,k)) - (rho_ds_zm(i,k-1) * mf_qtflx(i,k-1)))
-!
-!            thlm_forcing(i,k) = thlm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * &
-!                               ((rho_ds_zm(i,k) * mf_thlflx(i,k)) - (rho_ds_zm(i,k-1) * mf_thlflx(i,k-1)))
-!          end do
-!        end do
+        do i=1, ncol
+          rtm_forcing(i,1)  = 0._r8
+          thlm_forcing(i,1) = 0._r8
+          mf_qtforcup(i,1)  = 0._r8
+          mf_thlforcup(i,1) = 0._r8
+          mf_qtforcdn(i,1)  = 0._r8
+          mf_thlforcdn(i,1) = 0._r8
+        end do
+
+        do k=2,pverp
+          do i=1, ncol
+            rtm_forcing(i,k)  = rtm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * &
+                              ((rho_ds_zm(i,k) * mf_qtflx(i,k)) - (rho_ds_zm(i,k-1) * mf_qtflx(i,k-1)))
+
+            thlm_forcing(i,k) = thlm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * &
+                               ((rho_ds_zm(i,k) * mf_thlflx(i,k)) - (rho_ds_zm(i,k-1) * mf_thlflx(i,k-1)))
+
+            um_forcing(i,k)   = um_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac * &
+                               ((rho_ds_zm(i,k) * mf_uflx(i,k)) - (rho_ds_zm(i,k-1) * mf_uflx(i,k-1)))
+
+            vm_forcing(i,k)   = vm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac * &
+                               ((rho_ds_zm(i,k) * mf_vflx(i,k)) - (rho_ds_zm(i,k-1) * mf_vflx(i,k-1)))
+
+            mf_qtforcup(i,k)  = mf_qtforcup(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac * &
+                               ((rho_ds_zm(i,k) * mf_qtflxup(i,k)) - (rho_ds_zm(i,k-1) * mf_qtflxup(i,k-1))) &
+                               + mf_sqtup(i,k)
+
+            mf_thlforcup(i,k) = mf_thlforcup(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac * &
+                               ((rho_ds_zm(i,k) * mf_thlflxup(i,k)) - (rho_ds_zm(i,k-1) * mf_thlflxup(i,k-1))) &
+                               + mf_sthlup(i,k)
+
+            mf_qtforcdn(i,k)  = mf_qtforcdn(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac * &
+                               ((rho_ds_zm(i,k) * mf_qtflxdn(i,k)) - (rho_ds_zm(i,k-1) * mf_qtflxdn(i,k-1))) &
+                               + mf_sqtdn(i,k)
+
+            mf_thlforcdn(i,k) = mf_thlforcdn(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac * &
+                               ((rho_ds_zm(i,k) * mf_thlflxdn(i,k)) - (rho_ds_zm(i,k-1) * mf_thlflxdn(i,k-1))) &
+                               + mf_sthldn(i,k)
+
+          end do
+        end do
 
 
-           ! pass MF turbulent advection term as CLUBB explicit forcing term
-       ! BAS loop over ncol (see above)
-           rtm_forcing  = 0._r8
-           thlm_forcing = 0._r8
-           mf_qtforcup  = 0._r8
-           mf_thlforcup = 0._r8
-           mf_qtforcdn  = 0._r8
-           mf_thlforcdn = 0._r8
-
-     ! BAS loop over ncol
-           do k=2,pverp
-
-             rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1))) &
-                               + mf_sqt(k)
-
-             thlm_forcing(k) = thlm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                               ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1))) &
-                               + mf_sthl(k)
-
-             um_forcing(k)   = um_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                               ((rho_ds_zm(k) * mf_uflx(k)) - (rho_ds_zm(k-1) * mf_uflx(k-1)))
-
-             vm_forcing(k)   = vm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                               ((rho_ds_zm(k) * mf_vflx(k)) - (rho_ds_zm(k-1) * mf_vflx(k-1)))
-
-             mf_qtforcup(k)  = mf_qtforcup(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_qtflxup(k)) - (rho_ds_zm(k-1) * mf_qtflxup(k-1))) &
-                               + mf_sqtup(k)
-
-             mf_thlforcup(k) = mf_thlforcup(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_thlflxup(k)) - (rho_ds_zm(k-1) * mf_thlflxup(k-1))) &
-                               + mf_sthlup(k)
-
-             mf_qtforcdn(k)  = mf_qtforcdn(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_qtflxdn(k)) - (rho_ds_zm(k-1) * mf_qtflxdn(k-1))) &
-                               + mf_sqtdn(k)
-
-             mf_thlforcdn(k) = mf_thlforcdn(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * cflfac * &
-                              ((rho_ds_zm(k) * mf_thlflxdn(k)) - (rho_ds_zm(k-1) * mf_thlflxdn(k-1))) &
-                               + mf_sthldn(k)
-
-           end do
 
            ! compute ensemble cloud properties
            mf_qc_nadv(:pverp)        = mf_qc_nadv(:pverp) + mf_moist_qc(:pverp)
@@ -5022,8 +4907,6 @@ end subroutine clubb_init_cnst
           s_aw_output(i,pverp-k+1)         = s_aw(i,k)
           s_awthl_output(i,pverp-k+1)      = s_awthl(i,k)
           s_awqt_output(i,pverp-k+1)       = s_awqt(i,k)
-          s_awql_output(i,pverp-k+1)       = s_awql(i,k)
-          s_awqi_output(i,pverp-k+1)       = s_awqi(i,k)
           s_awu_output(i,pverp-k+1)        = s_awu(i,k)
           s_awv_output(i,pverp-k+1)        = s_awv(i,k)
           mf_thlflx_output(i,pverp-k+1)    = mf_thlflx(i,k)
