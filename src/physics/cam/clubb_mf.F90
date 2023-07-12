@@ -1360,10 +1360,10 @@ module clubb_mf
 !       end do
 !
 
+       ddcp = 0._r8
        if (do_clubb_mf_coldpool .and. clubb_mf_fdd > 0._r8) then
          ! use single level for cold pool param.
          ! reset ddcp
-         ddcp = 0._r8
          do i=1,clubb_mf_nup
            if (ddbot(i) == 0) then
              continue
