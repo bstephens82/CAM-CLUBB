@@ -2128,10 +2128,12 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_uflx'     , 1, ' ')
          call add_default( 'edmf_vflx'     , 1, ' ')
          call add_default( 'edmf_qtflx'    , 1, ' ')
+!+++ARH - not bfb
          call add_default( 'edmf_thlforcup', 1, ' ')
          call add_default( 'edmf_qtforcup' , 1, ' ')
          call add_default( 'edmf_thlforcdn', 1, ' ')
          call add_default( 'edmf_qtforcdn' , 1, ' ')
+!---ARH
          call add_default( 'edmf_thlforc'  , 1, ' ')
          call add_default( 'edmf_qtforc'   , 1, ' ')
          call add_default( 'edmf_sqtup'    , 1, ' ')
@@ -3941,6 +3943,9 @@ end subroutine clubb_init_cnst
     ! pressure,exner on momentum grid needed for mass flux calc.
     if (do_clubb_mf) then
 
+      kappa_zt(:,:) = 0._r8
+      qc_zt(:,:) = 0._r8
+      invrs_exner_zt(:,:) = 0._r8
       do k=1,pver
         do i=1,ncol
           kappa_zt(i,k+1) = (rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
@@ -3953,8 +3958,11 @@ end subroutine clubb_init_cnst
       qc_zt(:ncol,1) = qc_zt(:ncol,2)
       invrs_exner_zt(:ncol,1) = invrs_exner_zt(:ncol,2)
 
+      kappa_zm(:,:) = 0._r8
       kappa_zm(1:ncol,:) = zt2zm_api(pverp+1-top_lev, ncol, gr, kappa_zt(1:ncol,:))
 
+      p_in_Pa_zm(:,:) = 0._r8
+      invrs_exner_zm(:,:) = 0._r8
       do k=1,pverp
         do i=1,ncol
           p_in_Pa_zm(i,k) = state1%pint(i,pverp-k+1)
@@ -3962,6 +3970,7 @@ end subroutine clubb_init_cnst
         end do
       end do
 
+      th_sfc(:) = 0._r8
       th_sfc(1:ncol) = cam_in%ts(1:ncol)*invrs_exner_zm(1:ncol,1)
 
       call calc_ustar( ncol, state1%t(:ncol,pver), state1%pmid(:ncol,pver), cam_in%wsx(:ncol), cam_in%wsy(:ncol), &
@@ -4121,6 +4130,7 @@ end subroutine clubb_init_cnst
       if (do_clubb_mf) then
 
 
+        dzt(:,:) = 0._r8
         do k=2,pverp
           do i=1, ncol
             dzt(i,k) = zi_g(i,k) - zi_g(i,k-1)
@@ -4128,8 +4138,15 @@ end subroutine clubb_init_cnst
         end do
 
         dzt(:ncol,1) = dzt(:ncol,2)
+
+        invrs_dzt(:,:) = 0._r8
         invrs_dzt(:ncol,:) = 1._r8/dzt(:ncol,:)
 
+        rtm_zm_in(:,:) = 0._r8
+        thlm_zm_in(:,:) = 0._r8
+        th_zm(:,:) = 0._r8
+        qv_zm(:,:) = 0._r8
+        qc_zm(:,:) = 0._r8
         rtm_zm_in(1:ncol,:)  = zt2zm_api( pverp+1-top_lev, ncol, gr, rtm_in(1:ncol,:) )
         thlm_zm_in(1:ncol,:) = zt2zm_api( pverp+1-top_lev, ncol, gr, thlm_in(1:ncol,:) )
         th_zm(1:ncol,:)      = zt2zm_api( pverp+1-top_lev, ncol, gr, th_zt(1:ncol,:) )
@@ -4243,12 +4260,18 @@ end subroutine clubb_init_cnst
 
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
-        rtm_forcing(:ncol,1)  = 0._r8
-        thlm_forcing(:ncol,1) = 0._r8
-        mf_qtforcup(:ncol,1)  = 0._r8
-        mf_thlforcup(:ncol,1) = 0._r8
-        mf_qtforcdn(:ncol,1)  = 0._r8
-        mf_thlforcdn(:ncol,1) = 0._r8
+        !rtm_forcing(:ncol,1)  = 0._r8
+        !thlm_forcing(:ncol,1) = 0._r8
+        !mf_qtforcup(:ncol,1)  = 0._r8
+        !mf_thlforcup(:ncol,1) = 0._r8
+        !mf_qtforcdn(:ncol,1)  = 0._r8
+        !mf_thlforcdn(:ncol,1) = 0._r8
+        rtm_forcing(:ncol,:)  = 0._r8
+        thlm_forcing(:ncol,:) = 0._r8
+        mf_qtforcup(:ncol,:)  = 0._r8
+        mf_thlforcup(:ncol,:) = 0._r8
+        mf_qtforcdn(:ncol,:)  = 0._r8
+        mf_thlforcdn(:ncol,:) = 0._r8
 
         do k=2,pverp
           do i=1, ncol
@@ -4756,6 +4779,8 @@ end subroutine clubb_init_cnst
     wp2_zt  = zm2zt_api( pverp+1-top_lev, ncol, gr, wp2_in )
 
     ! Need moist_qc and cloudfrac on thermo grid for output
+    mf_qc_zt(:,:) = 0._r8
+    mf_cloudfrac_zt(:,:) = 0._r8
     mf_qc_zt = zm2zt_api( pverp+1-top_lev, ncol, gr, mf_qc)
     mf_cloudfrac_zt = zm2zt_api( pverp+1-top_lev, ncol, gr, mf_cloudfrac)
 
@@ -4908,9 +4933,15 @@ end subroutine clubb_init_cnst
             mf_sqtup_output(i,pverp-k+1)              = mf_sqtup(i,k)
             mf_sqtdn_output(i,pverp-k+1)              = mf_sqtdn(i,k)
 
+!+++ARH not bfb
             mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac_zt(i,k)
+            !mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac(i,k)
+
             mf_ent_output(i,pverp-k+1)                = mf_ent_nadv(i,k)
+
+!+++ARH not bfb
             mf_qc_output(i,pverp-k+1)                 = mf_qc_zt(i,k)
+            !mf_qc_output(i,pverp-k+1)                 = mf_qc(i,k)
           end if
 
           mf_upa_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_upa(i,k,:clubb_mf_nup)
@@ -5486,7 +5517,9 @@ end subroutine clubb_init_cnst
  
     deepcu(:,:) = 0.0_r8
     shalcu(:,:) = 0.0_r8
- 
+!+++ARH
+    sh_icwmr(:,:) = 0.0_r8
+!---ARH 
     do k=1,pver-1
       do i=1,ncol
          !  diagnose the deep convective cloud fraction, as done in macrophysics based on the 
