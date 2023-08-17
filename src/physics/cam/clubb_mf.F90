@@ -566,6 +566,7 @@ module clubb_mf
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
+     ddbot= 0
 
 !+++ARH - uncomment to recover bgb restarts
 !     ddcp = 0._r8
@@ -981,7 +982,6 @@ module clubb_mf
          do i=1,clubb_mf_nup
 
            ! find cloud base
-           ddbot(i) = 0
            do k = 1,nz
              if (upqc(k,i) > 0._r8) then
                ddbot(i) = k
@@ -1374,7 +1374,7 @@ module clubb_mf
            if (ddbot(i) == 0) then
              continue
            else
-             ddcp = ddcp + -1._r8*dna(ddbot(i)+1,i)*dnw(ddbot(i)+1,i)
+             ddcp = ddcp + (-1._r8)*dna(ddbot(i)+1,i)*dnw(ddbot(i)+1,i)
            end if
          end do
        end if
