@@ -37,7 +37,7 @@ module clubb_intr
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, do_clubb_mf_rad, clubb_mf_Lopt, &
-                                 clubb_mf_ddalph, clubb_mf_up_ndt, clubb_mf_cp_ndt
+                                 clubb_mf_ddalph, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_cmt
   use cam_history_support, only: add_hist_coord
 #endif
 
@@ -4284,12 +4284,6 @@ end subroutine clubb_init_cnst
                                ((rho_ds_zm(i,k) * mf_thlflx(i,k)) - (rho_ds_zm(i,k-1) * mf_thlflx(i,k-1))) &
                                + mf_sthl(i,k)
 
-            um_forcing(i,k)   = um_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac(i) * &
-                               ((rho_ds_zm(i,k) * mf_uflx(i,k)) - (rho_ds_zm(i,k-1) * mf_uflx(i,k-1)))
-
-            vm_forcing(i,k)   = vm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac(i) * &
-                               ((rho_ds_zm(i,k) * mf_vflx(i,k)) - (rho_ds_zm(i,k-1) * mf_vflx(i,k-1)))
-
             mf_qtforcup(i,k)  = mf_qtforcup(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac(i) * &
                                ((rho_ds_zm(i,k) * mf_qtflxup(i,k)) - (rho_ds_zm(i,k-1) * mf_qtflxup(i,k-1))) &
                                + mf_sqtup(i,k)
@@ -4309,6 +4303,18 @@ end subroutine clubb_init_cnst
           end do
         end do
 
+        if (do_clubb_mf_cmt) then
+          ! convective momentum transport
+          do k=2,pverp
+            do i=1, ncol
+              um_forcing(i,k)   = um_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac(i) * &
+                                 ((rho_ds_zm(i,k) * mf_uflx(i,k)) - (rho_ds_zm(i,k-1) * mf_uflx(i,k-1)))
+
+              vm_forcing(i,k)   = vm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac(i) * &
+                                 ((rho_ds_zm(i,k) * mf_vflx(i,k)) - (rho_ds_zm(i,k-1) * mf_vflx(i,k-1)))
+            end do
+          end do
+        end if
 
         do i=1,ncol
            ! compute ensemble cloud properties

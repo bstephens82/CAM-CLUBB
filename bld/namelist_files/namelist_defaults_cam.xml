@@ -2184,6 +2184,7 @@
 <clubb_mf_up_ndt                   > 1       </clubb_mf_up_ndt>
 <clubb_mf_cp_ndt                   > 1       </clubb_mf_cp_ndt>
 <do_clubb_mf_rhtke                 > .false. </do_clubb_mf_rhtke>
+<do_clubb_mf_cmt                   > .false. </do_clubb_mf_cmt>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
