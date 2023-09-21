@@ -637,6 +637,7 @@ module clubb_intr
     call pbuf_add_field('pdf_zm_var_w_2', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), pdf_zm_varnce_w_2_idx)
     call pbuf_add_field('pdf_zm_mixt_frac',  'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), pdf_zm_mixt_frac_idx)
 
+    ! these extrra coord vars don't seem to work for interpolate_output=.true.
     call add_hist_coord('ncyc', cld_macmic_num_steps, 'macro/micro cycle index')
     call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
 
@@ -2115,7 +2116,6 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_vflx'     , 1, ' ')
          call add_default( 'edmf_qtflx'    , 1, ' ')
 
-!+++ARH - not bfb (initialized them to zero -- fixed?)
          call add_default( 'edmf_thlforcup', 1, ' ')
          call add_default( 'edmf_qtforcup' , 1, ' ')
          call add_default( 'edmf_thlforcdn', 1, ' ')
@@ -2918,11 +2918,8 @@ end subroutine clubb_init_cnst
                                             mf_thlflx_output,  mf_qtflx_output,   mf_uflx_output,   mf_vflx_output,    &
                                             mf_thvflx_output,                                                          &
                                             mf_rcm_output,     mf_precc_output
-!+++ARH
-    ! MF Plume
-    ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
-    !real(r8), dimension(pcols,pverp)     :: mf_dry_a,   mf_moist_a,    &
-    real(r8), dimension(state%ncol,pverp)     :: mf_dry_a,   mf_moist_a,    &
+    ! MF work arrays (of size NCOL)
+    real(r8), dimension(state%ncol,pverp):: mf_dry_a,   mf_moist_a,    &
                                             mf_dry_w,   mf_moist_w,    &
                                             mf_dry_qt,  mf_moist_qt,   &
                                             mf_dry_thl, mf_moist_thl,  &
@@ -2943,9 +2940,8 @@ end subroutine clubb_init_cnst
                                             mf_sqtdn,   mf_sthldn,     &
                                             mf_sqt,     mf_sthl,       &
                                                         mf_precc       
-!+++ARH
-   !real(r8), dimension(pcols,pverp)      :: mf_thlflxup,      mf_qtflxup,       mf_uflxup,  mf_vflxup,  &
-   real(r8), dimension(state%ncol,pverp)      :: mf_thlflxup,      mf_qtflxup,       mf_uflxup,  mf_vflxup,  &
+
+   real(r8), dimension(state%ncol,pverp) :: mf_thlflxup,      mf_qtflxup,       mf_uflxup,  mf_vflxup,  &
                                             mf_thlflxdn,      mf_qtflxdn,       mf_uflxdn,  mf_vflxdn,  &
                                             mf_thlflx,        mf_qtflx,         mf_uflx,    mf_vflx,    &
                                             mf_thvflx,                                                  &
@@ -2959,67 +2955,44 @@ end subroutine clubb_init_cnst
                                             mf_qc_zt,         mf_cloudfrac_zt,                          &
                                             mf_rcm,           mf_rcm_nadv,                              &
                                             mf_ent_nadv
-!+++ARH
-   ! MF plume level
-   !real(r8), dimension(pcols,pverp,clubb_mf_nup) :: mf_upa,    mf_dna,       &
+
    real(r8), dimension(state%ncol,pverp,clubb_mf_nup) :: mf_upa,    mf_dna,       &
-                                                    mf_upw,    mf_dnw,       &
-                                                    mf_upmf,                 &
-                                                    mf_upqt,   mf_dnqt,      &
-                                                    mf_upthl,  mf_dnthl,     &
-                                                    mf_upthv,  mf_dnthv,     &
-                                                    mf_upth,   mf_dnth,      &
-                                                    mf_upqc,   mf_dnqc,      &
-                                                    mf_upbuoy,               &
-                                                    mf_updet,                &
-                                                    mf_upent
+                                                         mf_upw,    mf_dnw,       &
+                                                         mf_upmf,                 &
+                                                         mf_upqt,   mf_dnqt,      &
+                                                         mf_upthl,  mf_dnthl,     &
+                                                         mf_upthv,  mf_dnthv,     &
+                                                         mf_upth,   mf_dnth,      &
+                                                         mf_upqc,   mf_dnqc,      &
+                                                         mf_upbuoy,               &
+                                                         mf_updet,                &
+                                                         mf_upent
 
     real(r8) :: inv_rh2o ! To reduce the number of divisions in clubb_tend
 
-!+++ARH
-    !real(r8), dimension(pcols,pverp,clubb_mf_nup) :: flip
     real(r8), dimension(state%ncol,pverp,clubb_mf_nup) :: flip
-
-!+++ARH
-    !real(r8), dimension(pcols,pverp) :: lilflip
     real(r8), dimension(state%ncol,pverp) :: lilflip
 
     ! CFL limiter vars
     real(r8), parameter                  :: cflval = 1._r8
     real(r8)                             :: lambda
-
-!+++ARH
-    !real(r8), dimension(pcols)           :: cflfac,     max_cfl,        &
-    real(r8), dimension(state%ncol)           :: cflfac,     max_cfl,        &
+    real(r8), dimension(state%ncol)      :: cflfac,     max_cfl,        &
                                             th_sfc,     max_cfl_nadv
-
     logical                              :: cfllim
 
-!+++ARH
-    !real(r8), dimension(pcols)           :: mf_ztop,    mf_ztop_nadv,   &
-    real(r8), dimension(state%ncol)           :: mf_ztop,    mf_ztop_nadv,   &
+    real(r8), dimension(state%ncol)      :: mf_ztop,    mf_ztop_nadv,   &
                                             mf_ztopm1,  mf_ztopm1_nadv, &
                                             mf_precc_nadv, mf_snow_nadv,&
                                             mf_L0,      mf_L0_nadv,     &
                                             mf_ddcp,    mf_ddcp_nadv,   &
                                             mf_cbm1,    mf_cbm1_nadv,   &
                                                         mf_freq_nadv
-!+++ARH
-    !real(r8), dimension(pcols,pver)      :: esat,      rh
-    real(r8), dimension(state%ncol,pver)      :: esat,      rh
 
-!+++ARH
-    !real(r8), dimension(pcols,pver)      :: mq,        mqsat
-    real(r8), dimension(state%ncol,pver)      :: mq,        mqsat
+    real(r8), dimension(state%ncol,pver) :: esat,      rh
+    real(r8), dimension(state%ncol,pver) :: mq,        mqsat
+    real(r8), dimension(state%ncol)      :: rhlev,     rhinv
 
-!+++ARH
-    !real(r8), dimension(pcols)           :: rhlev,     rhinv
-    real(r8), dimension(state%ncol)           :: rhlev,     rhinv
-
-!+++ARH
-    ! MF local vars
-    !real(r8), dimension(pcols,pverp)     :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
-    real(r8), dimension(state%ncol,pverp)     :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
+    real(r8), dimension(state%ncol,pverp):: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
                                             dzt,        invrs_dzt,     & ! thermodynamic grid
                                                         invrs_exner_zt,& ! thermodynamic grid
                                             kappa_zt,   qc_zt,         & ! thermodynamic grid
@@ -3264,8 +3237,8 @@ end subroutine clubb_init_cnst
      if (clubb_mf_Lopt==7 .or. clubb_mf_Lopt==6) then
        ! Interpolate RH to 500 hPa
        rh(:ncol,:) = state%q(:ncol,:,1)/rh(:ncol,:)
-       call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, rh, rhlev, &
-           extrapolate='Z', ln_interp=.true., ps=state%ps, phis=state%phis, tbot=state%t(:,pver))
+       call vertinterp(ncol, ncol, pver, state%pmid(:ncol,:), 50000._r8, rh, rhlev, &
+           extrapolate='Z', ln_interp=.true., ps=state%ps(:ncol), phis=state%phis(:ncol), tbot=state%t(:ncol,pver))
      else if (clubb_mf_Lopt==8) then
        ! Mass of q, by layer and vertically integrated
        mq(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
@@ -3849,7 +3822,6 @@ end subroutine clubb_init_cnst
         rvm_in(i,k)     = rvm(i,pverp-k+1)
         wprtp_in(i,k)   = wprtp(i,pverp-k+1)
         wpthlp_in(i,k)  = wpthlp(i,pverp-k+1)
-!+++ARH
         tke_in(i,k)     = tke(i,pverp-k+1)
         rtpthlp_in(i,k) = rtpthlp(i,pverp-k+1)
         cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
@@ -4261,14 +4233,6 @@ end subroutine clubb_init_cnst
 
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
-        !rtm_forcing(:ncol,1)  = 0._r8
-        !thlm_forcing(:ncol,1) = 0._r8
-        !mf_qtforcup(:ncol,1)  = 0._r8
-        !mf_thlforcup(:ncol,1) = 0._r8
-        !mf_qtforcdn(:ncol,1)  = 0._r8
-        !mf_thlforcdn(:ncol,1) = 0._r8
-        rtm_forcing(:ncol,:)  = 0._r8
-        thlm_forcing(:ncol,:) = 0._r8
         mf_qtforcup(:ncol,:)  = 0._r8
         mf_thlforcup(:ncol,:) = 0._r8
         mf_qtforcdn(:ncol,:)  = 0._r8
@@ -4941,15 +4905,9 @@ end subroutine clubb_init_cnst
             mf_sqtup_output(i,pverp-k+1)              = mf_sqtup(i,k)
             mf_sqtdn_output(i,pverp-k+1)              = mf_sqtdn(i,k)
 
-!+++ARH not bfb (fixed?)
             mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac_zt(i,k)
-            !mf_cloudfrac_output(i,pverp-k+1)          = mf_cloudfrac(i,k)
-
             mf_ent_output(i,pverp-k+1)                = mf_ent_nadv(i,k)
-
-!+++ARH not bfb (fixed?)
             mf_qc_output(i,pverp-k+1)                 = mf_qc_zt(i,k)
-            !mf_qc_output(i,pverp-k+1)                 = mf_qc(i,k)
           end if
 
           mf_upa_flip(i,pverp-k+1,:clubb_mf_nup)       = mf_upa(i,k,:clubb_mf_nup)
@@ -5525,7 +5483,6 @@ end subroutine clubb_init_cnst
  
     deepcu(:,:) = 0.0_r8
     shalcu(:,:) = 0.0_r8
-!+++ARH
     sh_icwmr(:,:) = 0.0_r8
 
     do k=1,pver-1

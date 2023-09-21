@@ -12,16 +12,16 @@ deep_scheme='off'
 
 clubb_mf_nup = 25
 
-!clubb_mf_Lopt = 6
-!clubb_mf_up_ndt = 1
-!clubb_mf_a0 = 2.0D0
-!clubb_mf_b0 = 0.5D0
-!clubb_mf_max_L0 = 1000.0D0
-!clubb_mf_alphturb = 3.0D0
-!do_clubb_mf_rhtke = .true.
+clubb_mf_Lopt = 6
+clubb_mf_up_ndt = 1
+clubb_mf_a0 = 2.0D0
+clubb_mf_b0 = 0.5D0
+clubb_mf_max_L0 = 1000.0D0
+clubb_mf_alphturb = 3.0D0
+do_clubb_mf_rhtke = .true.
 
-!clubb_mf_fdd = 0.5
-!do_clubb_mf_coldpool = .true.
-!clubb_mf_cp_ndt = 1
-!clubb_mf_ddalph = 500.
-!clubb_mf_ddbeta = 1.0
+clubb_mf_fdd = 0.5
+do_clubb_mf_coldpool = .true.
+clubb_mf_cp_ndt = 1
+clubb_mf_ddalph = 500.
+clubb_mf_ddbeta = 1.0
