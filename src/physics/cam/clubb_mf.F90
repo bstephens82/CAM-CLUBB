@@ -572,12 +572,6 @@ module clubb_mf
      ztop = 0._r8
      ddbot= 0
 
-!+++ARH - uncomment to recover bgb restarts
-!     ddcp = 0._r8
-!     ztopm1 = zm(1)
-!     return
-!---ARH
-
      if (bsort) then
        niter_xc = 3
        limarea = .true.
@@ -1461,16 +1455,7 @@ module clubb_mf
          uflx(k)    = uflxup(k) + uflxdn(k)
          vflx(k)    = vflxup(k) + vflxdn(k) 
        enddo
-
-!+++ARH - uncomment bfb restarts (state only, clubb+mf diags still not bfb)
-!       thlflx = 0._r8
-!       qtflx = 0._r8
-!       sqt = 0_r8
-!       sthl = 0._r8
-!       moist_a = 0._r8
-!       moist_qc = 0._r8
-!---ARH
-
+       !
      else
        ddcp = 0._r8
        ztopm1 = zm(1)
