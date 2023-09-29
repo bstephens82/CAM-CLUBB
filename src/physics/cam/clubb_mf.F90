@@ -624,10 +624,10 @@ module clubb_mf
          qstar   = wqt / wstar
          thvstar = wthv / wstar
        end if
-
-       sigmaw   = alphw * wstar * cpfac
-       sigmaqt  = alphqt * abs(qstar) * cpfac
-       sigmathv = alphthv * abs(thvstar) * cpfac
+!+++ARH
+       sigmaw   = alphw * wstar !* cpfac
+       sigmaqt  = alphqt * abs(qstar) !* cpfac
+       sigmathv = alphthv * abs(thvstar) !* cpfac
 
        wmin = sigmaw * pwmin
        wmax = sigmaw * pwmax
@@ -943,7 +943,35 @@ module clubb_mf
              updet(k+1,i) = detn
 
            else
+             ! zero out plumes that terminate at k<3
+             if (k<3) then
+               supqt(:,i) = 0._r8
+               upauto(:,i)= 0._r8
+               supthl(:,i)= 0._r8
+
+               upa(:,i)   = 0._r8
+               upbuoy(:,i)= 0._r8
+               upw(:,i)   = 0._r8
+               upmf(:,i)  = 0._r8
+               upent(:,i) = 0._r8
+               updet(:,i) = 0._r8
+
+               upthv(:,i) = 0._r8
+               upthl(:,i) = 0._r8
+               upqt(:,i)  = 0._r8
+               upqc(:,i)  = 0._r8
+               upqs(:,i)  = 0._r8
+               upu(:,i)   = 0._r8
+               upv(:,i)   = 0._r8
+               upql(:,i)  = 0._r8
+               upqi(:,i)  = 0._r8
+               upqv(:,i)  = 0._r8
+               uplmix(:,i)= 0._r8
+               upth(:,i)  = 0._r8
+             end if
+             ! exit updraft integration
              exit
+             !
            end if
          enddo
        enddo

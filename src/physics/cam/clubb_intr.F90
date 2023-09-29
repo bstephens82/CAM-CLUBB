@@ -4227,6 +4227,8 @@ end subroutine clubb_init_cnst
 
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
+        rtm_forcing(:ncol,:)  = 0._r8
+        thlm_forcing(:ncol,:) = 0._r8
         mf_qtforcup(:ncol,:)  = 0._r8
         mf_thlforcup(:ncol,:) = 0._r8
         mf_qtforcdn(:ncol,:)  = 0._r8
@@ -4263,6 +4265,8 @@ end subroutine clubb_init_cnst
 
         if (do_clubb_mf_cmt) then
           ! convective momentum transport
+          um_forcing(:ncol,:) = 0._r8
+          vm_forcing(:ncol,:) = 0._r8
           do k=2,pverp
             do i=1, ncol
               um_forcing(i,k)   = um_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * cflfac(i) * &
