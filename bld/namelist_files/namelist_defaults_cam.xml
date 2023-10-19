@@ -2047,6 +2047,7 @@
 <clubb_C_invrs_tau_N2_wp2                         > 0.2     </clubb_C_invrs_tau_N2_wp2>
 <clubb_C_invrs_tau_N2_wpxp                        > 0.0     </clubb_C_invrs_tau_N2_wpxp>
 <clubb_C_invrs_tau_N2_xp2                         > 0.2     </clubb_C_invrs_tau_N2_xp2>
+<clubb_c_invrs_tau_wpxp_N2_thresh                 > 3.3D-4  </clubb_c_invrs_tau_wpxp_N2_thresh>
 <clubb_c_K1                                       > 0.75    </clubb_c_K1>
 <clubb_c_K10                                      > 0.5     </clubb_c_K10>
 <clubb_c_K10h                                     > 0.3     </clubb_c_K10h>

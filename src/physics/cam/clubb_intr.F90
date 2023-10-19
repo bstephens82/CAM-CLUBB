@@ -161,6 +161,7 @@ module clubb_intr
   real(r8) :: clubb_C_invrs_tau_N2_wp2 = unset_r8
   real(r8) :: clubb_C_invrs_tau_N2_xp2 = unset_r8
   real(r8) :: clubb_C_invrs_tau_N2_wpxp = unset_r8
+  real(r8) :: clubb_C_invrs_tau_wpxp_N2_thresh = unset_r8
   real(r8) :: clubb_C_invrs_tau_N2_clear_wp3 = unset_r8
   real(r8) :: clubb_C_uu_shr = unset_r8
   real(r8) :: clubb_C_uu_buoy = unset_r8
@@ -745,6 +746,7 @@ end subroutine clubb_init_cnst
          clubb_C_invrs_tau_N2_wp2, &
          clubb_C_invrs_tau_N2_wpxp, &
          clubb_C_invrs_tau_N2_xp2, &
+         clubb_C_invrs_tau_wpxp_N2_thresh, &
          clubb_c_K1, &
          clubb_c_K10, & 
          clubb_c_K10h, &
@@ -1031,7 +1033,9 @@ end subroutine clubb_init_cnst
     call mpi_bcast(clubb_C_invrs_tau_N2_wpxp,       1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_invrs_tau_N2_wpxp")    
     call mpi_bcast(clubb_C_invrs_tau_N2_clear_wp3,       1, mpi_real8,   mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_invrs_tau_N2_clear_wp3")    
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_invrs_tau_N2_clear_wp3")
+    call mpi_bcast(clubb_C_invrs_tau_wpxp_N2_thresh,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_invrs_tau_wpxp_N2_thresh") 
     call mpi_bcast(clubb_lmin_coef, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_lmin_coef")
     call mpi_bcast(clubb_skw_max_mag, 1, mpi_real8,   mstrid, mpicom, ierr)
@@ -1177,6 +1181,7 @@ end subroutine clubb_init_cnst
     if(clubb_C_invrs_tau_N2_xp2 == unset_r8) call endrun(sub//": FATAL: clubb_C_invrs_tau_N2_xp2 is not set")
     if(clubb_C_invrs_tau_N2_wpxp == unset_r8) call endrun(sub//": FATAL: clubb_C_invrs_tau_N2_wpxp is not set")
     if(clubb_C_invrs_tau_N2_clear_wp3 == unset_r8) call endrun(sub//": FATAL: clubb_C_invrs_tau_N2_clear_wp3 is not set")
+    if(clubb_C_invrs_tau_wpxp_N2_thresh == unset_r8) call endrun(sub//": FATAL: clubb_c_invrs_tau_wpxp_N2_thresh is not set")
     if(clubb_gamma_coef == unset_r8) call endrun(sub//": FATAL: clubb_gamma_coef is not set")
     if(clubb_gamma_coefb == unset_r8) call endrun(sub//": FATAL: clubb_gamma_coefb is not set")
     if(clubb_beta == unset_r8) call endrun(sub//": FATAL: clubb_beta is not set")
@@ -1290,7 +1295,8 @@ end subroutine clubb_init_cnst
          iC14, iC_wp3_pr_turb, igamma_coef, igamma_coefb, imult_coef, ilmin_coef, &
          iSkw_denom_coef, ibeta, iskw_max_mag, &
          iC_invrs_tau_bkgnd,iC_invrs_tau_sfc,iC_invrs_tau_shear,iC_invrs_tau_N2,iC_invrs_tau_N2_wp2, &
-         iC_invrs_tau_N2_xp2,iC_invrs_tau_N2_wpxp,iC_invrs_tau_N2_clear_wp3,iC_uu_shr,iC_uu_buoy, &
+         iC_invrs_tau_N2_xp2,iC_invrs_tau_N2_wpxp,iC_invrs_tau_N2_clear_wp3,iC_invrs_tau_wpxp_N2_thresh, &
+         iC_uu_shr,iC_uu_buoy, &
          iC2rt, iC2thl, iC2rtthl, ic_K1, ic_K2, inu2, ic_K8, ic_K9, inu9, iC_wp2_splat, params_list
 
     use clubb_api_module, only: &
@@ -1606,6 +1612,7 @@ end subroutine clubb_init_cnst
     clubb_params(iC_invrs_tau_N2_xp2) = clubb_C_invrs_tau_N2_xp2
     clubb_params(iC_invrs_tau_N2_wpxp) = clubb_C_invrs_tau_N2_wpxp
     clubb_params(iC_invrs_tau_N2_clear_wp3) = clubb_C_invrs_tau_N2_clear_wp3
+    clubb_params(iC_invrs_tau_wpxp_N2_thresh) = clubb_C_invrs_tau_wpxp_N2_thresh
    
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
