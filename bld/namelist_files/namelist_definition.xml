@@ -3874,6 +3874,11 @@ Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for x
 Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for xp2_wpxp (units: none)
 </entry>
 
+<entry id="clubb_C_invrs_tau_wpxp_N2_thresh" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > 
+</entry>
+
+
 <entry id="clubb_c_K1" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Coefficient of Kh_zm (diffusivity on momentum grid levels) in the wp2 (variance
