@@ -3913,6 +3913,30 @@ Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for x
 <entry id="clubb_C_invrs_tau_wpxp_N2_thresh" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" > 
 </entry>
+<entry id="clubb_C1c" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_C11c" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_nu1" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_gamma_coefc" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_mu" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_c_invrs_tau_wpxp_Ri" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_altitude_threshold" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
+<entry id="clubb_a3_coef_min" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+</entry>
 
 
 <entry id="clubb_c_K1" type="real" category="pblrad"
