@@ -70,7 +70,7 @@ fincl7= 'AQSO4_H2O2','AQSO4_O3', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3',
 'num_a2_sfnnuc1', 'SFSO2', 'OCN_FLUX_DMS', 'SAD_SULFC', 'SAD_TROP', 'SAD_AERO'
 
 clubb_l_diag_Lscale_from_taus=.true.
-
+clubb_l_stability_correct_tau_zm = .false.
 EOF
 
 ## clm namelists
