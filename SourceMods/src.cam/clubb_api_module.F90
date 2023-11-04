@@ -158,7 +158,7 @@ module clubb_api_module
     iup2_sfc_coef, iSkw_max_mag, iC_invrs_tau_bkgnd, &
     iC_invrs_tau_sfc, iC_invrs_tau_shear, iC_invrs_tau_N2, &
     iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
-    iC_invrs_tau_N2_clear_wp3, iC_invrs_tau_wpxp_N2_thresh, & 
+    iC_invrs_tau_N2_clear_wp3, iC_invrs_tau_wpxp_N2_thresh, iC_invrs_tau_wpxp_Ri, & 
     ialtitude_threshold, irtp2_clip_coef, &
     iRichardson_num_min, iRichardson_num_max, ia3_coef_min, iCx_min, iCx_max
 
@@ -290,7 +290,7 @@ module clubb_api_module
         iup2_sfc_coef, iSkw_max_mag, iC_invrs_tau_bkgnd, &
         iC_invrs_tau_sfc, iC_invrs_tau_shear, iC_invrs_tau_N2, &
         iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
-        iC_invrs_tau_N2_clear_wp3, iC_invrs_tau_wpxp_N2_thresh, &
+        iC_invrs_tau_N2_clear_wp3, iC_invrs_tau_wpxp_N2_thresh, iC_invrs_tau_wpxp_Ri, &
         ialtitude_threshold, irtp2_clip_coef, &
         iRichardson_num_min, iRichardson_num_max, ia3_coef_min, iCx_min, iCx_max
 
