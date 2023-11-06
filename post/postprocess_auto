@@ -1,0 +1,30 @@
+#!/bin/bash
+
+declare -a tests=(
+"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_c7_0.3"
+"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_c7_0.4"
+)
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_c7_0.5"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_c7_0.6"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_cuushr_0.2"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_c7_0.7"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_cuushr_0.3"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_cuushr_0.4"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_cuushr_0.7"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_cuushr_0.6"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_c7_0.2"
+#"113.f2c.taus_zhun_c11b0.8_c80.75_pmf_cuushr_0.5"
+#)
+
+
+for test in ${tests[@]}; do
+
+vim -E -s ./postprocess_m2m <<-EOF
+        :%s/\s*export test_case\s*=\s*.*/export test_case=${test}
+        :update
+        :quit
+EOF
+
+./postprocess_m2m
+
+done
