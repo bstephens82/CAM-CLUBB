@@ -1,12 +1,12 @@
 cd /glade/work/pel/cesm_tags/PPE/cime/scripts
 
 ./create_newcase  --compset  FLTHIST --res ne30pg3_ne30pg3_mg17 \
---case /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE  \
+--case /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE  \
 --run-unsupported  --pecount 2160 --project P93300642
 
 ## add COSP and setup
 
-cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE  
+cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
 ./xmlchange --append CAM_CONFIG_OPTS=-cosp
 ./case.setup
 
@@ -22,7 +22,7 @@ cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
 ./xmlchange RUN_REFDIR=cesm2_init
 
 ## cam namelist
-cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
+cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE/
 
 cat <<EOF> user_nl_cam
 dust_emis_fact = 1.3
@@ -136,29 +136,30 @@ flanduse_timeseries = '/glade/work/slevis/git/mksurfdata_toolchain/tools/mksurfd
 EOF
 
 ## copy land mods
-cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
-cp /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_119.FLTHIST_ne30.r328_gamma0.33_soae.001/SourceMods/src.clm/* SourceMods/src.clm/
+cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE/
+cp /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_119.FLTHIST_ne30.r328_gamma0.33_soae.001/SourceMods/src.clm/* SourceMods/src.clm/
 #
 # Source mods from Ben
 #
 cp /glade/work/pel/cesm_tags/PPE/SourceMods/src.cam/*.F90 SourceMods/src.cam/
 
 ## make cross checking
-#cd /glade/p/cesmdata/cseg/runs/cesm2_0/
+#cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/
 #xxdiff f.cam6_3_119.FLTHIST_ne30.r328_gamma0.33_soae.001 f.cam6_3_132.FLTHIST_ne30.PPE &
 
 
-#cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
+
+#cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
 #qcmd -A CESM0023 -- ./case.build
 
 # test
 
-##cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
+#cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
 ##./xmlchange PROJECT=CESM0023,RESUBMIT=0,STOP_N=1,STOP_OPTION=nmonths
 ##./xmlchange REST_OPTION=nmonths,REST_N=1
 ##./case.submit
 
-#cd /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
+#cd /glade/campaign/cesm/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.PPE
 #./xmlchange PROJECT=CESM0023,RESUBMIT=5,STOP_N=2,STOP_OPTION=nyears
 #./xmlchange REST_OPTION=nyears,REST_N=1
 #./xmlchange JOB_WALLCLOCK_TIME=12:00:00
