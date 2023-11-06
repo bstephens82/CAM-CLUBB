@@ -2172,6 +2172,9 @@
 <clubb_a3_coef_min> 1.0 </clubb_a3_coef_min>
 <clubb_a_const> 1.8 </clubb_a_const>
 <clubb_c11c> 0.5 </clubb_c11c>
+<clubb_bv_efold> 1.0 </clubb_bv_efold>
+<clubb_wpxp_Ri_exp> 1.0 </clubb_wpxp_Ri_exp>
+
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>

@@ -226,7 +226,8 @@ module clubb_intr
   real(r8) :: clubb_Richardson_num_max = unset_r8
   real(r8) :: clubb_a3_coef_min = unset_r8
   real(r8) :: clubb_a_const = unset_r8
-
+  real(r8) :: clubb_bv_efold = unset_r8
+  real(r8) :: clubb_wpxp_Ri_exp = unset_r8
   
   integer :: &
     clubb_iiPDF_type,          & ! Selected option for the two-component normal
@@ -913,6 +914,8 @@ end subroutine clubb_init_cnst
          clubb_Richardson_num_max, &
          clubb_a3_coef_min, &
          clubb_a_const, &
+         clubb_bv_efold, &
+         clubb_wpxp_Ri_exp, &
          clubb_l_use_precip_frac, &
          clubb_l_C2_cloud_frac, &
          clubb_l_diffuse_rtm_and_thlm, &
@@ -1262,6 +1265,10 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a3_coef_min")
     call mpi_bcast(clubb_a_const,                   1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a_const")
+    call mpi_bcast(clubb_bv_efold,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_bv_efold")
+    call mpi_bcast(clubb_wpxp_Ri_exp,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_wpxp_Ri_exp")
 
     call mpi_bcast(clubb_l_use_C7_Richardson,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_C7_Richardson")
@@ -1485,6 +1492,8 @@ end subroutine clubb_init_cnst
     if(clubb_Richardson_num_max == unset_r8) call endrun(sub//": FATAL: clubb_Rich_num_max is not set")
     if(clubb_a3_coef_min == unset_r8) call endrun(sub//": FATAL: clubb_a3_coef_min is not set")
     if(clubb_a_const == unset_r8) call endrun(sub//": FATAL: clubb_a_const is not set")
+    if(clubb_bv_efold == unset_r8) call endrun(sub//": FATAL: clubb_bv_efold is not set")
+    if(clubb_wpxp_Ri_exp == unset_r8) call endrun(sub//": FATAL: clubb_wpxp_Ri_exp is not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) & 
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
@@ -1633,7 +1642,9 @@ end subroutine clubb_init_cnst
          iRichardson_num_min, &
          iRichardson_num_max, &
          ia3_coef_min, &
-         ia_const
+         ia_const, &
+         ibv_efold, &
+         iwpxp_Ri_exp
 
     use clubb_api_module, only: &
          print_clubb_config_flags_api, &
@@ -1714,7 +1725,8 @@ end subroutine clubb_init_cnst
       C_invrs_tau_shear, C_invrs_tau_N2, C_invrs_tau_N2_wp2, &
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const
+      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const, &
+      bv_efold, wpxp_Ri_exp
 
     !----- Begin Code -----
 
@@ -1870,7 +1882,7 @@ end subroutine clubb_init_cnst
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                Cx_min, Cx_max, Richardson_num_min, &
-               Richardson_num_max, a3_coef_min, a_const )
+               Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold )
 
     call read_parameters_api( -99, "", &
                               C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -1896,7 +1908,7 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, &
-                              Richardson_num_max, a3_coef_min, a_const, &
+                              Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold &
                               clubb_params )
 
     clubb_params(iC2rtthl) = clubb_C2rtthl
@@ -1996,6 +2008,8 @@ end subroutine clubb_init_cnst
     clubb_params(iRichardson_num_max) = clubb_Richardson_num_max
     clubb_params(ia3_coef_min) = clubb_a3_coef_min
     clubb_params(ia_const) = clubb_a_const
+    clubb_params(ibv_efold) = clubb_bv_efold
+    clubb_params(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
    
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
