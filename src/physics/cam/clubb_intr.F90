@@ -2023,15 +2023,7 @@ end subroutine clubb_init_cnst
            l_host_applies_sfc_fluxes, &                               ! In
            saturation_equation, &                                     ! In
            l_input_fields, &                                          ! In
-           clubb_config_flags%iiPDF_type, &                           ! In
-           clubb_config_flags%ipdf_call_placement, &                  ! In
-           clubb_config_flags%l_predict_upwp_vpwp, &                  ! In
-           clubb_config_flags%l_min_xp2_from_corr_wx, &               ! In
-           clubb_config_flags%l_prescribed_avg_deltaz, &              ! In
-           clubb_config_flags%l_damp_wp2_using_em, &                  ! In
-           clubb_config_flags%l_stability_correct_tau_zm, &           ! In
-           clubb_config_flags%l_enable_relaxed_clipping, &            ! In
-           clubb_config_flags%l_diag_Lscale_from_tau, &               ! In
+           clubb_config_flags, &
            err_code )    ! Out
 
     if ( err_code == clubb_fatal_error ) then
