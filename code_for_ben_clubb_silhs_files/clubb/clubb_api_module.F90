@@ -162,7 +162,7 @@ module clubb_api_module
     iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
     ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp3_pr_tp, &
     iC_invrs_tau_wpxp_Ri, iC_invrs_tau_wpxp_N2_thresh, ixp3_coef_base, &
-    ixp3_coef_slope
+    ixp3_coef_slope, iC_wp2_pr_dfsn
 
 
   use pdf_parameter_module, only : &
@@ -285,7 +285,7 @@ module clubb_api_module
         iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
         ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp3_pr_tp, &
         iC_invrs_tau_wpxp_Ri, iC_invrs_tau_wpxp_N2_thresh, ixp3_coef_base, &
-        ixp3_coef_slope
+        ixp3_coef_slope, iC_wp2_pr_dfsn
 
 
 

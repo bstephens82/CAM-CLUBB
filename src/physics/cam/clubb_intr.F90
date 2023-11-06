@@ -1908,7 +1908,7 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, &
-                              Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold &
+                              Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
                               clubb_params )
 
     clubb_params(iC2rtthl) = clubb_C2rtthl
