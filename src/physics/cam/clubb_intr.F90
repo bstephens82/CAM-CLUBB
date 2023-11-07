@@ -1701,6 +1701,7 @@ end subroutine clubb_init_cnst
 
     logical, parameter :: l_input_fields = .false. ! Always false for CAM-CLUBB.
     logical, parameter :: l_update_pressure = .false. ! Always false for CAM-CLUBB.
+    logical :: do_first_step
 
     integer :: nlev
 
@@ -2149,10 +2150,15 @@ end subroutine clubb_init_cnst
     if (l_stats) then
       
       do i=1, pcols
+        if (is_first_step()==.true. .and. i==1) then
+          do_first_step = .true.
+        else
+          do_first_step = .false.
+        end if
         call stats_init_clubb( .true., dum1, dum2, &
                                nlev+1, nlev+1, nlev+1, dum3, &
                                stats_zt(i), stats_zm(i), stats_sfc(i), &
-                               stats_rad_zt(i), stats_rad_zm(i))
+                               stats_rad_zt(i), stats_rad_zm(i), do_first_step)
       end do             
 
        allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields))
@@ -4936,7 +4942,7 @@ end function diag_ustar
   subroutine stats_init_clubb( l_stats_in, stats_tsamp_in, stats_tout_in, &
                                nnzp, nnrad_zt,nnrad_zm, delt, &
                                stats_zt, stats_zm, stats_sfc, &
-                               stats_rad_zt, stats_rad_zm)
+                               stats_rad_zt, stats_rad_zm, do_first_step)
     !
     ! Description: Initializes the statistics saving functionality of
     !   the CLUBB model.  This is for purpose of CAM-CLUBB interface.  Here
@@ -4946,46 +4952,6 @@ end function diag_ustar
     !-----------------------------------------------------------------------
 
     use clubb_api_module, only: &
-      ztscr01, &
-      ztscr02, &
-      ztscr03, &
-      ztscr04, &
-      ztscr05, &
-      ztscr06, &
-      ztscr07, &
-      ztscr08, &
-      ztscr09, &
-      ztscr10, &
-      ztscr11, &
-      ztscr12, &
-      ztscr13, &
-      ztscr14, &
-      ztscr15, &
-      ztscr16, &
-      ztscr17, &
-      ztscr18, &
-      ztscr19, &
-      ztscr20, &
-      ztscr21
-
-    use clubb_api_module, only: &
-      zmscr01, &
-      zmscr02, &
-      zmscr03, &
-      zmscr04, &
-      zmscr05, &
-      zmscr06, &
-      zmscr07, &
-      zmscr08, &
-      zmscr09, &
-      zmscr10, &
-      zmscr11, &
-      zmscr12, &
-      zmscr13, &
-      zmscr14, &
-      zmscr15, &
-      zmscr16, &
-      zmscr17, &
       l_stats, &
       l_output_rad_files, & 
       stats_tsamp,   & 
@@ -5013,6 +4979,7 @@ end function diag_ustar
     ! Input Variables
 
     logical, intent(in) :: l_stats_in ! Stats on? T/F
+    logical, intent(in) :: do_first_step
 
     real(kind=time_precision), intent(in) ::  & 
       stats_tsamp_in,  & ! Sampling interval   [s]
@@ -5053,8 +5020,7 @@ end function diag_ustar
 
     !  Local Variables
 
-    logical :: l_error, &
-               first_call = .false.
+    logical :: l_error
 
     character(len=200) :: temp1, sub
 
@@ -5160,55 +5126,8 @@ end function diag_ustar
     allocate( stats_zt%file%grid_avg_var( stats_zt%num_output_fields ) )
     allocate( stats_zt%file%z( stats_zt%kk ) )
 
-    first_call = (.not. allocated(ztscr01))
-
-    !  Allocate scratch space
-    if (first_call) allocate( ztscr01(stats_zt%kk) )
-    if (first_call) allocate( ztscr02(stats_zt%kk) )
-    if (first_call) allocate( ztscr03(stats_zt%kk) )
-    if (first_call) allocate( ztscr04(stats_zt%kk) )
-    if (first_call) allocate( ztscr05(stats_zt%kk) )
-    if (first_call) allocate( ztscr06(stats_zt%kk) )
-    if (first_call) allocate( ztscr07(stats_zt%kk) )
-    if (first_call) allocate( ztscr08(stats_zt%kk) )
-    if (first_call) allocate( ztscr09(stats_zt%kk) )
-    if (first_call) allocate( ztscr10(stats_zt%kk) )
-    if (first_call) allocate( ztscr11(stats_zt%kk) )
-    if (first_call) allocate( ztscr12(stats_zt%kk) )
-    if (first_call) allocate( ztscr13(stats_zt%kk) )
-    if (first_call) allocate( ztscr14(stats_zt%kk) )
-    if (first_call) allocate( ztscr15(stats_zt%kk) )
-    if (first_call) allocate( ztscr16(stats_zt%kk) )
-    if (first_call) allocate( ztscr17(stats_zt%kk) )
-    if (first_call) allocate( ztscr18(stats_zt%kk) )
-    if (first_call) allocate( ztscr19(stats_zt%kk) )
-    if (first_call) allocate( ztscr20(stats_zt%kk) )
-    if (first_call) allocate( ztscr21(stats_zt%kk) )
-
-    ztscr01 = 0.0_r8
-    ztscr02 = 0.0_r8
-    ztscr03 = 0.0_r8
-    ztscr04 = 0.0_r8
-    ztscr05 = 0.0_r8
-    ztscr06 = 0.0_r8
-    ztscr07 = 0.0_r8
-    ztscr08 = 0.0_r8
-    ztscr09 = 0.0_r8
-    ztscr10 = 0.0_r8
-    ztscr11 = 0.0_r8
-    ztscr12 = 0.0_r8
-    ztscr13 = 0.0_r8
-    ztscr14 = 0.0_r8
-    ztscr15 = 0.0_r8
-    ztscr16 = 0.0_r8
-    ztscr17 = 0.0_r8
-    ztscr18 = 0.0_r8
-    ztscr19 = 0.0_r8
-    ztscr20 = 0.0_r8
-    ztscr21 = 0.0_r8
-
     !  Default initialization for array indices for zt
-    if (first_call) then
+    if (do_first_step) then
       call stats_init_zt_api( clubb_vars_zt, l_error, &
                               stats_zt )
     end if
@@ -5245,45 +5164,7 @@ end function diag_ustar
     allocate( stats_zm%file%grid_avg_var( stats_zm%num_output_fields ) )
     allocate( stats_zm%file%z( stats_zm%kk ) )
 
-    !  Allocate scratch space
-
-    if (first_call) allocate( zmscr01(stats_zm%kk) )
-    if (first_call) allocate( zmscr02(stats_zm%kk) )
-    if (first_call) allocate( zmscr03(stats_zm%kk) )
-    if (first_call) allocate( zmscr04(stats_zm%kk) )
-    if (first_call) allocate( zmscr05(stats_zm%kk) )
-    if (first_call) allocate( zmscr06(stats_zm%kk) )
-    if (first_call) allocate( zmscr07(stats_zm%kk) )
-    if (first_call) allocate( zmscr08(stats_zm%kk) )
-    if (first_call) allocate( zmscr09(stats_zm%kk) )
-    if (first_call) allocate( zmscr10(stats_zm%kk) )
-    if (first_call) allocate( zmscr11(stats_zm%kk) )
-    if (first_call) allocate( zmscr12(stats_zm%kk) )
-    if (first_call) allocate( zmscr13(stats_zm%kk) )
-    if (first_call) allocate( zmscr14(stats_zm%kk) )
-    if (first_call) allocate( zmscr15(stats_zm%kk) )
-    if (first_call) allocate( zmscr16(stats_zm%kk) )
-    if (first_call) allocate( zmscr17(stats_zm%kk) )
-
-    zmscr01 = 0.0_r8
-    zmscr02 = 0.0_r8
-    zmscr03 = 0.0_r8
-    zmscr04 = 0.0_r8
-    zmscr05 = 0.0_r8
-    zmscr06 = 0.0_r8
-    zmscr07 = 0.0_r8
-    zmscr08 = 0.0_r8
-    zmscr09 = 0.0_r8
-    zmscr10 = 0.0_r8
-    zmscr11 = 0.0_r8
-    zmscr12 = 0.0_r8
-    zmscr13 = 0.0_r8
-    zmscr14 = 0.0_r8
-    zmscr15 = 0.0_r8
-    zmscr16 = 0.0_r8
-    zmscr17 = 0.0_r8
-
-    if (first_call) then
+    if (do_first_step) then
       call stats_init_zm_api( clubb_vars_zm, l_error, &
                               stats_zm )
     end if
@@ -5397,7 +5278,7 @@ end function diag_ustar
     allocate( stats_sfc%file%grid_avg_var( stats_sfc%num_output_fields ) )
     allocate( stats_sfc%file%z( stats_sfc%kk ) )
 
-    if (first_call) then
+    if (do_first_step) then
       call stats_init_sfc_api( clubb_vars_sfc, l_error, &
                                stats_sfc )
     end if
@@ -5409,7 +5290,7 @@ end function diag_ustar
     endif
 
 !   Now call add fields
-    if (first_call) then
+    if (do_first_step) then
       
       do i = 1, stats_zt%num_output_fields
       
