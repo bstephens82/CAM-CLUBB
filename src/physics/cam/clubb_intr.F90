@@ -228,6 +228,7 @@ module clubb_intr
   real(r8) :: clubb_a_const = unset_r8
   real(r8) :: clubb_bv_efold = unset_r8
   real(r8) :: clubb_wpxp_Ri_exp = unset_r8
+  real(r8) :: clubb_z_displace = unset_r8
   
   integer :: &
     clubb_iiPDF_type,          & ! Selected option for the two-component normal
@@ -916,6 +917,7 @@ end subroutine clubb_init_cnst
          clubb_a_const, &
          clubb_bv_efold, &
          clubb_wpxp_Ri_exp, &
+         clubb_z_displace, &
          clubb_l_use_precip_frac, &
          clubb_l_C2_cloud_frac, &
          clubb_l_diffuse_rtm_and_thlm, &
@@ -1269,6 +1271,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_bv_efold")
     call mpi_bcast(clubb_wpxp_Ri_exp,                   1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_wpxp_Ri_exp")
+    call mpi_bcast(clubb_z_displace,               1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_z_displace")
 
     call mpi_bcast(clubb_l_use_C7_Richardson,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_C7_Richardson")
@@ -1494,6 +1498,7 @@ end subroutine clubb_init_cnst
     if(clubb_a_const == unset_r8) call endrun(sub//": FATAL: clubb_a_const is not set")
     if(clubb_bv_efold == unset_r8) call endrun(sub//": FATAL: clubb_bv_efold is not set")
     if(clubb_wpxp_Ri_exp == unset_r8) call endrun(sub//": FATAL: clubb_wpxp_Ri_exp is not set")
+    if(clubb_z_displace == unset_r8) call endrun(sub//": FATAL: clubb_z_displace is not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) & 
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
@@ -1644,7 +1649,8 @@ end subroutine clubb_init_cnst
          ia3_coef_min, &
          ia_const, &
          ibv_efold, &
-         iwpxp_Ri_exp
+         iwpxp_Ri_exp, &
+         iz_displace
 
     use clubb_api_module, only: &
          print_clubb_config_flags_api, &
@@ -1727,7 +1733,7 @@ end subroutine clubb_init_cnst
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
       Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const, &
-      bv_efold, wpxp_Ri_exp
+      bv_efold, wpxp_Ri_exp, z_displace
 
     !----- Begin Code -----
 
@@ -1883,7 +1889,7 @@ end subroutine clubb_init_cnst
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                Cx_min, Cx_max, Richardson_num_min, &
-               Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold )
+               Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace )
 
     call read_parameters_api( -99, "", &
                               C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -1910,7 +1916,7 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, &
                               Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
-                              clubb_params )
+                              z_displace, clubb_params )
 
     clubb_params(iC2rtthl) = clubb_C2rtthl
     clubb_params(iC8) = clubb_C8
@@ -2011,6 +2017,7 @@ end subroutine clubb_init_cnst
     clubb_params(ia_const) = clubb_a_const
     clubb_params(ibv_efold) = clubb_bv_efold
     clubb_params(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
+    clubb_params(iz_displace) = clubb_z_displace
    
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change

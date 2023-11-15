@@ -4426,7 +4426,8 @@ Default: 10
        group="clubb_params_nl" valid_values="" > </entry>
 <entry id="clubb_wpxp_Ri_exp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" > </entry>
-
+<entry id="clubb_z_displace" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
 
 <entry id="clubb_l_use_precip_frac" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" > </entry>
