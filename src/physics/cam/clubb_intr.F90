@@ -31,7 +31,7 @@ module clubb_intr
   use zm_conv_intr,     only: zmconv_microp
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep, stats_metadata_type
   use clubb_api_module,    only: nparams
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
@@ -49,6 +49,11 @@ module clubb_intr
                                 
 !$omp threadprivate(stats_zt, stats_zm, stats_rad_zt, stats_rad_zm, stats_sfc)
 
+  type (stats_metadata_type) :: &
+    stats_metadata
+
+!$omp threadprivate(stats_metadata)
+
 #endif
 
   private
@@ -62,6 +67,7 @@ module clubb_intr
 #ifdef CLUBB_SGS
             ! This utilizes CLUBB specific variables in its interface
             stats_init_clubb, &
+            stats_metadata, &
             stats_zt, stats_zm, stats_sfc, &
             stats_rad_zt, stats_rad_zm, &
             stats_end_timestep_clubb, & 
@@ -748,11 +754,10 @@ end subroutine clubb_init_cnst
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, &
                                mpi_integer
     use clubb_mf,        only: clubb_mf_readnl
-    
+
     use clubb_api_module, only: &
       set_default_clubb_config_flags_api, & ! Procedure(s)
-      initialize_clubb_config_flags_type_api, &
-      l_stats, l_output_rad_files
+      initialize_clubb_config_flags_type_api
 #endif
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -938,8 +943,8 @@ end subroutine clubb_init_cnst
 
     !  Determine if we want clubb_history to be output  
     clubb_history      = .false.   ! Initialize to false
-    l_stats            = .false.   ! Initialize to false
-    l_output_rad_files = .false.   ! Initialize to false
+    stats_metadata%l_stats            = .false.   ! Initialize to false
+    stats_metadata%l_output_rad_files = .false.   ! Initialize to false
     do_cldcool         = .false.   ! Initialize to false
     do_rainturb        = .false.   ! Initialize to false
     
@@ -1271,7 +1276,7 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_bv_efold")
     call mpi_bcast(clubb_wpxp_Ri_exp,                   1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_wpxp_Ri_exp")
-    call mpi_bcast(clubb_z_displace,               1, mpi_real8,   mstrid, mpicom, ierr)
+    call mpi_bcast(clubb_z_displace,                   1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_z_displace")
 
     call mpi_bcast(clubb_l_use_C7_Richardson,         1, mpi_logical, mstrid, mpicom, ierr)
@@ -1384,8 +1389,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_linearize_pbl_winds")
 
     !  Overwrite defaults if they are true
-    if (clubb_history) l_stats = .true.
-    if (clubb_rad_history) l_output_rad_files = .true. 
+    if (clubb_history) stats_metadata%l_stats = .true.
+    if (clubb_rad_history) stats_metadata%l_output_rad_files = .true.
     if (clubb_cloudtop_cooling) do_cldcool = .true.
     if (clubb_rainevap_turb) do_rainturb = .true.
     
@@ -1663,9 +1668,6 @@ end subroutine clubb_init_cnst
          nparams, &
          set_default_parameters_api, &
          read_parameters_api, &
-         l_stats, &
-         l_stats_samp, &
-         l_grads, &
          w_tol_sqd, &
          rt_tol, &
          thl_tol
@@ -1810,11 +1812,11 @@ end subroutine clubb_init_cnst
 
 
     !  Defaults
-    l_stats_samp = .false.
-    l_grads = .false.
+    stats_metadata%l_stats_samp = .false.
+    stats_metadata%l_grads = .false.
 
     !  Overwrite defaults if needbe     
-    if (l_stats) l_stats_samp = .true.
+    if (stats_metadata%l_stats) stats_metadata%l_stats_samp = .true.
 
     !  Define physics buffers indexes
     cld_idx     = pbuf_get_index('CLD')         ! Cloud fraction
@@ -1915,8 +1917,8 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, &
-                              Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
-                              z_displace, clubb_params )
+                              Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace, &
+                              clubb_params )
 
     clubb_params(iC2rtthl) = clubb_C2rtthl
     clubb_params(iC8) = clubb_C8
@@ -2154,7 +2156,7 @@ end subroutine clubb_init_cnst
     dum2 = 1200._r8
     dum3 = 300._r8
 
-    if (l_stats) then
+    if (stats_metadata%l_stats) then
       
       do i=1, pcols
         if (is_first_step()==.true. .and. i==1) then
@@ -2172,8 +2174,10 @@ end subroutine clubb_init_cnst
        allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields))
        allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields))
 
-       allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
-       allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
+       if ( stats_metadata%l_output_rad_files ) then
+         allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
+         allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
+       end if
 
     endif
   
@@ -2382,10 +2386,6 @@ end subroutine clubb_init_cnst
       w_tol_sqd, &
       rt_tol, &
       thl_tol, &
-      l_stats, &
-      stats_tsamp, &
-      stats_tout, &
-      l_output_rad_files, &
       stats_begin_timestep_api, &
       hydromet_dim, calculate_thlp2_rad_api, update_xp2_mc_api, &
       sat_mixrat_liq_api, &
@@ -3362,12 +3362,12 @@ end subroutine clubb_init_cnst
     end do
 
     !  Set stats output and increment equal to CLUBB and host dt
-    stats_tsamp = dtime
-    stats_tout  = hdtime
+    stats_metadata%stats_tsamp = dtime
+    stats_metadata%stats_tout  = hdtime
 
-    stats_nsamp = nint(stats_tsamp/dtime)
-    stats_nout = nint(stats_tout/dtime)
- 
+    stats_nsamp = nint(stats_metadata%stats_tsamp/dtime)
+    stats_nout = nint(stats_metadata%stats_tout/dtime)
+
     !  Heights need to be set at each timestep.  Therefore, recall 
     !  setup_grid and setup_parameters for this.  
    
@@ -3378,12 +3378,11 @@ end subroutine clubb_init_cnst
     call setup_grid_api( nlev+1, ncol, sfc_elevation, l_implemented,      & ! intent(in)
                          grid_type, zi_g(:,2), zi_g(:,1), zi_g(:,nlev+1), & ! intent(in)
                          zi_g, zt_g,                                      & ! intent(in)
-                         gr, begin_height, end_height )                     ! intent(out)
+                         gr )                                               ! intent(out)
 
-    call setup_parameters_api( zi_g(:,2), clubb_params, nlev+1, ncol, grid_type,  & ! intent(in)
-                               zi_g, zt_g,                                        & ! intent(in)
-                               clubb_config_flags%l_prescribed_avg_deltaz,        & ! intent(in)
-                               lmin, nu_vert_res_dep, err_code )                    ! intent(out)
+    call setup_parameters_api( zi_g(:,2), clubb_params, gr, ncol, grid_type,  & ! intent(in)
+                               clubb_config_flags%l_prescribed_avg_deltaz,    & ! intent(in)
+                               lmin, nu_vert_res_dep, err_code )                ! intent(out)
     if ( err_code == clubb_fatal_error ) then
        call endrun(subr//':  Fatal error in CLUBB setup_parameters')
     end if
@@ -3670,8 +3669,9 @@ end subroutine clubb_init_cnst
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
   
       !  Increment the statistics then being stats timestep
-      if (l_stats) then
-        call stats_begin_timestep_api(t, stats_nsamp, stats_nout)
+      if (stats_metadata%l_stats) then
+        call stats_begin_timestep_api( t, stats_nsamp, stats_nout, &
+                                       stats_metadata )
       endif
 
       !#######################################################################
@@ -3750,6 +3750,7 @@ end subroutine clubb_init_cnst
           grid_dx, grid_dy, &
           clubb_params, nu_vert_res_dep, lmin, &
           clubb_config_flags, &
+          stats_metadata, &
           stats_zt(:ncol), stats_zm(:ncol), stats_sfc(:ncol), &
           um_in, vm_in, upwp_in, vpwp_in, up2_in, vp2_in, up3_in, vp3_in, &
           thlm_in, rtm_in, wprtp_in, wpthlp_in, &
@@ -3832,7 +3833,7 @@ end subroutine clubb_init_cnst
       
       !  Check to see if stats should be output, here stats are read into
       !  output arrays to make them conformable to CAM output
-      if (l_stats) then
+      if (stats_metadata%l_stats) then
         do i=1, ncol
           call stats_end_timestep_clubb(i, stats_zt(i), stats_zm(i), stats_rad_zt(i), stats_rad_zm(i), stats_sfc(i), &
                                         out_zt, out_zm, out_radzt, out_radzm, out_sfc)
@@ -4708,7 +4709,7 @@ end subroutine clubb_init_cnst
     end if
 
     !  Output CLUBB history here
-    if (l_stats) then 
+    if (stats_metadata%l_stats) then 
       
       do j=1,stats_zt(1)%num_output_fields
    
@@ -4728,7 +4729,7 @@ end subroutine clubb_init_cnst
         call outfld(trim(sub),out_zm(:,:,j), pcols, lchnk)
       enddo
 
-      if (l_output_rad_files) then  
+      if (stats_metadata%l_output_rad_files) then  
         do j=1,stats_rad_zt(1)%num_output_fields
           call outfld(trim(stats_rad_zt(1)%file%grid_avg_var(j)%name), out_radzt(:,:,j), pcols, lchnk)
         enddo
@@ -4958,16 +4959,6 @@ end function diag_ustar
     
     !-----------------------------------------------------------------------
 
-    use clubb_api_module, only: &
-      l_stats, &
-      l_output_rad_files, & 
-      stats_tsamp,   & 
-      stats_tout,    & 
-      l_stats_samp,  & 
-      l_stats_last, & 
-      l_netcdf, & 
-      l_grads
-
     use clubb_api_module, only:        time_precision, &   !
                                        nvarmax_zm, stats_init_zm_api, & !
                                        nvarmax_zt, stats_init_zt_api, & !
@@ -5038,14 +5029,14 @@ end function diag_ustar
     l_error = .false.
 
     !  Set stats_variables variables with inputs from calling subroutine
-    l_stats = l_stats_in
-    
-    stats_tsamp = stats_tsamp_in
-    stats_tout  = stats_tout_in
+    stats_metadata%l_stats = l_stats_in
 
-    if ( .not. l_stats ) then
-       l_stats_samp  = .false.
-       l_stats_last  = .false.
+    stats_metadata%stats_tsamp = stats_tsamp_in
+    stats_metadata%stats_tout  = stats_tout_in
+
+    if ( .not. stats_metadata%l_stats ) then
+       stats_metadata%l_stats_samp  = .false.
+       stats_metadata%l_stats_last  = .false.
        return
     end if
 
@@ -5085,19 +5076,19 @@ end function diag_ustar
     if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_sfc")
 
     !  Hardcode these for use in CAM-CLUBB, don't want either
-    l_netcdf = .false.
-    l_grads  = .false.
+    stats_metadata%l_netcdf = .false.
+    stats_metadata%l_grads  = .false.
 
     !  Check sampling and output frequencies
 
     !  The model time step length, delt (which is dtmain), should multiply
     !  evenly into the statistical sampling time step length, stats_tsamp.
-    if ( abs( stats_tsamp/delt - floor(stats_tsamp/delt) ) > 1.e-8_r8 ) then
+    if ( abs( stats_metadata%stats_tsamp/delt - floor(stats_metadata%stats_tsamp/delt) ) > 1.e-8_r8 ) then
        l_error = .true.  ! This will cause the run to stop.
        write(fstderr,*) 'Error:  stats_tsamp should be an even multiple of ',  &
                         'delt (which is dtmain).  Check the appropriate ',  &
                         'model.in file.'
-       write(fstderr,*) 'stats_tsamp = ', stats_tsamp
+       write(fstderr,*) 'stats_tsamp = ', stats_metadata%stats_tsamp
        write(fstderr,*) 'delt = ', delt
     endif
 
@@ -5136,7 +5127,7 @@ end function diag_ustar
     !  Default initialization for array indices for zt
     if (do_first_step) then
       call stats_init_zt_api( clubb_vars_zt, l_error, &
-                              stats_zt )
+                              stats_metadata, stats_zt )
     end if
 
     !  Initialize zm (momentum points)
@@ -5173,12 +5164,12 @@ end function diag_ustar
 
     if (do_first_step) then
       call stats_init_zm_api( clubb_vars_zm, l_error, &
-                              stats_zm )
+                              stats_metadata, stats_zm )
     end if
 
     !  Initialize rad_zt (radiation points)
 
-    if (l_output_rad_files) then
+    if (stats_metadata%l_output_rad_files) then
     
        i = 1
        do while ( ichar(clubb_vars_rad_zt(i)(1:1)) /= 0  .and. & 
@@ -5212,7 +5203,7 @@ end function diag_ustar
       allocate( stats_rad_zt%file%z( stats_rad_zt%kk ) )
 
        call stats_init_rad_zt_api( clubb_vars_rad_zt, l_error, &
-                                   stats_rad_zt )
+                                   stats_metadata, stats_rad_zt )
 
        !  Initialize rad_zm (radiation points)
  
@@ -5248,7 +5239,7 @@ end function diag_ustar
        allocate( stats_rad_zm%file%z( stats_rad_zm%kk ) )
    
        call stats_init_rad_zm_api( clubb_vars_rad_zm, l_error, &
-                                   stats_rad_zm )
+                                   stats_metadata, stats_rad_zm )
     end if ! l_output_rad_files
 
 
@@ -5287,7 +5278,7 @@ end function diag_ustar
 
     if (do_first_step) then
       call stats_init_sfc_api( clubb_vars_sfc, l_error, &
-                               stats_sfc )
+                               stats_metadata, stats_sfc )
     end if
 
     ! Check for errors
@@ -5319,7 +5310,7 @@ end function diag_ustar
               'A',trim(stats_zm%file%grid_avg_var(i)%units),trim(stats_zm%file%grid_avg_var(i)%description))
       enddo
 
-      if (l_output_rad_files) then     
+      if (stats_metadata%l_output_rad_files) then     
 
          do i = 1, stats_rad_zt%num_output_fields
             call addfld(trim(stats_rad_zt%file%grid_avg_var(i)%name),(/ 'ilev' /),&
@@ -5364,10 +5355,6 @@ end function diag_ustar
 
     use clubb_api_module, only: &
         fstderr, & ! Constant(s)
-        l_stats_last, & 
-        stats_tsamp, & 
-        stats_tout, &
-        l_output_rad_files, &
         clubb_at_least_debug_level_api ! Procedure(s)
 
     use cam_abortutils,  only: endrun
@@ -5397,7 +5384,7 @@ end function diag_ustar
 
     !  Check if it is time to write to file
 
-    if ( .not. l_stats_last ) return
+    if ( .not. stats_metadata%l_stats_last ) return
 
     !  Initialize
     l_error = .false.
@@ -5405,7 +5392,7 @@ end function diag_ustar
     !  Compute averages
     call stats_avg( stats_zt%kk, stats_zt%num_output_fields, stats_zt%accum_field_values, stats_zt%accum_num_samples )
     call stats_avg( stats_zm%kk, stats_zm%num_output_fields, stats_zm%accum_field_values, stats_zm%accum_num_samples )
-    if (l_output_rad_files) then
+    if (stats_metadata%l_output_rad_files) then
       call stats_avg( stats_rad_zt%kk, stats_rad_zt%num_output_fields, stats_rad_zt%accum_field_values, &
                       stats_rad_zt%accum_num_samples )
       call stats_avg( stats_rad_zm%kk, stats_rad_zm%num_output_fields, stats_rad_zm%accum_field_values, &
@@ -5430,7 +5417,7 @@ end function diag_ustar
       enddo   
     enddo
 
-    if (l_output_rad_files) then 
+    if (stats_metadata%l_output_rad_files) then 
       do i = 1, stats_rad_zt%num_output_fields
         do k = 1, stats_rad_zt%kk 
           out_radzt(thecol,pverp-k+1,i) = stats_rad_zt%accum_field_values(1,1,k,i)
@@ -5463,7 +5450,7 @@ end function diag_ustar
                      stats_zt%accum_num_samples, stats_zt%l_in_update )
     call stats_zero( stats_zm%kk, stats_zm%num_output_fields, stats_zm%accum_field_values, &
                      stats_zm%accum_num_samples, stats_zm%l_in_update )
-    if (l_output_rad_files) then
+    if (stats_metadata%l_output_rad_files) then
       call stats_zero( stats_rad_zt%kk, stats_rad_zt%num_output_fields, stats_rad_zt%accum_field_values, &
                        stats_rad_zt%accum_num_samples, stats_rad_zt%l_in_update )
       call stats_zero( stats_rad_zm%kk, stats_rad_zm%num_output_fields, stats_rad_zm%accum_field_values, &
