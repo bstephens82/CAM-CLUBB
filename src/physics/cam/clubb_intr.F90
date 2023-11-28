@@ -1679,7 +1679,7 @@ end subroutine clubb_init_cnst
          iiedsclr_thl, &
          iiedsclr_CO2
 
-    use time_manager,              only: is_first_step
+    use time_manager,              only: is_first_step, is_first_restart_step
     use clubb_api_module,          only: hydromet_dim
     use constituents,           only: cnst_get_ind
     use phys_control,           only: phys_getopts
@@ -2157,7 +2157,7 @@ end subroutine clubb_init_cnst
     if (l_stats) then
       
       do i=1, pcols
-        if (is_first_step()==.true. .and. i==1) then
+        if ((is_first_step()==.true..or.is_first_restart_step()==.true.) .and. i==1) then
           do_first_step = .true.
         else
           do_first_step = .false.
