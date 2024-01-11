@@ -31,7 +31,7 @@ module clubb_intr
   use zm_conv_intr,     only: zmconv_microp
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep, stats_metadata_type
   use clubb_api_module,    only: nparams
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
@@ -49,6 +49,11 @@ module clubb_intr
                                 
 !$omp threadprivate(stats_zt, stats_zm, stats_rad_zt, stats_rad_zm, stats_sfc)
 
+  type (stats_metadata_type) :: &
+    stats_metadata
+
+!$omp threadprivate(stats_metadata)
+
 #endif
 
   private
@@ -62,6 +67,7 @@ module clubb_intr
 #ifdef CLUBB_SGS
             ! This utilizes CLUBB specific variables in its interface
             stats_init_clubb, &
+            stats_metadata, &
             stats_zt, stats_zm, stats_sfc, &
             stats_rad_zt, stats_rad_zm, &
             stats_end_timestep_clubb, & 
@@ -178,6 +184,57 @@ module clubb_intr
   real(r8) :: clubb_detliq_rad = unset_r8
   real(r8) :: clubb_detice_rad = unset_r8
   real(r8) :: clubb_detphase_lowtemp = unset_r8
+  real(r8) :: clubb_C1c = unset_r8
+  real(r8) :: clubb_C7c = unset_r8
+  real(r8) :: clubb_C11c = unset_r8
+  real(r8) :: clubb_C12 = unset_r8
+  real(r8) :: clubb_C_wp2_pr_dfsn = unset_r8
+  real(r8) :: clubb_C_wp3_pr_tp = unset_r8
+  real(r8) :: clubb_C_wp3_pr_dfsn = unset_r8
+  real(r8) :: clubb_C6rt_Lscale0 = unset_r8
+  real(r8) :: clubb_C6thl_Lscale0 = unset_r8
+  real(r8) :: clubb_C7_Lscale0 = unset_r8
+  real(r8) :: clubb_c_K = unset_r8
+  real(r8) :: clubb_nu1 = unset_r8
+  real(r8) :: clubb_c_K6 = unset_r8
+  real(r8) :: clubb_nu6 = unset_r8
+  real(r8) :: clubb_nu8 = unset_r8
+  real(r8) :: clubb_nu10 = unset_r8
+  real(r8) :: clubb_c_K_hm = unset_r8
+  real(r8) :: clubb_c_K_hmb = unset_r8
+  real(r8) :: clubb_K_hm_min_coef = unset_r8
+  real(r8) :: clubb_nu_hm = unset_r8
+  real(r8) :: clubb_slope_coef_spread_DG_means_w = unset_r8
+  real(r8) :: clubb_pdf_component_stdev_factor_w = unset_r8
+  real(r8) :: clubb_coef_spread_DG_means_rt = unset_r8
+  real(r8) :: clubb_coef_spread_DG_means_thl = unset_r8
+  real(r8) :: clubb_gamma_coefc = unset_r8
+  real(r8) :: clubb_mu = unset_r8
+  real(r8) :: clubb_omicron = unset_r8
+  real(r8) :: clubb_zeta_vrnce_rat = unset_r8
+  real(r8) :: clubb_upsilon_precip_frac_rat = unset_r8
+  real(r8) :: clubb_taumin = unset_r8
+  real(r8) :: clubb_taumax = unset_r8
+  real(r8) :: clubb_Lscale_mu_coef = unset_r8
+  real(r8) :: clubb_Lscale_pert_coef = unset_r8
+  real(r8) :: clubb_alpha_corr = unset_r8
+  real(r8) :: clubb_thlp2_rad_coef = unset_r8
+  real(r8) :: clubb_thlp2_rad_cloud_frac_thresh = unset_r8
+  real(r8) :: clubb_C_invrs_tau_wpxp_Ri = unset_r8
+  real(r8) :: clubb_C_invrs_tau_wpxp_N2_thresh = unset_r8
+  real(r8) :: clubb_xp3_coef_base = unset_r8
+  real(r8) :: clubb_xp3_coef_slope = unset_r8
+  real(r8) :: clubb_altitude_threshold = unset_r8
+  real(r8) :: clubb_rtp2_clip_coef = unset_r8
+  real(r8) :: clubb_Cx_min = unset_r8
+  real(r8) :: clubb_Cx_max = unset_r8
+  real(r8) :: clubb_Richardson_num_min = unset_r8
+  real(r8) :: clubb_Richardson_num_max = unset_r8
+  real(r8) :: clubb_a3_coef_min = unset_r8
+  real(r8) :: clubb_a_const = unset_r8
+  real(r8) :: clubb_bv_efold = unset_r8
+  real(r8) :: clubb_wpxp_Ri_exp = unset_r8
+  real(r8) :: clubb_z_displace = unset_r8
   
   integer :: &
     clubb_iiPDF_type,          & ! Selected option for the two-component normal
@@ -305,7 +362,9 @@ module clubb_intr
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
                                           ! eliminates spurious drying tendencies at model top  
-    clubb_l_intr_sfc_flux_smooth = .false.! Add a locally calculated roughness to upwp and vpwp sfc fluxes
+    clubb_l_intr_sfc_flux_smooth = .false., &  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
+    clubb_l_use_wp3_lim_with_smth_Heaviside, &
+    clubb_l_modify_limiters_for_cnvg_test
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -695,11 +754,10 @@ end subroutine clubb_init_cnst
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, &
                                mpi_integer
     use clubb_mf,        only: clubb_mf_readnl
-    
+
     use clubb_api_module, only: &
       set_default_clubb_config_flags_api, & ! Procedure(s)
-      initialize_clubb_config_flags_type_api, &
-      l_stats, l_output_rad_files
+      initialize_clubb_config_flags_type_api
 #endif
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -801,6 +859,8 @@ end subroutine clubb_init_cnst
          clubb_l_use_thvm_in_bv_freq, &
          clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
          clubb_l_use_tke_in_wp3_pr_turb_term, &
+         clubb_l_use_wp3_lim_with_smth_Heaviside, &
+         clubb_l_modify_limiters_for_cnvg_test, &
          clubb_l_vary_convect_depth, &
          clubb_l_vert_avg_closure, &
          clubb_mult_coef, &
@@ -811,14 +871,80 @@ end subroutine clubb_init_cnst
          clubb_skw_max_mag, &
          clubb_tridiag_solve_method, &
          clubb_up2_sfc_coef, &
-         clubb_wpxp_L_thresh
-
+         clubb_wpxp_L_thresh, &
+         clubb_C1c, &
+         clubb_C7c, &
+         clubb_C11c, &
+         clubb_C12, &
+         clubb_C_wp2_pr_dfsn, &
+         clubb_C_wp3_pr_tp, &
+         clubb_C_wp3_pr_dfsn, &
+         clubb_C6rt_Lscale0, &
+         clubb_C6thl_Lscale0, &
+         clubb_C7_Lscale0, &
+         clubb_c_K, &
+         clubb_nu1, &
+         clubb_c_K6, &
+         clubb_nu6, &
+         clubb_nu8, &
+         clubb_nu10, &
+         clubb_c_K_hm, &
+         clubb_c_K_hmb, &
+         clubb_K_hm_min_coef, &
+         clubb_nu_hm, &
+         clubb_slope_coef_spread_DG_means_w, &
+         clubb_pdf_component_stdev_factor_w, &
+         clubb_coef_spread_DG_means_rt, &
+         clubb_coef_spread_DG_means_thl, &
+         clubb_gamma_coefc, &
+         clubb_mu, &
+         clubb_omicron, &
+         clubb_zeta_vrnce_rat, &
+         clubb_upsilon_precip_frac_rat, &
+         clubb_taumin, &
+         clubb_taumax, &
+         clubb_Lscale_mu_coef, &
+         clubb_Lscale_pert_coef, &
+         clubb_alpha_corr, &
+         clubb_thlp2_rad_coef, &
+         clubb_thlp2_rad_cloud_frac_thresh, &
+         clubb_C_invrs_tau_wpxp_Ri, &
+         clubb_C_invrs_tau_wpxp_N2_thresh, &
+         clubb_xp3_coef_base, &
+         clubb_xp3_coef_slope, &
+         clubb_altitude_threshold, &
+         clubb_rtp2_clip_coef, &
+         clubb_Cx_min, &
+         clubb_Cx_max, &
+         clubb_Richardson_num_min, &
+         clubb_Richardson_num_max, &
+         clubb_a3_coef_min, &
+         clubb_a_const, &
+         clubb_bv_efold, &
+         clubb_wpxp_Ri_exp, &
+         clubb_z_displace, &
+         clubb_l_use_precip_frac, &
+         clubb_l_C2_cloud_frac, &
+         clubb_l_diffuse_rtm_and_thlm, &
+         clubb_l_stability_correct_Kh_N2_zm, &
+         clubb_l_calc_thlp2_rad, &
+         clubb_l_upwind_xm_ma, &
+         clubb_l_uv_nudge, &
+         clubb_l_rtm_nudge, &
+         clubb_l_tke_aniso, &
+         clubb_l_diagnose_correlations, &
+         clubb_l_calc_w_corr, &
+         clubb_l_const_Nc_in_cloud, &
+         clubb_l_fix_w_chi_eta_correlations, &
+         clubb_l_prescribed_avg_deltaz, &
+         clubb_l_linearize_pbl_winds
+                               
     !----- Begin Code -----
 
     !  Determine if we want clubb_history to be output  
     clubb_history      = .false.   ! Initialize to false
-    l_stats            = .false.   ! Initialize to false
-    l_output_rad_files = .false.   ! Initialize to false
+    stats_metadata%l_stats            = .false.   ! Initialize to false
+    stats_metadata%l_output_rad_files = .false.   ! Initialize to false
     do_cldcool         = .false.   ! Initialize to false
     do_rainturb        = .false.   ! Initialize to false
     
@@ -871,7 +997,9 @@ end subroutine clubb_init_cnst
                                              clubb_l_vary_convect_depth, & ! Out
                                              clubb_l_use_tke_in_wp3_pr_turb_term, & ! Out
                                              clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! Out
+                                             clubb_l_use_wp3_lim_with_smth_Heaviside, & ! Out
                                              clubb_l_smooth_Heaviside_tau_wpxp, & ! Out
+                                             clubb_l_modify_limiters_for_cnvg_test, & ! Out
                                              clubb_l_enable_relaxed_clipping, & ! Out
                                              clubb_l_linearize_pbl_winds, & ! Out
                                              clubb_l_mono_flux_lim_thlm, & ! Out
@@ -1048,6 +1176,108 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_detice_rad")
     call mpi_bcast(clubb_detphase_lowtemp, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_detphase_lowtemp")
+    call mpi_bcast(clubb_C1c,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C1c")
+    call mpi_bcast(clubb_C7c,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C7c")
+    call mpi_bcast(clubb_C11c,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C11c")
+    call mpi_bcast(clubb_C12,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C12")
+    call mpi_bcast(clubb_C_wp2_pr_dfsn,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_wp2_pr_dfsn")
+    call mpi_bcast(clubb_C_wp3_pr_tp,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_wp3_pr_tp")
+    call mpi_bcast(clubb_C_wp3_pr_dfsn,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_wp3_pr_dfsn")
+    call mpi_bcast(clubb_C6rt_Lscale0,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C6rt_Lscale0")
+    call mpi_bcast(clubb_C6thl_Lscale0,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C6thl_Lscale0")
+    call mpi_bcast(clubb_C7_Lscale0,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C7_Lscale0")
+    call mpi_bcast(clubb_c_K,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c_K")
+    call mpi_bcast(clubb_nu1,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_nu1")
+    call mpi_bcast(clubb_c_K6,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c_K6")
+    call mpi_bcast(clubb_nu6,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_nu6")
+    call mpi_bcast(clubb_nu8,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_nu8")
+    call mpi_bcast(clubb_nu10,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_nu10")
+    call mpi_bcast(clubb_c_K_hm,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c_K_hm")
+    call mpi_bcast(clubb_c_K_hmb,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c_K_hmb")
+    call mpi_bcast(clubb_K_hm_min_coef,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_K_hm_min_coef")
+    call mpi_bcast(clubb_nu_hm,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_nu_hm")
+    call mpi_bcast(clubb_slope_coef_spread_DG_means_w,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_slope_coef_spread_DG_means_w")
+    call mpi_bcast(clubb_pdf_component_stdev_factor_w,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_pdf_component_stdev_factor_w")
+    call mpi_bcast(clubb_coef_spread_DG_means_rt,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_coef_spread_DG_means_rt")
+    call mpi_bcast(clubb_coef_spread_DG_means_thl,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_coef_spread_DG_means_thl")
+    call mpi_bcast(clubb_gamma_coefc,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_gamma_coefc")
+    call mpi_bcast(clubb_mu,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mu")
+    call mpi_bcast(clubb_omicron,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_omicron")
+    call mpi_bcast(clubb_zeta_vrnce_rat,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_zeta_vrnce_rat")
+    call mpi_bcast(clubb_upsilon_precip_frac_rat,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_upsilon_precip_frac_rat")
+    call mpi_bcast(clubb_taumin,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_taumin")
+    call mpi_bcast(clubb_taumax,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_taumax")
+    call mpi_bcast(clubb_Lscale_mu_coef,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Lscale_mu_coef")
+    call mpi_bcast(clubb_Lscale_pert_coef,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Lscale_pert_coef")
+    call mpi_bcast(clubb_alpha_corr,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_alpha_corr")
+    call mpi_bcast(clubb_thlp2_rad_coef,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_thlp2_rad_coef")
+    call mpi_bcast(clubb_thlp2_rad_cloud_frac_thresh,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_thlp2_rad_cloud_frac_thresh")
+    call mpi_bcast(clubb_C_invrs_tau_wpxp_Ri,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_invrs_tau_wpxp_Ri")
+    call mpi_bcast(clubb_C_invrs_tau_wpxp_N2_thresh,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_C_invrs_tau_wpxp_N2_thresh")
+    call mpi_bcast(clubb_xp3_coef_base,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_xp3_coef_base")
+    call mpi_bcast(clubb_xp3_coef_slope,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_xp3_coef_slope")
+    call mpi_bcast(clubb_altitude_threshold,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_altitude_threshold")
+    call mpi_bcast(clubb_rtp2_clip_coef,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_rtp2_clip_coef")
+    call mpi_bcast(clubb_Cx_min,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Cx_min")
+    call mpi_bcast(clubb_Cx_max,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Cx_max")
+    call mpi_bcast(clubb_Richardson_num_min,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Richardson_num_min")
+    call mpi_bcast(clubb_Richardson_num_max,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_Richardson_num_max")
+    call mpi_bcast(clubb_a3_coef_min,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a3_coef_min")
+    call mpi_bcast(clubb_a_const,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a_const")
+    call mpi_bcast(clubb_bv_efold,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_bv_efold")
+    call mpi_bcast(clubb_wpxp_Ri_exp,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_wpxp_Ri_exp")
+    call mpi_bcast(clubb_z_displace,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_z_displace")
 
     call mpi_bcast(clubb_l_use_C7_Richardson,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_C7_Richardson")
@@ -1127,10 +1357,40 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_standard_term_ta")
     call mpi_bcast(clubb_l_partial_upwind_wp3,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_partial_upwind_wp3")
+   call mpi_bcast(clubb_l_use_precip_frac,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_precip_frac")
+    call mpi_bcast(clubb_l_C2_cloud_frac,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_C2_cloud_frac")
+    call mpi_bcast(clubb_l_diffuse_rtm_and_thlm,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_diffuse_rtm_and_thlm")
+    call mpi_bcast(clubb_l_stability_correct_Kh_N2_zm,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_stability_correct_Kh_N2_zm")
+    call mpi_bcast(clubb_l_calc_thlp2_rad,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_calc_thlp2_rad")
+    call mpi_bcast(clubb_l_upwind_xm_ma,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_upwind_xm_ma")
+    call mpi_bcast(clubb_l_uv_nudge,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_uv_nudge")
+    call mpi_bcast(clubb_l_rtm_nudge,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_rtm_nudge")
+    call mpi_bcast(clubb_l_tke_aniso,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_tke_aniso")
+    call mpi_bcast(clubb_l_diagnose_correlations,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_diagnose_correlations")
+    call mpi_bcast(clubb_l_calc_w_corr,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_calc_w_corr")
+    call mpi_bcast(clubb_l_const_Nc_in_cloud,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_const_Nc_in_cloud")
+    call mpi_bcast(clubb_l_fix_w_chi_eta_correlations,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_fix_w_chi_eta_correlations")
+    call mpi_bcast(clubb_l_prescribed_avg_deltaz,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_prescribed_avg_deltaz")
+    call mpi_bcast(clubb_l_linearize_pbl_winds,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_linearize_pbl_winds")
 
     !  Overwrite defaults if they are true
-    if (clubb_history) l_stats = .true.
-    if (clubb_rad_history) l_output_rad_files = .true. 
+    if (clubb_history) stats_metadata%l_stats = .true.
+    if (clubb_rad_history) stats_metadata%l_output_rad_files = .true.
     if (clubb_cloudtop_cooling) do_cldcool = .true.
     if (clubb_rainevap_turb) do_rainturb = .true.
     
@@ -1193,6 +1453,57 @@ end subroutine clubb_init_cnst
     if(clubb_detphase_lowtemp == unset_r8) call endrun(sub//": FATAL: clubb_detphase_lowtemp not set")
     if(clubb_penta_solve_method == unset_i) call endrun(sub//": FATAL: clubb_penta_solve_method not set")
     if(clubb_tridiag_solve_method == unset_i) call endrun(sub//": FATAL: clubb_tridiag_solve_method not set")
+    if(clubb_C1c == unset_r8) call endrun(sub//": FATAL: clubb_c1c is not set")
+    if(clubb_C7c == unset_r8) call endrun(sub//": FATAL: clubb_c7c is not set")
+    if(clubb_C11c == unset_r8) call endrun(sub//": FATAL: clubb_c11c  is not set")
+    if(clubb_C12 == unset_r8) call endrun(sub//": FATAL: clubb_c12 is not set")
+    if(clubb_C_wp2_pr_dfsn == unset_r8) call endrun(sub//": FATAL: clubb_c_wp2_pr_dfsc is not set")
+    if(clubb_C_wp3_pr_tp == unset_r8) call endrun(sub//": FATAL: clubb_c_wp3_pr_tp is not set")
+    if(clubb_C_wp3_pr_dfsn == unset_r8) call endrun(sub//": FATAL: clubb_c_wp3_pr_dfsn is not set")
+    if(clubb_C6rt_Lscale0 == unset_r8) call endrun(sub//": FATAL: clubb_c6rt_Lscale0 is not set")
+    if(clubb_C6thl_Lscale0 == unset_r8) call endrun(sub//": FATAL: clubb_c6thl_Lscale0 is not set")
+    if(clubb_C7_Lscale0 == unset_r8) call endrun(sub//": FATAL: clubb_c7_Lscale0 is not set")
+    if(clubb_c_K == unset_r8) call endrun(sub//": FATAL: clubb_c_K is not set")
+    if(clubb_nu1 == unset_r8) call endrun(sub//": FATAL: clubb_nu1 is not set")
+    if(clubb_c_K6 == unset_r8) call endrun(sub//": FATAL: clubb_c_K6 is not set")
+    if(clubb_nu6 == unset_r8) call endrun(sub//": FATAL: clubb_nu6 is not set")
+    if(clubb_nu8 == unset_r8) call endrun(sub//": FATAL: clubb_nu8 is not set")
+    if(clubb_nu10 == unset_r8) call endrun(sub//": FATAL: clubb_nu10 is not set")
+    if(clubb_c_K_hm == unset_r8) call endrun(sub//": FATAL: clubb_c_K_hm is not set")
+    if(clubb_c_K_hmb == unset_r8) call endrun(sub//": FATAL: clubb_c_K_hmb is not set")
+    if(clubb_K_hm_min_coef == unset_r8) call endrun(sub//": FATAL: clubb_c_K_hm_min_coef is not set")
+    if(clubb_nu_hm == unset_r8) call endrun(sub//": FATAL: clubb_nu_hm is not set")
+    if(clubb_slope_coef_spread_DG_means_w == unset_r8) call endrun(sub//": FATAL: clubb_slope_coef_spread is not set")
+    if(clubb_pdf_component_stdev_factor_w == unset_r8) call endrun(sub//": FATAL: clubb_pdf_component is not set")
+    if(clubb_coef_spread_DG_means_rt == unset_r8) call endrun(sub//": FATAL: clubb_coef_spread_DG_rt is not set")
+    if(clubb_coef_spread_DG_means_thl == unset_r8) call endrun(sub//": FATAL: clubb_coef_spread_DG_thl is not set")
+    if(clubb_gamma_coefc == unset_r8) call endrun(sub//": FATAL: clubb_gamma_coefc is not set")
+    if(clubb_mu == unset_r8) call endrun(sub//": FATAL: clubb_mu is not set")
+    if(clubb_omicron == unset_r8) call endrun(sub//": FATAL: clubb_omicron is not set")
+    if(clubb_zeta_vrnce_rat == unset_r8) call endrun(sub//": FATAL: clubb_zeta_vrnce is not set")
+    if(clubb_upsilon_precip_frac_rat == unset_r8) call endrun(sub//": FATAL: clubb_upsilon_precip is not set")
+    if(clubb_taumin == unset_r8) call endrun(sub//": FATAL: clubb_taumin is not set")
+    if(clubb_taumax == unset_r8) call endrun(sub//": FATAL: clubb_taumax is not set")
+    if(clubb_Lscale_mu_coef == unset_r8) call endrun(sub//": FATAL: clubb_Lscale_mu is not set")
+    if(clubb_Lscale_pert_coef == unset_r8) call endrun(sub//": FATAL: clubb_Lscale_pert_coef is not set")
+    if(clubb_alpha_corr == unset_r8) call endrun(sub//": FATAL: clubb_alpha_corr is not set")
+    if(clubb_thlp2_rad_coef == unset_r8) call endrun(sub//": FATAL: clubb_thlp2_rad_coef is not set")
+    if(clubb_thlp2_rad_cloud_frac_thresh == unset_r8) call endrun(sub//": FATAL: clubb_thlp2_rad_cloud is not set")
+    if(clubb_C_invrs_tau_wpxp_Ri == unset_r8) call endrun(sub//": FATAL: clubb_c_invrs_tau_wpxp_Ri is not set")
+    if(clubb_C_invrs_tau_wpxp_N2_thresh == unset_r8) call endrun(sub//": FATAL: clubb_c_invrs_tau_wpxp_N2_thresh is not set")
+    if(clubb_xp3_coef_base == unset_r8) call endrun(sub//": FATAL: clubb_xp3_coef_base is not set")
+    if(clubb_xp3_coef_slope == unset_r8) call endrun(sub//": FATAL: clubb_xp3_coef_slope is not set")
+    if(clubb_altitude_threshold == unset_r8) call endrun(sub//": FATAL: clubb_altitude_thresh is not set")
+    if(clubb_rtp2_clip_coef == unset_r8) call endrun(sub//": FATAL: clubb_rtp2_clip_coef is not set")
+    if(clubb_Cx_min == unset_r8) call endrun(sub//": FATAL: clubb_Cx_min is not set")
+    if(clubb_Cx_max == unset_r8) call endrun(sub//": FATAL: clubb_Cx_max is not set")
+    if(clubb_Richardson_num_min == unset_r8) call endrun(sub//": FATAL: clubb_Rich_num_min is not set")
+    if(clubb_Richardson_num_max == unset_r8) call endrun(sub//": FATAL: clubb_Rich_num_max is not set")
+    if(clubb_a3_coef_min == unset_r8) call endrun(sub//": FATAL: clubb_a3_coef_min is not set")
+    if(clubb_a_const == unset_r8) call endrun(sub//": FATAL: clubb_a_const is not set")
+    if(clubb_bv_efold == unset_r8) call endrun(sub//": FATAL: clubb_bv_efold is not set")
+    if(clubb_wpxp_Ri_exp == unset_r8) call endrun(sub//": FATAL: clubb_wpxp_Ri_exp is not set")
+    if(clubb_z_displace == unset_r8) call endrun(sub//": FATAL: clubb_z_displace is not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) & 
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
@@ -1243,8 +1554,10 @@ end subroutine clubb_init_cnst
                                                  clubb_l_e3sm_config, & ! In
                                                  clubb_l_vary_convect_depth, & ! In
                                                  clubb_l_use_tke_in_wp3_pr_turb_term, & ! In
-                                                 clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! In 
+                                                 clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! In
+                                                 clubb_l_use_wp3_lim_with_smth_Heaviside, & ! Out 
                                                  clubb_l_smooth_Heaviside_tau_wpxp, & ! In
+                                                 clubb_l_modify_limiters_for_cnvg_test, & ! Out
                                                  clubb_l_enable_relaxed_clipping, & ! In
                                                  clubb_l_linearize_pbl_winds, & ! In
                                                  clubb_l_mono_flux_lim_thlm, & ! In
@@ -1291,7 +1604,58 @@ end subroutine clubb_init_cnst
          iSkw_denom_coef, ibeta, iskw_max_mag, &
          iC_invrs_tau_bkgnd,iC_invrs_tau_sfc,iC_invrs_tau_shear,iC_invrs_tau_N2,iC_invrs_tau_N2_wp2, &
          iC_invrs_tau_N2_xp2,iC_invrs_tau_N2_wpxp,iC_invrs_tau_N2_clear_wp3,iC_uu_shr,iC_uu_buoy, &
-         iC2rt, iC2thl, iC2rtthl, ic_K1, ic_K2, inu2, ic_K8, ic_K9, inu9, iC_wp2_splat, params_list
+         iC2rt, iC2thl, iC2rtthl, ic_K1, ic_K2, inu2, ic_K8, ic_K9, inu9, iC_wp2_splat, params_list, &
+         iC1c, &
+         iC7c, &
+         iC11c, &
+         iC12, &
+         iC_wp2_pr_dfsn, &
+         iC_wp3_pr_tp, &
+         iC_wp3_pr_dfsn, &
+         iC6rt_Lscale0, &
+         iC6thl_Lscale0, &
+         iC7_Lscale0, &
+         ic_K, &
+         inu1, &
+         ic_K6, &
+         inu6, &
+         inu8, &
+         inu10, &
+         ic_K_hm, &
+         ic_K_hmb, &
+         iK_hm_min_coef, &
+         inu_hm, &
+         islope_coef_spread_DG_means_w, &
+         ipdf_component_stdev_factor_w, &
+         icoef_spread_DG_means_rt, &
+         icoef_spread_DG_means_thl, &
+         igamma_coefc, &
+         imu, &
+         iomicron, &
+         izeta_vrnce_rat, &
+         iupsilon_precip_frac_rat, &
+         itaumin, &
+         itaumax, &
+         iLscale_mu_coef, &
+         iLscale_pert_coef, &
+         ialpha_corr, &
+         ithlp2_rad_coef, &
+         ithlp2_rad_cloud_frac_thresh, &
+         iC_invrs_tau_wpxp_Ri, &
+         iC_invrs_tau_wpxp_N2_thresh, &
+         ixp3_coef_base, &
+         ixp3_coef_slope, &
+         ialtitude_threshold, &
+         irtp2_clip_coef, &
+         iCx_min, &
+         iCx_max, &
+         iRichardson_num_min, &
+         iRichardson_num_max, &
+         ia3_coef_min, &
+         ia_const, &
+         ibv_efold, &
+         iwpxp_Ri_exp, &
+         iz_displace
 
     use clubb_api_module, only: &
          print_clubb_config_flags_api, &
@@ -1304,9 +1668,6 @@ end subroutine clubb_init_cnst
          nparams, &
          set_default_parameters_api, &
          read_parameters_api, &
-         l_stats, &
-         l_stats_samp, &
-         l_grads, &
          w_tol_sqd, &
          rt_tol, &
          thl_tol
@@ -1320,7 +1681,7 @@ end subroutine clubb_init_cnst
          iiedsclr_thl, &
          iiedsclr_CO2
 
-    use time_manager,              only: is_first_step
+    use time_manager,              only: is_first_step, is_first_restart_step
     use clubb_api_module,          only: hydromet_dim
     use constituents,           only: cnst_get_ind
     use phys_control,           only: phys_getopts
@@ -1348,6 +1709,7 @@ end subroutine clubb_init_cnst
 
     logical, parameter :: l_input_fields = .false. ! Always false for CAM-CLUBB.
     logical, parameter :: l_update_pressure = .false. ! Always false for CAM-CLUBB.
+    logical :: do_first_step
 
     integer :: nlev
 
@@ -1372,7 +1734,8 @@ end subroutine clubb_init_cnst
       C_invrs_tau_shear, C_invrs_tau_N2, C_invrs_tau_N2_wp2, &
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min
+      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const, &
+      bv_efold, wpxp_Ri_exp, z_displace
 
     !----- Begin Code -----
 
@@ -1449,11 +1812,11 @@ end subroutine clubb_init_cnst
 
 
     !  Defaults
-    l_stats_samp = .false.
-    l_grads = .false.
+    stats_metadata%l_stats_samp = .false.
+    stats_metadata%l_grads = .false.
 
     !  Overwrite defaults if needbe     
-    if (l_stats) l_stats_samp = .true.
+    if (stats_metadata%l_stats) stats_metadata%l_stats_samp = .true.
 
     !  Define physics buffers indexes
     cld_idx     = pbuf_get_index('CLD')         ! Cloud fraction
@@ -1528,7 +1891,7 @@ end subroutine clubb_init_cnst
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                Cx_min, Cx_max, Richardson_num_min, &
-               Richardson_num_max, a3_coef_min )
+               Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace )
 
     call read_parameters_api( -99, "", &
                               C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -1554,7 +1917,7 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, &
-                              Richardson_num_max, a3_coef_min, &
+                              Richardson_num_max, wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace, &
                               clubb_params )
 
     clubb_params(iC2rtthl) = clubb_C2rtthl
@@ -1606,6 +1969,57 @@ end subroutine clubb_init_cnst
     clubb_params(iC_invrs_tau_N2_xp2) = clubb_C_invrs_tau_N2_xp2
     clubb_params(iC_invrs_tau_N2_wpxp) = clubb_C_invrs_tau_N2_wpxp
     clubb_params(iC_invrs_tau_N2_clear_wp3) = clubb_C_invrs_tau_N2_clear_wp3
+    clubb_params(iC1c) = clubb_C1c
+    clubb_params(iC7c) = clubb_C7c
+    clubb_params(iC11c) = clubb_C11c
+    clubb_params(iC12) = clubb_C12
+    clubb_params(iC_wp2_pr_dfsn) = clubb_C_wp2_pr_dfsn
+    clubb_params(iC_wp3_pr_tp) = clubb_C_wp3_pr_tp
+    clubb_params(iC_wp3_pr_dfsn) = clubb_C_wp3_pr_dfsn
+    clubb_params(iC6rt_Lscale0) = clubb_C6rt_Lscale0
+    clubb_params(iC6thl_Lscale0) = clubb_C6thl_Lscale0
+    clubb_params(iC7_Lscale0) = clubb_C7_Lscale0
+    clubb_params(ic_K) = clubb_c_K
+    clubb_params(inu1) = clubb_nu1
+    clubb_params(ic_K6) = clubb_c_K6
+    clubb_params(inu6) = clubb_nu6
+    clubb_params(inu8) = clubb_nu8
+    clubb_params(inu10) = clubb_nu10
+    clubb_params(ic_K_hm) = clubb_c_K_hm
+    clubb_params(ic_K_hmb) = clubb_c_K_hmb
+    clubb_params(iK_hm_min_coef) = clubb_K_hm_min_coef
+    clubb_params(inu_hm) = clubb_nu_hm
+    clubb_params(islope_coef_spread_DG_means_w) = clubb_slope_coef_spread_DG_means_w
+    clubb_params(ipdf_component_stdev_factor_w) = clubb_pdf_component_stdev_factor_w
+    clubb_params(icoef_spread_DG_means_rt) = clubb_coef_spread_DG_means_rt
+    clubb_params(icoef_spread_DG_means_thl) = clubb_coef_spread_DG_means_thl
+    clubb_params(igamma_coefc) = clubb_gamma_coefc
+    clubb_params(imu) = clubb_mu
+    clubb_params(iomicron) = clubb_omicron
+    clubb_params(izeta_vrnce_rat) = clubb_zeta_vrnce_rat
+    clubb_params(iupsilon_precip_frac_rat) = clubb_upsilon_precip_frac_rat
+    clubb_params(itaumin) = clubb_taumin
+    clubb_params(itaumax) = clubb_taumax
+    clubb_params(iLscale_mu_coef) = clubb_Lscale_mu_coef
+    clubb_params(iLscale_pert_coef) = clubb_Lscale_pert_coef
+    clubb_params(ialpha_corr) = clubb_alpha_corr
+    clubb_params(ithlp2_rad_coef) = clubb_thlp2_rad_coef
+    clubb_params(ithlp2_rad_cloud_frac_thresh) = clubb_thlp2_rad_cloud_frac_thresh
+    clubb_params(iC_invrs_tau_wpxp_Ri) = clubb_C_invrs_tau_wpxp_Ri
+    clubb_params(iC_invrs_tau_wpxp_N2_thresh) = clubb_C_invrs_tau_wpxp_N2_thresh
+    clubb_params(ixp3_coef_base) = clubb_xp3_coef_base
+    clubb_params(ixp3_coef_slope) = clubb_xp3_coef_slope
+    clubb_params(ialtitude_threshold) = clubb_altitude_threshold
+    clubb_params(irtp2_clip_coef) = clubb_rtp2_clip_coef
+    clubb_params(iCx_min) = clubb_Cx_min
+    clubb_params(iCx_max) = clubb_Cx_max
+    clubb_params(iRichardson_num_min) = clubb_Richardson_num_min
+    clubb_params(iRichardson_num_max) = clubb_Richardson_num_max
+    clubb_params(ia3_coef_min) = clubb_a3_coef_min
+    clubb_params(ia_const) = clubb_a_const
+    clubb_params(ibv_efold) = clubb_bv_efold
+    clubb_params(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
+    clubb_params(iz_displace) = clubb_z_displace
    
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
@@ -1619,15 +2033,7 @@ end subroutine clubb_init_cnst
            l_host_applies_sfc_fluxes, &                               ! In
            saturation_equation, &                                     ! In
            l_input_fields, &                                          ! In
-           clubb_config_flags%iiPDF_type, &                           ! In
-           clubb_config_flags%ipdf_call_placement, &                  ! In
-           clubb_config_flags%l_predict_upwp_vpwp, &                  ! In
-           clubb_config_flags%l_min_xp2_from_corr_wx, &               ! In
-           clubb_config_flags%l_prescribed_avg_deltaz, &              ! In
-           clubb_config_flags%l_damp_wp2_using_em, &                  ! In
-           clubb_config_flags%l_stability_correct_tau_zm, &           ! In
-           clubb_config_flags%l_enable_relaxed_clipping, &            ! In
-           clubb_config_flags%l_diag_Lscale_from_tau, &               ! In
+           clubb_config_flags, &               ! In
            err_code )    ! Out
 
     if ( err_code == clubb_fatal_error ) then
@@ -1750,21 +2156,28 @@ end subroutine clubb_init_cnst
     dum2 = 1200._r8
     dum3 = 300._r8
 
-    if (l_stats) then
+    if (stats_metadata%l_stats) then
       
       do i=1, pcols
+        if ((is_first_step()==.true..or.is_first_restart_step()==.true.) .and. i==1) then
+          do_first_step = .true.
+        else
+          do_first_step = .false.
+        end if
         call stats_init_clubb( .true., dum1, dum2, &
                                nlev+1, nlev+1, nlev+1, dum3, &
                                stats_zt(i), stats_zm(i), stats_sfc(i), &
-                               stats_rad_zt(i), stats_rad_zm(i))
+                               stats_rad_zt(i), stats_rad_zm(i), do_first_step)
       end do             
 
        allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields))
        allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields))
        allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields))
 
-       allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
-       allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
+       if ( stats_metadata%l_output_rad_files ) then
+         allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
+         allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
+       end if
 
     endif
   
@@ -1973,10 +2386,6 @@ end subroutine clubb_init_cnst
       w_tol_sqd, &
       rt_tol, &
       thl_tol, &
-      l_stats, &
-      stats_tsamp, &
-      stats_tout, &
-      l_output_rad_files, &
       stats_begin_timestep_api, &
       hydromet_dim, calculate_thlp2_rad_api, update_xp2_mc_api, &
       sat_mixrat_liq_api, &
@@ -2953,12 +3362,12 @@ end subroutine clubb_init_cnst
     end do
 
     !  Set stats output and increment equal to CLUBB and host dt
-    stats_tsamp = dtime
-    stats_tout  = hdtime
+    stats_metadata%stats_tsamp = dtime
+    stats_metadata%stats_tout  = hdtime
 
-    stats_nsamp = nint(stats_tsamp/dtime)
-    stats_nout = nint(stats_tout/dtime)
- 
+    stats_nsamp = nint(stats_metadata%stats_tsamp/dtime)
+    stats_nout = nint(stats_metadata%stats_tout/dtime)
+
     !  Heights need to be set at each timestep.  Therefore, recall 
     !  setup_grid and setup_parameters for this.  
    
@@ -2969,12 +3378,11 @@ end subroutine clubb_init_cnst
     call setup_grid_api( nlev+1, ncol, sfc_elevation, l_implemented,      & ! intent(in)
                          grid_type, zi_g(:,2), zi_g(:,1), zi_g(:,nlev+1), & ! intent(in)
                          zi_g, zt_g,                                      & ! intent(in)
-                         gr, begin_height, end_height )                     ! intent(out)
+                         gr )                                               ! intent(out)
 
-    call setup_parameters_api( zi_g(:,2), clubb_params, nlev+1, ncol, grid_type,  & ! intent(in)
-                               zi_g, zt_g,                                        & ! intent(in)
-                               clubb_config_flags%l_prescribed_avg_deltaz,        & ! intent(in)
-                               lmin, nu_vert_res_dep, err_code )                    ! intent(out)
+    call setup_parameters_api( zi_g(:,2), clubb_params, gr, ncol, grid_type,  & ! intent(in)
+                               clubb_config_flags%l_prescribed_avg_deltaz,    & ! intent(in)
+                               lmin, nu_vert_res_dep, err_code )                ! intent(out)
     if ( err_code == clubb_fatal_error ) then
        call endrun(subr//':  Fatal error in CLUBB setup_parameters')
     end if
@@ -3261,8 +3669,9 @@ end subroutine clubb_init_cnst
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
   
       !  Increment the statistics then being stats timestep
-      if (l_stats) then
-        call stats_begin_timestep_api(t, stats_nsamp, stats_nout)
+      if (stats_metadata%l_stats) then
+        call stats_begin_timestep_api( t, stats_nsamp, stats_nout, &
+                                       stats_metadata )
       endif
 
       !#######################################################################
@@ -3341,6 +3750,7 @@ end subroutine clubb_init_cnst
           grid_dx, grid_dy, &
           clubb_params, nu_vert_res_dep, lmin, &
           clubb_config_flags, &
+          stats_metadata, &
           stats_zt(:ncol), stats_zm(:ncol), stats_sfc(:ncol), &
           um_in, vm_in, upwp_in, vpwp_in, up2_in, vp2_in, up3_in, vp3_in, &
           thlm_in, rtm_in, wprtp_in, wpthlp_in, &
@@ -3423,7 +3833,7 @@ end subroutine clubb_init_cnst
       
       !  Check to see if stats should be output, here stats are read into
       !  output arrays to make them conformable to CAM output
-      if (l_stats) then
+      if (stats_metadata%l_stats) then
         do i=1, ncol
           call stats_end_timestep_clubb(i, stats_zt(i), stats_zm(i), stats_rad_zt(i), stats_rad_zm(i), stats_sfc(i), &
                                         out_zt, out_zm, out_radzt, out_radzm, out_sfc)
@@ -4299,7 +4709,7 @@ end subroutine clubb_init_cnst
     end if
 
     !  Output CLUBB history here
-    if (l_stats) then 
+    if (stats_metadata%l_stats) then 
       
       do j=1,stats_zt(1)%num_output_fields
    
@@ -4319,7 +4729,7 @@ end subroutine clubb_init_cnst
         call outfld(trim(sub),out_zm(:,:,j), pcols, lchnk)
       enddo
 
-      if (l_output_rad_files) then  
+      if (stats_metadata%l_output_rad_files) then  
         do j=1,stats_rad_zt(1)%num_output_fields
           call outfld(trim(stats_rad_zt(1)%file%grid_avg_var(j)%name), out_radzt(:,:,j), pcols, lchnk)
         enddo
@@ -4540,7 +4950,7 @@ end function diag_ustar
   subroutine stats_init_clubb( l_stats_in, stats_tsamp_in, stats_tout_in, &
                                nnzp, nnrad_zt,nnrad_zm, delt, &
                                stats_zt, stats_zm, stats_sfc, &
-                               stats_rad_zt, stats_rad_zm)
+                               stats_rad_zt, stats_rad_zm, do_first_step)
     !
     ! Description: Initializes the statistics saving functionality of
     !   the CLUBB model.  This is for purpose of CAM-CLUBB interface.  Here
@@ -4548,57 +4958,6 @@ end function diag_ustar
     !   with CAM output.   
     
     !-----------------------------------------------------------------------
-
-
-    use clubb_api_module, only: &
-      ztscr01, & 
-      ztscr02, & 
-      ztscr03, & 
-      ztscr04, & 
-      ztscr05, & 
-      ztscr06, & 
-      ztscr07, & 
-      ztscr08, & 
-      ztscr09, & 
-      ztscr10, & 
-      ztscr11, & 
-      ztscr12, & 
-      ztscr13, & 
-      ztscr14, & 
-      ztscr15, & 
-      ztscr16, & 
-      ztscr17, & 
-      ztscr18, & 
-      ztscr19, & 
-      ztscr20, & 
-      ztscr21
-
-    use clubb_api_module, only: &
-      zmscr01, & 
-      zmscr02, & 
-      zmscr03, & 
-      zmscr04, & 
-      zmscr05, & 
-      zmscr06, & 
-      zmscr07, & 
-      zmscr08, & 
-      zmscr09, & 
-      zmscr10, & 
-      zmscr11, & 
-      zmscr12, & 
-      zmscr13, & 
-      zmscr14, & 
-      zmscr15, &
-      zmscr16, &
-      zmscr17, &
-      l_stats, &
-      l_output_rad_files, & 
-      stats_tsamp,   & 
-      stats_tout,    & 
-      l_stats_samp,  & 
-      l_stats_last, & 
-      l_netcdf, & 
-      l_grads
 
     use clubb_api_module, only:        time_precision, &   !
                                        nvarmax_zm, stats_init_zm_api, & !
@@ -4618,6 +4977,7 @@ end function diag_ustar
     ! Input Variables
 
     logical, intent(in) :: l_stats_in ! Stats on? T/F
+    logical, intent(in) :: do_first_step
 
     real(kind=time_precision), intent(in) ::  & 
       stats_tsamp_in,  & ! Sampling interval   [s]
@@ -4658,8 +5018,7 @@ end function diag_ustar
 
     !  Local Variables
 
-    logical :: l_error, &
-               first_call = .false.
+    logical :: l_error
 
     character(len=200) :: temp1, sub
 
@@ -4670,14 +5029,14 @@ end function diag_ustar
     l_error = .false.
 
     !  Set stats_variables variables with inputs from calling subroutine
-    l_stats = l_stats_in
-    
-    stats_tsamp = stats_tsamp_in
-    stats_tout  = stats_tout_in
+    stats_metadata%l_stats = l_stats_in
 
-    if ( .not. l_stats ) then
-       l_stats_samp  = .false.
-       l_stats_last  = .false.
+    stats_metadata%stats_tsamp = stats_tsamp_in
+    stats_metadata%stats_tout  = stats_tout_in
+
+    if ( .not. stats_metadata%l_stats ) then
+       stats_metadata%l_stats_samp  = .false.
+       stats_metadata%l_stats_last  = .false.
        return
     end if
 
@@ -4717,19 +5076,19 @@ end function diag_ustar
     if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_sfc")
 
     !  Hardcode these for use in CAM-CLUBB, don't want either
-    l_netcdf = .false.
-    l_grads  = .false.
+    stats_metadata%l_netcdf = .false.
+    stats_metadata%l_grads  = .false.
 
     !  Check sampling and output frequencies
 
     !  The model time step length, delt (which is dtmain), should multiply
     !  evenly into the statistical sampling time step length, stats_tsamp.
-    if ( abs( stats_tsamp/delt - floor(stats_tsamp/delt) ) > 1.e-8_r8 ) then
+    if ( abs( stats_metadata%stats_tsamp/delt - floor(stats_metadata%stats_tsamp/delt) ) > 1.e-8_r8 ) then
        l_error = .true.  ! This will cause the run to stop.
        write(fstderr,*) 'Error:  stats_tsamp should be an even multiple of ',  &
                         'delt (which is dtmain).  Check the appropriate ',  &
                         'model.in file.'
-       write(fstderr,*) 'stats_tsamp = ', stats_tsamp
+       write(fstderr,*) 'stats_tsamp = ', stats_metadata%stats_tsamp
        write(fstderr,*) 'delt = ', delt
     endif
 
@@ -4765,57 +5124,10 @@ end function diag_ustar
     allocate( stats_zt%file%grid_avg_var( stats_zt%num_output_fields ) )
     allocate( stats_zt%file%z( stats_zt%kk ) )
 
-    first_call = (.not. allocated(ztscr01))
-
-    !  Allocate scratch space
-    if (first_call) allocate( ztscr01(stats_zt%kk) )
-    if (first_call) allocate( ztscr02(stats_zt%kk) )
-    if (first_call) allocate( ztscr03(stats_zt%kk) )
-    if (first_call) allocate( ztscr04(stats_zt%kk) )
-    if (first_call) allocate( ztscr05(stats_zt%kk) )
-    if (first_call) allocate( ztscr06(stats_zt%kk) )
-    if (first_call) allocate( ztscr07(stats_zt%kk) )
-    if (first_call) allocate( ztscr08(stats_zt%kk) )
-    if (first_call) allocate( ztscr09(stats_zt%kk) )
-    if (first_call) allocate( ztscr10(stats_zt%kk) )
-    if (first_call) allocate( ztscr11(stats_zt%kk) )
-    if (first_call) allocate( ztscr12(stats_zt%kk) )
-    if (first_call) allocate( ztscr13(stats_zt%kk) )
-    if (first_call) allocate( ztscr14(stats_zt%kk) )
-    if (first_call) allocate( ztscr15(stats_zt%kk) )
-    if (first_call) allocate( ztscr16(stats_zt%kk) )
-    if (first_call) allocate( ztscr17(stats_zt%kk) )
-    if (first_call) allocate( ztscr18(stats_zt%kk) )
-    if (first_call) allocate( ztscr19(stats_zt%kk) )
-    if (first_call) allocate( ztscr20(stats_zt%kk) )
-    if (first_call) allocate( ztscr21(stats_zt%kk) )
-
-    ztscr01 = 0.0_r8
-    ztscr02 = 0.0_r8
-    ztscr03 = 0.0_r8
-    ztscr04 = 0.0_r8
-    ztscr05 = 0.0_r8
-    ztscr06 = 0.0_r8
-    ztscr07 = 0.0_r8
-    ztscr08 = 0.0_r8
-    ztscr09 = 0.0_r8
-    ztscr10 = 0.0_r8
-    ztscr11 = 0.0_r8
-    ztscr12 = 0.0_r8
-    ztscr13 = 0.0_r8
-    ztscr14 = 0.0_r8
-    ztscr15 = 0.0_r8
-    ztscr16 = 0.0_r8
-    ztscr17 = 0.0_r8
-    ztscr18 = 0.0_r8
-    ztscr19 = 0.0_r8
-    ztscr20 = 0.0_r8
-    ztscr21 = 0.0_r8
-
     !  Default initialization for array indices for zt
-    if (first_call) then
+    if (do_first_step) then
       call stats_init_zt_api( clubb_vars_zt, l_error, &
-                              stats_zt )
+                              stats_metadata, stats_zt )
     end if
 
     !  Initialize zm (momentum points)
@@ -4850,52 +5162,14 @@ end function diag_ustar
     allocate( stats_zm%file%grid_avg_var( stats_zm%num_output_fields ) )
     allocate( stats_zm%file%z( stats_zm%kk ) )
 
-    !  Allocate scratch space
-
-    if (first_call) allocate( zmscr01(stats_zm%kk) )
-    if (first_call) allocate( zmscr02(stats_zm%kk) )
-    if (first_call) allocate( zmscr03(stats_zm%kk) )
-    if (first_call) allocate( zmscr04(stats_zm%kk) )
-    if (first_call) allocate( zmscr05(stats_zm%kk) )
-    if (first_call) allocate( zmscr06(stats_zm%kk) )
-    if (first_call) allocate( zmscr07(stats_zm%kk) )
-    if (first_call) allocate( zmscr08(stats_zm%kk) )
-    if (first_call) allocate( zmscr09(stats_zm%kk) )
-    if (first_call) allocate( zmscr10(stats_zm%kk) )
-    if (first_call) allocate( zmscr11(stats_zm%kk) )
-    if (first_call) allocate( zmscr12(stats_zm%kk) )
-    if (first_call) allocate( zmscr13(stats_zm%kk) )
-    if (first_call) allocate( zmscr14(stats_zm%kk) )
-    if (first_call) allocate( zmscr15(stats_zm%kk) )
-    if (first_call) allocate( zmscr16(stats_zm%kk) )
-    if (first_call) allocate( zmscr17(stats_zm%kk) )
-
-    zmscr01 = 0.0_r8
-    zmscr02 = 0.0_r8
-    zmscr03 = 0.0_r8
-    zmscr04 = 0.0_r8
-    zmscr05 = 0.0_r8
-    zmscr06 = 0.0_r8
-    zmscr07 = 0.0_r8
-    zmscr08 = 0.0_r8
-    zmscr09 = 0.0_r8
-    zmscr10 = 0.0_r8
-    zmscr11 = 0.0_r8
-    zmscr12 = 0.0_r8
-    zmscr13 = 0.0_r8
-    zmscr14 = 0.0_r8
-    zmscr15 = 0.0_r8
-    zmscr16 = 0.0_r8
-    zmscr17 = 0.0_r8
-
-    if (first_call) then
+    if (do_first_step) then
       call stats_init_zm_api( clubb_vars_zm, l_error, &
-                              stats_zm )
+                              stats_metadata, stats_zm )
     end if
 
     !  Initialize rad_zt (radiation points)
 
-    if (l_output_rad_files) then
+    if (stats_metadata%l_output_rad_files) then
     
        i = 1
        do while ( ichar(clubb_vars_rad_zt(i)(1:1)) /= 0  .and. & 
@@ -4929,7 +5203,7 @@ end function diag_ustar
       allocate( stats_rad_zt%file%z( stats_rad_zt%kk ) )
 
        call stats_init_rad_zt_api( clubb_vars_rad_zt, l_error, &
-                                   stats_rad_zt )
+                                   stats_metadata, stats_rad_zt )
 
        !  Initialize rad_zm (radiation points)
  
@@ -4965,7 +5239,7 @@ end function diag_ustar
        allocate( stats_rad_zm%file%z( stats_rad_zm%kk ) )
    
        call stats_init_rad_zm_api( clubb_vars_rad_zm, l_error, &
-                                   stats_rad_zm )
+                                   stats_metadata, stats_rad_zm )
     end if ! l_output_rad_files
 
 
@@ -5002,9 +5276,9 @@ end function diag_ustar
     allocate( stats_sfc%file%grid_avg_var( stats_sfc%num_output_fields ) )
     allocate( stats_sfc%file%z( stats_sfc%kk ) )
 
-    if (first_call) then
+    if (do_first_step) then
       call stats_init_sfc_api( clubb_vars_sfc, l_error, &
-                               stats_sfc )
+                               stats_metadata, stats_sfc )
     end if
 
     ! Check for errors
@@ -5014,7 +5288,7 @@ end function diag_ustar
     endif
 
 !   Now call add fields
-    if (first_call) then
+    if (do_first_step) then
       
       do i = 1, stats_zt%num_output_fields
       
@@ -5036,7 +5310,7 @@ end function diag_ustar
               'A',trim(stats_zm%file%grid_avg_var(i)%units),trim(stats_zm%file%grid_avg_var(i)%description))
       enddo
 
-      if (l_output_rad_files) then     
+      if (stats_metadata%l_output_rad_files) then     
 
          do i = 1, stats_rad_zt%num_output_fields
             call addfld(trim(stats_rad_zt%file%grid_avg_var(i)%name),(/ 'ilev' /),&
@@ -5081,10 +5355,6 @@ end function diag_ustar
 
     use clubb_api_module, only: &
         fstderr, & ! Constant(s)
-        l_stats_last, & 
-        stats_tsamp, & 
-        stats_tout, &
-        l_output_rad_files, &
         clubb_at_least_debug_level_api ! Procedure(s)
 
     use cam_abortutils,  only: endrun
@@ -5114,7 +5384,7 @@ end function diag_ustar
 
     !  Check if it is time to write to file
 
-    if ( .not. l_stats_last ) return
+    if ( .not. stats_metadata%l_stats_last ) return
 
     !  Initialize
     l_error = .false.
@@ -5122,7 +5392,7 @@ end function diag_ustar
     !  Compute averages
     call stats_avg( stats_zt%kk, stats_zt%num_output_fields, stats_zt%accum_field_values, stats_zt%accum_num_samples )
     call stats_avg( stats_zm%kk, stats_zm%num_output_fields, stats_zm%accum_field_values, stats_zm%accum_num_samples )
-    if (l_output_rad_files) then
+    if (stats_metadata%l_output_rad_files) then
       call stats_avg( stats_rad_zt%kk, stats_rad_zt%num_output_fields, stats_rad_zt%accum_field_values, &
                       stats_rad_zt%accum_num_samples )
       call stats_avg( stats_rad_zm%kk, stats_rad_zm%num_output_fields, stats_rad_zm%accum_field_values, &
@@ -5147,7 +5417,7 @@ end function diag_ustar
       enddo   
     enddo
 
-    if (l_output_rad_files) then 
+    if (stats_metadata%l_output_rad_files) then 
       do i = 1, stats_rad_zt%num_output_fields
         do k = 1, stats_rad_zt%kk 
           out_radzt(thecol,pverp-k+1,i) = stats_rad_zt%accum_field_values(1,1,k,i)
@@ -5180,7 +5450,7 @@ end function diag_ustar
                      stats_zt%accum_num_samples, stats_zt%l_in_update )
     call stats_zero( stats_zm%kk, stats_zm%num_output_fields, stats_zm%accum_field_values, &
                      stats_zm%accum_num_samples, stats_zm%l_in_update )
-    if (l_output_rad_files) then
+    if (stats_metadata%l_output_rad_files) then
       call stats_zero( stats_rad_zt%kk, stats_rad_zt%num_output_fields, stats_rad_zt%accum_field_values, &
                        stats_rad_zt%accum_num_samples, stats_rad_zt%l_in_update )
       call stats_zero( stats_rad_zm%kk, stats_rad_zm%num_output_fields, stats_rad_zm%accum_field_values, &

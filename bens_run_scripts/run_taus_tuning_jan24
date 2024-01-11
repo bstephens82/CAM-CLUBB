@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+
+
+############################
+# essential stuff
+default_case=/glade/derecho/scratch/stepheba/flthist134.000f_xp2_revert
+repo=/glade/u/home/stepheba/CAM/
+new_test_case_basename=jan24_
+new_test_location=/glade/derecho/scratch/stepheba/
+script_dir=`dirname $0`
+
+
+
+##########################################
+# initial test (modeled on 117.f2c.taus_new_base_latest_mods14)
+#${repo}/cime/scripts/create_newcase --case ${default_case} --compset FLTHIST --res ne30pg3_ne30pg3_mg17 --run-unsupported --project P93300642 --pecount 1920
+#
+#cd ${default_case}
+#
+#./case.setup
+#cp /glade/derecho/scratch/stepheba/tuning8/user_nl_cam .
+## include Peter's land mods:
+#cp /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.001/SourceMods/src.clm/clm* SourceMods/src.clm/
+#cp /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.001/SourceMods/src.clm/surf* SourceMods/src.clm/
+#cp /glade/p/cesmdata/cseg/runs/cesm2_0/f.cam6_3_132.FLTHIST_ne30.001/user_nl_clm .
+#
+#./xmlchange STOP_N=30
+#./xmlchange STOP_OPTION=nmonths
+#./xmlchange RESUBMIT=1
+#
+##qcmd -A P93300642 -- ./case.build
+#
+#cd ${script_dir}
+## not submitting the initial test because I want to make some manual modifications to user_nl_cam to clean up
+#
+#exit
+
+############################ declare large and small values of tuning parameters
+clubb_c_invrs_tau_n2_clear_wp3m=0.
+clubb_c_invrs_tau_n2_clear_wp3p=3.
+clubb_gamma_coefm=0.2
+clubb_gamma_coefp=0.4
+clubb_c8m=0.2
+clubb_c8p=2.0
+clubb_c11bm=0.05
+clubb_c11bp=0.95
+clubb_c_invrs_tau_wpxp_rim=0.25
+clubb_c_invrs_tau_wpxp_rip=5
+clubb_c_invrs_tau_wpxp_n2_threshm=0.0002
+clubb_c_invrs_tau_wpxp_n2_threshp=0.0005
+clubb_wpxp_ri_expm=0.5
+clubb_wpxp_ri_expp=1.5
+micro_mg_dcsm=0.0001
+micro_mg_dcsp=0.001
+microp_aero_wsub_scalem=0.1
+microp_aero_wsub_scalep=1.5
+clubb_bv_efoldm=0.1
+clubb_bv_efoldp=5.
+#clubb_a_constm=0.8
+#clubb_a_constp=2.5
+#clubb_up2_sfc_coefm=1.0
+#clubb_up2_sfc_coefp=3.0
+clubb_c_invrs_tau_n2m=0.02
+clubb_c_invrs_tau_n2p=0.4
+clubb_c_invrs_tau_n2_wp2m=0.01
+clubb_c_invrs_tau_n2_wp2p=0.4
+clubb_c_invrs_tau_n2_xp2m=0.1
+clubb_c_invrs_tau_n2_xp2p=0.4
+zmconv_kem=0.000001
+zmconv_kep=0.00001
+micro_mg_vtrmi_factorm=0.5
+micro_mg_vtrmi_factorp=1.5
+cldfrc_dp1m=0.05
+cldfrc_dp1p=0.15
+cldfrc_dp2m=250.
+cldfrc_dp2p=750.
+clubb_c_invrs_tau_bkgndm=0.5
+clubb_c_invrs_tau_bkgndp=1.5
+clubb_c_invrs_tau_sfcm=0.02
+clubb_c_invrs_tau_sfcp=0.1
+clubb_c_invrs_tau_shearm=0.1
+clubb_c_invrs_tau_shearp=0.4
+
+
+####################### declare parameter array
+declare -a params=(
+"clubb_gamma_coef"
+"clubb_c8"
+"clubb_c_invrs_tau_n2_clear_wp3"
+"clubb_c11b"
+"clubb_c_invrs_tau_wpxp_ri"
+"clubb_c_invrs_tau_wpxp_n2_thresh"
+"clubb_wpxp_ri_exp"
+"micro_mg_dcs"
+"microp_aero_wsub_scale"
+"clubb_bv_efold"
+#"clubb_a_const"
+#"clubb_up2_sfc_coef"
+"clubb_c_invrs_tau_n2"
+"clubb_c_invrs_tau_n2_wp2"
+"clubb_c_invrs_tau_n2_xp2"
+"zmconv_ke"
+"micro_mg_vtrmi_factor"
+"cldfrc_dp1"
+"cldfrc_dp2"
+"clubb_c_invrs_tau_bkgnd"
+"clubb_c_invrs_tau_shear"
+"clubb_c_invrs_tau_sfc"
+)
+
+####################### submit clubb parameter tests
+for val in ${params[@]}; do
+
+# decreased-value test
+paramm="${val}m"
+
+${repo}/cime/scripts/create_clone --keepexe --clone ${default_case} --case ${new_test_location}/${new_test_case_basename}${paramm}
+
+vim -E -s ${new_test_location}/${new_test_case_basename}${paramm}/user_nl_cam <<-EOF
+        :%s/\s*${val}\s*=\s*.*/${val}=${!paramm}
+        :%s/\s*${val}b\s*=\s*.*/${val}b=${!paramm}
+        :update
+        :quit
+EOF
+
+cd ${new_test_location}/${new_test_case_basename}${paramm}
+
+./xmlchange JOB_WALLCLOCK_TIME=12:00:00
+
+./case.submit
+cd ${script_dir}
+
+## increased-value test
+paramp="${val}p"
+
+${repo}/cime/scripts/create_clone --keepexe --clone ${default_case} --case ${new_test_location}/${new_test_case_basename}${paramp}
+
+vim -E -s ${new_test_location}/${new_test_case_basename}${paramp}/user_nl_cam <<-EOF
+        :%s/\s*${val}\s*=\s*.*/${val}=${!paramp}
+        :%s/\s*${val}b\s*=\s*.*/${val}b=${!paramp}
+        :update
+        :quit
+EOF
+
+cd ${new_test_location}/${new_test_case_basename}${paramp}
+
+./xmlchange JOB_WALLCLOCK_TIME=12:00:00
+
+./case.submit
+cd ${script_dir}
+
+done
+
