@@ -4467,6 +4467,140 @@ Real: number of plumes in mass flux ensemble
 Default: 10
 </entry>
 
+<entry id="clubb_C1c" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C7c" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C11c" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C12" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C_wp2_pr_dfsn" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C_wp3_pr_tp" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C_wp3_pr_dfsn" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C6rt_Lscale0" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C6thl_Lscale0" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C7_Lscale0" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_c_K" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_nu1" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_c_K6" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_nu6" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_nu8" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_nu10" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_c_K_hm" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_c_K_hmb" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_K_hm_min_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_nu_hm" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_slope_coef_spread_DG_means_w" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_pdf_component_stdev_factor_w" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_coef_spread_DG_means_rt" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_coef_spread_DG_means_thl" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_gamma_coefc" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_mu" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_omicron" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_zeta_vrnce_rat" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_upsilon_precip_frac_rat" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_taumin" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_taumax" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_Lscale_mu_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_Lscale_pert_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_alpha_corr" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_thlp2_rad_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_thlp2_rad_cloud_frac_thresh" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C_invrs_tau_wpxp_Ri" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_C_invrs_tau_wpxp_N2_thresh" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_xp3_coef_base" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_xp3_coef_slope" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_altitude_threshold" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_rtp2_clip_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_Cx_min" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_Cx_max" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_Richardson_num_min" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_Richardson_num_max" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_a3_coef_min" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_a_const" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_bv_efold" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_wpxp_Ri_exp" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_z_displace" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+
+<entry id="clubb_l_use_precip_frac" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_C2_cloud_frac" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_diffuse_rtm_and_thlm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_stability_correct_Kh_N2_zm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_calc_thlp2_rad" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_upwind_xm_ma" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_uv_nudge" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_rtm_nudge" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_tke_aniso" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_diagnose_correlations" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_calc_w_corr" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_const_Nc_in_cloud" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_fix_w_chi_eta_correlations" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_prescribed_avg_deltaz" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+<entry id="clubb_l_linearize_pbl_winds" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" > </entry>
+
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"

@@ -1,0 +1,207 @@
+#!/bin/bash
+
+# this script will calculate climatologies and diagnostics for a specific test_case and
+# zip up the resulting test_case minus OBS file, which will be located in the
+# /glade/scratch/stepheba/diagnostics-output/atm/diag/ directory
+# this script can be run simply with ./postprocess_script, i.e. no need for qsub or qcmd -q premium
+# after the MODIFY variables below are set
+# however, cesm_pp_activate should already been activated---the script will abort with
+# an error message if not.
+
+
+#i need to add the capability to run the "vs obs" diags for the cntl case if 
+#it doesn't already exist.
+
+
+#MODIFY
+export test_case=113.f2c.ndg_TUV.taus_fv.2010
+export cntl_case=113.f2c.ndg_free.taus_fv.2010
+export username=stepheba
+export PBS_ACCOUNT=P93300642
+export first_yr=2010
+export nyrs=1
+export m2o_test=true
+export m2o_cntl=false
+export m2m=true
+export profiles=false
+export queue=premium
+
+
+#shouldn't need to modify
+#---------------------------------
+
+#test environment
+hash create_postprocess 2>/dev/null || { echo >&2 "The cesm_pp_activate comand has not been issued.  Aborting."; exit 1; }
+
+export last_yr=$(expr $first_yr + $nyrs - 1)
+
+# model v obs
+if $m2o_test
+then
+
+if [ ! -d "/glade/scratch/$username/archive/$test_case" ]; then
+echo "test_case doesn't exist"
+exit
+fi
+
+if [ -d "./$test_case" ]; then
+echo "removing previous directories..."
+rm -rf $test_case
+rm -rf ../diagnostics-output/atm/climo/$test_case
+rm -rf ../diagnostics-output/atm/diag/$test_case
+rm -rf ../diagnostics-output/atm/diag/$test_case-obs.${first_yr}_${nyrs}
+fi
+
+create_postprocess --caseroot /glade/scratch/stepheba/cesm-postprocess/$test_case
+
+cd /glade/scratch/stepheba/cesm-postprocess/$test_case
+
+./pp_config --set DOUT_S_ROOT=/glade/scratch/$username/archive/$test_case/
+./pp_config --set ATM_GRID=0.9x1.25
+./pp_config --set ATMDIAG_OUTPUT_ROOT_PATH=/glade/scratch/stepheba/diagnostics-output/atm
+./pp_config --set ATMDIAG_test_first_yr=$first_yr
+./pp_config --set ATMDIAG_test_nyrs=$nyrs
+
+vim -E -s atm_averages <<-EOF
+        :%s/None/$PBS_ACCOUNT/
+        :update
+        :quit
+EOF
+
+qcmd -q $queue -- ./atm_averages --wait
+
+vim -E -s atm_diagnostics <<-EOF
+        :%s/None/$PBS_ACCOUNT/
+        :update
+        :quit
+EOF
+
+qcmd -q $queue -- ./atm_diagnostics --wait
+
+#zip up the output diagnostics file
+cd /glade/scratch/stepheba/diagnostics-output/atm/diag/
+
+zip -rq $test_case-obs.$first_yr\_$last_yr.zip $test_case-obs.$first_yr\_$last_yr
+
+else
+
+echo "m2o_test = False"
+
+fi
+
+cd /glade/scratch/stepheba/cesm-postprocess/
+
+#model to model comparison for control case
+if $m2o_cntl
+then
+
+if [ ! -d "/glade/scratch/$username/archive/$cntl_case" ]; then
+echo "cntl_case doesn't exist"
+exit
+fi
+
+
+if [ -d "./$cntl_case" ]; then
+echo "removing previous directories..."
+rm -rf $cntl_case
+rm -rf ../diagnostics-output/atm/climo/$cntl_case
+rm -rf ../diagnostics-output/atm/diag/$cntl_case
+rm -rf ../diagnostics-output/atm/diag/$cntl_case-obs.${first_yr}_${nyrs}
+fi
+
+create_postprocess --caseroot /glade/scratch/stepheba/cesm-postprocess/$cntl_case
+
+cd /glade/scratch/stepheba/cesm-postprocess/$cntl_case
+
+./pp_config --set DOUT_S_ROOT=/glade/scratch/$username/archive/$cntl_case/
+./pp_config --set ATM_GRID=0.9x1.25
+./pp_config --set ATMDIAG_OUTPUT_ROOT_PATH=/glade/scratch/stepheba/diagnostics-output/atm
+./pp_config --set ATMDIAG_test_first_yr=$first_yr
+./pp_config --set ATMDIAG_test_nyrs=$nyrs
+
+vim -E -s atm_averages <<-EOF
+        :%s/None/$PBS_ACCOUNT/
+        :update
+        :quit
+EOF
+
+qcmd -q $queue -- ./atm_averages --wait
+
+vim -E -s atm_diagnostics <<-EOF
+        :%s/None/$PBS_ACCOUNT/
+        :update
+        :quit
+EOF
+
+qcmd -q $queue -- ./atm_diagnostics --wait
+
+#zip up the output diagnostics file
+cd /glade/scratch/stepheba/diagnostics-output/atm/diag/
+
+zip -rq $cntl_case-obs.$first_yr\_$last_yr.zip $cntl_case-obs.$first_yr\_$last_yr
+
+else
+
+echo "m2o_cntl = False"
+
+fi
+
+
+
+
+
+#model to model comparison
+
+if $m2m
+then
+
+cd /glade/scratch/stepheba/cesm-postprocess/$test_case
+
+./pp_config --set ATMDIAG_cntl_casename=$cntl_case
+./pp_config --set ATMDIAG_MODEL_VS_MODEL=True
+./pp_config --set ATMDIAG_cntl_first_yr=$first_yr
+./pp_config --set ATMDIAG_cntl_nyrs=$nyrs
+
+# go!
+#export last_yr=$(expr $first_yr + $nyrs - 1)
+
+qcmd -q $queue -- ./atm_diagnostics --wait
+
+else
+
+echo "m2m = False"
+
+fi
+
+
+# run Zhun's plotting code
+
+if $profiles
+then
+
+cd /glade/scratch/stepheba/DiagnosticsAndTools/
+
+vim -E -s ./CAM_CLUBB_diag.py <<-EOF
+        :%s/\s*case=\s*.*/case="$test_case"/
+        :%s/\s*cases=\s*.*/cases=["$test_case"]/
+        :%s/\s*casenames=\s*.*/casenames="$test_case"/
+        :%s/\s*years=\s*.*/years=[$first_yr]/
+        :%s/\s*nyear=\s*.*/nyear=[$nyrs]/
+        :update
+        :quit
+EOF
+
+ml nco
+qcmd -q $queue -- python CAM_CLUBB_diag.py --wait
+
+cd /glade/scratch/stepheba/archive/$test_case/diagout/
+
+zip -rq $test_case\_ANN.zip $test_case\_ANN
+
+else
+
+echo "profiles = False"
+
+fi
+
+
