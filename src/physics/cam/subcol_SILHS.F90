@@ -85,6 +85,7 @@ module subcol_SILHS
               qcsedten_idx, qrsedten_idx, qisedten_idx, qssedten_idx, &
               vtrmc_idx, umr_idx, vtrmi_idx, ums_idx, qcsevap_idx, qisevap_idx
 
+   logical :: silhs_history
    logical :: subcol_SILHS_weight  ! if set, sets up weights for averaging subcolumns for SILHS
    integer :: subcol_SILHS_numsubcol ! number of subcolumns for this run
    logical :: docldfracscaling = .false. ! Weight tendencies by cloud fraction
@@ -172,7 +173,8 @@ contains
           subcol_silhs_l_lh_var_frac, &
           subcol_silhs_l_lh_normalize_weights
 
-      namelist /subcol_SILHS_nl/ subcol_SILHS_weight, &
+      namelist /subcol_SILHS_nl/ silhs_history, &
+                                 subcol_SILHS_weight, &
                                  subcol_SILHS_numsubcol, &
                                  subcol_SILHS_corr_file_path, &
                                  subcol_SILHS_corr_file_name, &
@@ -839,7 +841,7 @@ contains
       real(r8), pointer, dimension(:,:) :: khzm_in   ! Eddy diffusivity coef
       
       logical, parameter :: l_est_kessler_microphys = .false.
-      logical, parameter :: l_outfld_subcol         = .false.
+!      logical, parameter :: silhs_history           = .false.
       
       type(grid) :: gr
       
@@ -1597,7 +1599,7 @@ contains
         end do
       endif
 
-      if ( l_outfld_subcol ) then
+      if ( silhs_history ) then
         
         do k = 1, pver-top_lev+1
           do i = 1, ngrdcol

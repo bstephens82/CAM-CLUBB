@@ -3376,6 +3376,12 @@ Tests the restart capabilities of weights with a more adequate test
 Default: '.false.'
 </entry>
 
+<entry id="silhs_history" type="logical" category="history"
+       group="subcol_silhs_nl" valid_values="" >
+Turns on/off SILHS history output.
+Default: '.false.'
+</entry>
+
 <entry id="subcol_silhs_weight" type="logical" category="conv"
        group="subcol_silhs_nl" valid_values="" >
 Turns on/off use of weights during averaging in tstcp
