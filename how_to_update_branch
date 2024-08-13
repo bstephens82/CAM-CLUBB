@@ -1,0 +1,9 @@
+The first thing is to update the tags:
+
+git remote add ESCOMP https://github.com/ESCOMP/CAM
+git fetch --tags ESCOMP
+
+Then you can switch to whatever tag you want, say the latest cam_development tag.
+Then merge in your previous branch.
+
+git merge my_cam_117, etc.

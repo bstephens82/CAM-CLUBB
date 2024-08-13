@@ -2238,9 +2238,59 @@
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
 <clubb_wpxp_Ri_exp                                > 0.5     </clubb_wpxp_Ri_exp>
 <clubb_z_displace                                 > 25.0    </clubb_z_displace>
+
 <do_hb_above_clubb                                >.false.  </do_hb_above_clubb>
 <do_hb_above_clubb phys="cam6"                    >.true.   </do_hb_above_clubb>
 <do_hb_above_clubb phys="cam7"                    >.true.   </do_hb_above_clubb>
+
+<clubb_c1c > 1.0 </clubb_c1c>
+<clubb_c7c> 0.5 </clubb_c7c>
+<clubb_c12> 1.0 </clubb_c12>
+<clubb_c_wp2_pr_dfsn> 0.0 </clubb_c_wp2_pr_dfsn>
+<clubb_c_wp3_pr_tp> 0.0 </clubb_c_wp3_pr_tp>
+<clubb_c_wp3_pr_dfsn> 0.0 </clubb_c_wp3_pr_dfsn>
+<clubb_c6rt_Lscale0> 14.0 </clubb_c6rt_Lscale0>
+<clubb_c6thl_Lscale0> 14.0 </clubb_c6thl_Lscale0>
+<clubb_c7_Lscale0> 0.85 </clubb_c7_Lscale0>
+<clubb_c_K> 0.2 </clubb_c_K>
+<clubb_nu1> 20.0 </clubb_nu1>
+<clubb_c_K6> 0.375 </clubb_c_K6>
+<clubb_nu6> 5.0 </clubb_nu6>
+<clubb_nu8> 20.0 </clubb_nu8>
+<clubb_nu10> 0.0 </clubb_nu10>
+<clubb_c_K_hm> 0.75 </clubb_c_K_hm>
+<clubb_c_K_hmb> 0.75 </clubb_c_K_hmb>
+<clubb_K_hm_min_coef> 0.1 </clubb_K_hm_min_coef>
+<clubb_nu_hm> 1.5 </clubb_nu_hm>
+<clubb_slope_coef_spread_DG_means_w> 21.0 </clubb_slope_coef_spread_DG_means_w>
+<clubb_pdf_component_stdev_factor_w> 1.0 </clubb_pdf_component_stdev_factor_w>
+<clubb_coef_spread_DG_means_rt> 0.8 </clubb_coef_spread_DG_means_rt>
+<clubb_coef_spread_DG_means_thl> 0.8 </clubb_coef_spread_DG_means_thl>
+<clubb_gamma_coefc> 5.0 </clubb_gamma_coefc>
+<clubb_mu> 0.001 </clubb_mu>
+<clubb_omicron> 0.5 </clubb_omicron>
+<clubb_zeta_vrnce_rat> 0.0 </clubb_zeta_vrnce_rat>
+<clubb_upsilon_precip_frac_rat> 0.55 </clubb_upsilon_precip_frac_rat>
+<clubb_taumin> 90.0 </clubb_taumin>
+<clubb_taumax> 3600.0 </clubb_taumax>
+<clubb_Lscale_mu_coef> 2.0 </clubb_Lscale_mu_coef>
+<clubb_Lscale_pert_coef> 0.1 </clubb_Lscale_pert_coef>
+<clubb_alpha_corr> 0.15 </clubb_alpha_corr>
+<clubb_thlp2_rad_coef> 1.0 </clubb_thlp2_rad_coef>
+<clubb_thlp2_rad_cloud_frac_thresh> 0.1 </clubb_thlp2_rad_cloud_frac_thresh>
+<clubb_c_invrs_tau_wpxp_Ri> 0.35 </clubb_c_invrs_tau_wpxp_Ri>
+<clubb_c_invrs_tau_wpxp_N2_thresh> 0.00033 </clubb_c_invrs_tau_wpxp_N2_thresh>
+<clubb_xp3_coef_base> 0.25 </clubb_xp3_coef_base>
+<clubb_xp3_coef_slope> 0.01 </clubb_xp3_coef_slope>
+<clubb_altitude_threshold> 100.0 </clubb_altitude_threshold>
+<clubb_rtp2_clip_coef> 0.5 </clubb_rtp2_clip_coef>
+<clubb_cx_min> 0.33 </clubb_cx_min>
+<clubb_cx_max> 0.95 </clubb_cx_max>
+<clubb_richardson_num_min> 0.25 </clubb_richardson_num_min>
+<clubb_richardson_num_max> 400.0 </clubb_richardson_num_max>
+<clubb_a3_coef_min> 1.0 </clubb_a3_coef_min>
+<clubb_a_const> 1.8 </clubb_a_const>
+<clubb_c11c> 0.5 </clubb_c11c>
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
