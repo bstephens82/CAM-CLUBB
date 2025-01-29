@@ -36,6 +36,7 @@ module clubb_intr
                                  hm_metadata_type, sclr_idx_type
 
   use clubb_api_module,    only: nparams
+  use grid_class,          only: ddzt
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
 #endif
@@ -1819,6 +1820,22 @@ end subroutine clubb_init_cnst
     call addfld ('UM_CLUBB',         (/ 'lev' /),  'A', 'm/s',      'Zonal Wind', sampled_on_subcycle=.true.)
     call addfld ('VM_CLUBB',         (/ 'lev' /),  'A', 'm/s',      'Meridional Wind', sampled_on_subcycle=.true.)
     call addfld ('WM_ZT_CLUBB',      (/ 'lev' /),  'A', 'm/s',      'Vertical Velocity', sampled_on_subcycle=.true.)
+
+    call addfld ('DUDZ_CLUBB',       (/ 'ilev' /), 'A', 'm2/s2',    '')
+    call addfld ('DVDZ_CLUBB',       (/ 'ilev' /), 'A', 'm2/s2',    '')
+    call addfld ('UPWP_UG_CLUBB',    (/ 'ilev' /), 'A', 'm2/s2',    'Zonal Momentum Upgradient Flux')
+    call addfld ('VPWP_UG_CLUBB',    (/ 'ilev' /), 'A', 'm2/s2',    'Meridional Momentum Upgradient Flux')
+    call addfld ('UPWP_UG_CT_CLUBB',  horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('VPWP_UG_CT_CLUBB',  horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('UPWP_UG_MEAN_HGT',  horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('VPWP_UG_MEAN_HGT',  horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('UPWP_UG_MEAN_LEV',  horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('VPWP_UG_MEAN_LEV',  horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('UPWP_UG_MIN_LEV',   horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('VPWP_UG_MIN_LEV',   horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('UPWP_UG_MAX_LEV',   horiz_only,  'A', 'm2/s2',    '')
+    call addfld ('VPWP_UG_MAX_LEV',   horiz_only,  'A', 'm2/s2',    '')
+
     call addfld ('PBLH',             horiz_only,   'A', 'm',        'PBL height', sampled_on_subcycle=.true.)
     call addfld ('CLDST',            (/ 'lev' /),  'A', 'fraction', 'Stratus cloud fraction', sampled_on_subcycle=.true.)
     call addfld ('ZMDLF',            (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained liquid water from ZM convection', sampled_on_subcycle=.true.)
@@ -2607,6 +2624,16 @@ end subroutine clubb_init_cnst
 
     type(nu_vertical_res_dep) :: nu_vert_res_dep   ! Vertical resolution dependent nu values
     real(r8) :: lmin
+
+    real(r8), dimension(state%ncol, pverp) :: dudz_cam, dvdz_cam
+    real(r8), dimension(state%ncol, pverp+1) :: dudz, dvdz
+    real(r8), dimension(pcols,pverp) :: upwp_levels_ug, vpwp_levels_ug, upwp_height_ug, vpwp_height_ug, &
+                                        upwp_ug, vpwp_ug
+    real(r8), dimension(pcols) :: upwp_ug_mean_lev, vpwp_ug_mean_lev, upwp_ug_min_lev, vpwp_ug_min_lev, &
+                                  upwp_ug_max_lev, vpwp_ug_max_lev, upwp_ug_mean_hgt, vpwp_ug_mean_hgt, &
+                                  upwp_ug_count, vpwp_ug_count
+    integer :: nz_count
+    logical :: min_lev_not_found
 
     real(r8), dimension(state%ncol,nparams) :: &
       clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
@@ -4414,6 +4441,85 @@ end subroutine clubb_init_cnst
       call t_stopf('clubb_cam_tend:do_liqsupersat')
     end if
 
+    ! Calculate the upgradient flux diagnostic                     !
+    ! ------------------------------------------------------------ !
+    if ( clubb_l_predict_upwp_vpwp ) then
+      upwp_ug = 0
+      vpwp_ug = 0
+      upwp_ug_count = 0
+      vpwp_ug_count = 0
+      upwp_levels_ug = 0
+      vpwp_levels_ug = 0
+      upwp_ug_mean_lev = 0
+      vpwp_ug_mean_lev = 0
+      upwp_ug_min_lev = 0
+      vpwp_ug_min_lev = 0
+      upwp_ug_max_lev = 0
+      vpwp_ug_max_lev = 0
+      upwp_height_ug = 0
+      vpwp_height_ug = 0
+      dudz = ddzt( pver+1-top_lev+1, ncol, gr, um_in )
+      dvdz = ddzt( pver+1-top_lev+1, ncol, gr, vm_in )
+      do k=1, pver+1-top_lev+1
+        do i=1, ncol
+          dudz_cam(i,pverp-k+1) = dudz(i,k)
+          dvdz_cam(i,pverp-k+1) = dvdz(i,k)
+        end do
+      end do
+      do i = 1, ncol
+        do k = top_lev, pver !top_lev, nlev + top_lev - 1
+          if ( ( dudz_cam(i,k) < 0 .and. upwp(i,k) < 0 ) .or. ( dudz_cam(i,k) > 0 .and. upwp(i,k) > 0 ) ) then
+            upwp_ug(i,k) = upwp(i,k)
+            upwp_ug_count(i) = upwp_ug_count(i) + 1
+            upwp_levels_ug(i,k) = k
+            upwp_height_ug(i,k) = state1%zm(i,k)
+          end if
+          if ( ( dvdz_cam(i,k) < 0 .and. vpwp(i,k) < 0 ) .or. ( dvdz_cam(i,k) > 0 .and. vpwp(i,k) > 0 ) ) then
+            vpwp_ug(i,k) = vpwp(i,k)
+            vpwp_ug_count(i) = vpwp_ug_count(i) + 1
+            vpwp_levels_ug(i,k) = k
+            vpwp_height_ug(i,k) = state1%zm(i,k)
+          end if
+        end do
+      end do
+      do i=1, ncol
+        nz_count = 0
+        min_lev_not_found = .true.
+        do k = top_lev, pver !top_lev, nlev + top_lev - 1
+          if ( upwp_levels_ug(i,k) .ne. 0 ) then
+            nz_count = nz_count + 1
+            upwp_ug_max_lev(i) = upwp_levels_ug(i,k)
+            if (min_lev_not_found) then
+              upwp_ug_min_lev(i) = upwp_levels_ug(i,k)
+              min_lev_not_found = .false.
+            end if
+          end if
+        end do
+        if (nz_count .ne. 0) then
+          upwp_ug_mean_lev(i) = sum(upwp_levels_ug(i,:))/nz_count
+          upwp_ug_mean_hgt(i) = sum(upwp_height_ug(i,:))/nz_count
+        end if
+        nz_count = 0
+        min_lev_not_found = .true.
+        do k = top_lev, pver !top_lev, nlev + top_lev - 1
+          if ( vpwp_levels_ug(i,k) .ne. 0 ) then
+            nz_count = nz_count + 1
+            vpwp_ug_max_lev(i) = vpwp_levels_ug(i,k)
+            if (min_lev_not_found) then
+              vpwp_ug_min_lev(i) = vpwp_levels_ug(i,k)
+              min_lev_not_found = .false.
+            end if
+          end if
+        end do
+        if (nz_count .ne. 0) then
+          vpwp_ug_mean_lev(i) = sum(vpwp_levels_ug(i,:))/nz_count
+          vpwp_ug_mean_hgt(i) = sum(vpwp_height_ug(i,:))/nz_count
+        end if
+      end do
+    end if
+
+    ! ------------------------------------------------------------ !
+
     ! ------------------------------------------------------------ !
     ! The rest of the code deals with diagnosing variables         !
     ! for microphysics/radiation computation and macrophysics      !
@@ -4789,6 +4895,20 @@ end subroutine clubb_init_cnst
     call outfld( 'UM_CLUBB',         um(:,1:pver),            pcols, lchnk )
     call outfld( 'VM_CLUBB',         vm(:,1:pver),            pcols, lchnk )
     call outfld( 'WM_ZT_CLUBB',      wm_zt_out(:,1:pver),     pcols, lchnk )
+    call outfld( 'DUDZ_CLUBB',       dudz_cam,                pcols, lchnk )
+    call outfld( 'DVDZ_CLUBB',       dvdz_cam,                pcols, lchnk )
+    call outfld( 'UPWP_UG_CLUBB',    upwp_ug,                 pcols, lchnk )
+    call outfld( 'VPWP_UG_CLUBB',    vpwp_ug,                 pcols, lchnk )
+    call outfld( 'UPWP_UG_CT_CLUBB',    upwp_ug_count,        pcols, lchnk )
+    call outfld( 'VPWP_UG_CT_CLUBB',    vpwp_ug_count,        pcols, lchnk )
+    call outfld( 'UPWP_UG_MEAN_HGT',    upwp_ug_mean_hgt,     pcols, lchnk )
+    call outfld( 'VPWP_UG_MEAN_HGT',    vpwp_ug_mean_hgt,     pcols, lchnk )
+    call outfld( 'UPWP_UG_MEAN_LEV',    upwp_ug_mean_lev,     pcols, lchnk )
+    call outfld( 'VPWP_UG_MEAN_LEV',    vpwp_ug_mean_lev,     pcols, lchnk )
+    call outfld( 'UPWP_UG_MIN_LEV',    upwp_ug_min_lev,       pcols, lchnk )
+    call outfld( 'VPWP_UG_MIN_LEV',    vpwp_ug_min_lev,       pcols, lchnk )
+    call outfld( 'UPWP_UG_MAX_LEV',    upwp_ug_max_lev,       pcols, lchnk )
+    call outfld( 'VPWP_UG_MAX_LEV',    vpwp_ug_max_lev,       pcols, lchnk )
     call outfld( 'CONCLD',           concld,                  pcols, lchnk )
     call outfld( 'DP_CLD',           deepcu,                  pcols, lchnk )
     call outfld( 'ZMDLF',            dlf_liq_out,             pcols, lchnk )
